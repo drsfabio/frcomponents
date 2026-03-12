@@ -1,91 +1,91 @@
-# Material Design Components for Lazarus
+# Componentes Material Design para Lazarus
 
-Material Design input components for Lazarus / Free Pascal, integrated with the [BGRAControls](https://github.com/bgrabitmap/bgracontrols) package. Licensed as **LGPL v3**.
+Componentes de entrada com estilo Material Design para Lazarus / Free Pascal, integrados ao pacote [BGRAControls](https://github.com/bgrabitmap/bgracontrols). Licenciado sob **LGPL v3**.
 
-## Overview
+## Visão geral
 
-This package provides four Material Design-style input controls that wrap standard LCL widgets, adding:
+Este pacote fornece quatro controles de entrada no estilo Material Design que encapsulam widgets padrão da LCL, adicionando:
 
-- **Floating label** — label slides above the field when focused or filled
-- **Material underline** — single line at rest, double accent line on focus
-- **AccentColor** — customisable colour used for the focused underline and label
-- **Consistent API** — all controls expose the same look-and-feel conventions
+- **Label flutuante** — o rótulo sobe acima do campo ao receber foco ou quando preenchido
+- **Sublinhado Material** — linha fina em repouso, linha dupla colorida com foco
+- **AccentColor** — cor personalizável usada no sublinhado e no label com foco
+- **API consistente** — todos os controles seguem as mesmas convenções visuais
 
-| Component | Wraps | Use case |
+| Componente | Encapsula | Uso |
 |---|---|---|
-| `TBCMaterialEdit` | `TEdit` | Single-line text input |
-| `TBCMaterialComboEdit` | `TComboBox` | Drop-down list / editable combo |
-| `TBCMaterialCheckComboEdit` | `TCheckListBox` (popup) | Multi-select with checkboxes |
-| `TBCMaterialDateEdit` | `TDateEdit` | Date picker with calendar popup |
+| `TBCMaterialEdit` | `TEdit` | Campo de texto simples |
+| `TBCMaterialComboEdit` | `TComboBox` | Lista suspensa / combo editável |
+| `TBCMaterialCheckComboEdit` | `TCheckListBox` (popup) | Seleção múltipla com checkboxes |
+| `TBCMaterialDateEdit` | `TDateEdit` | Seletor de data com calendário popup |
 
 ---
 
-## ⚠️ Conflict warning — BGRAControls users
+## ⚠️ Aviso de conflito — usuários do BGRAControls
 
-This package is a **fork** of the Material Design units originally included in [BGRAControls](https://github.com/bgrabitmap/bgracontrols).
+Este pacote é um **fork** das units Material Design originalmente incluídas no [BGRAControls](https://github.com/bgrabitmap/bgracontrols).
 
-If you have **BGRAControls installed**, be aware that:
+Se você tem o **BGRAControls instalado**, esteja ciente de que:
 
-- BGRAControls already ships a unit named `BCMaterialEdit`. Installing this package alongside BGRAControls will register **duplicate unit names**, causing compiler errors such as `Duplicate identifier` or `Unit already used`.
-- The component class names (`TBCMaterialEdit`, etc.) are the same, so both packages **cannot be installed at the same time**.
+- O BGRAControls já inclui uma unit chamada `BCMaterialEdit`. Instalar este pacote junto com o BGRAControls causará **nomes de unit duplicados**, gerando erros de compilação como `Duplicate identifier` ou `Unit already used`.
+- Os nomes das classes de componente (`TBCMaterialEdit`, etc.) são os mesmos, portanto os dois pacotes **não podem ser instalados ao mesmo tempo**.
 
-### Recommended approach
+### Abordagem recomendada
 
-| Scenario | Action |
+| Cenário | Ação |
 |---|---|
-| You use BGRAControls only for the Material Design components | Remove the Material Design units from your BGRAControls installation (or use this package instead and remove the originals). |
-| You use BGRAControls for other controls (BGRASpeedButton, etc.) | Keep BGRAControls installed but **exclude** the conflicting units: in the BGRAControls package editor remove `BCMaterialEdit` from the file list before installing this package. |
-| You start a new project | Install only this package — it already depends on `BGRABitmapPack` directly and does not require the full BGRAControls package. |
+| Você usa o BGRAControls apenas pelos componentes Material Design | Remova as units Material Design da sua instalação do BGRAControls (ou use este pacote no lugar delas). |
+| Você usa o BGRAControls por outros controles (BGRASpeedButton, etc.) | Mantenha o BGRAControls instalado, mas **exclua** as units em conflito: no editor do pacote BGRAControls, remova `BCMaterialEdit` da lista de arquivos antes de instalar este pacote. |
+| Você está iniciando um projeto novo | Instale apenas este pacote — ele já declara dependência direta do `BGRABitmapPack` e não requer o BGRAControls completo. |
 
-> **Note:** Downgrading is always safe — you can uninstall this package and go back to the BGRAControls version at any time with no changes to your project's source code, as both expose the same class names and published properties.
+> **Observação:** A reversão é sempre segura — você pode desinstalar este pacote e voltar à versão do BGRAControls a qualquer momento sem alterar o código-fonte do seu projeto, pois ambos expõem os mesmos nomes de classe e propriedades publicadas.
 
 ---
 
-## Installation in Lazarus IDE
+## Instalação no Lazarus IDE
 
-### Prerequisites
+### Pré-requisitos
 
-The following packages must be installed **before** installing this package:
+Os seguintes pacotes devem estar instalados **antes** de instalar este pacote:
 
-| Package | Where to get |
+| Pacote | Onde obter |
 |---|---|
-| **LCL** | Bundled with Lazarus |
+| **LCL** | Incluído no Lazarus |
 | **BGRABitmapPack** | [github.com/bgrabitmap/bgrabitmap](https://github.com/bgrabitmap/bgrabitmap) |
 
-Install BGRABitmapPack first if it is not yet available in your IDE:
+Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primeiro:
 
-1. Clone or download `bgrabitmap`.
-2. In Lazarus: **Package → Open Package File (.lpk)** → select `bgrabitmappack.lpk`.
-3. Click **Compile**, then **Use → Install**. Lazarus will rebuild itself.
+1. Clone ou baixe o repositório `bgrabitmap`.
+2. No Lazarus: **Pacote → Abrir arquivo de pacote (.lpk)** → selecione `bgrabitmappack.lpk`.
+3. Clique em **Compilar** e depois em **Usar → Instalar**. O Lazarus se reconstruirá automaticamente.
 
-### Installing this package
+### Instalando este pacote
 
-1. **Open the package**  
-   **Package → Open Package File (.lpk)** → select `materialdesign.lpk` from this repository.
+1. **Abrir o pacote**  
+   **Pacote → Abrir arquivo de pacote (.lpk)** → selecione `materialdesign.lpk` deste repositório.
 
-2. **Compile**  
-   In the Package Editor window, click **Compile**.  
-   All four units (`BCMaterialEdit`, `BCMaterialComboEdit`, `BCMaterialCheckComboEdit`, `BCMaterialDateEdit`) should compile without errors.
+2. **Compilar**  
+   Na janela do Editor de Pacotes, clique em **Compilar**.  
+   As quatro units (`BCMaterialEdit`, `BCMaterialComboEdit`, `BCMaterialCheckComboEdit`, `BCMaterialDateEdit`) devem compilar sem erros.
 
-3. **Install**  
-   Still in the Package Editor, click **Use → Install**.  
-   Lazarus will ask to rebuild the IDE — confirm with **Yes**.
+3. **Instalar**  
+   Ainda no Editor de Pacotes, clique em **Usar → Instalar**.  
+   O Lazarus pedirá confirmação para reconstruir o IDE — confirme com **Sim**.
 
-4. **Verify**  
-   After the IDE restarts, open the **Component Palette** and look for the **Material Design** tab.  
-   You should see:
+4. **Verificar**  
+   Após o IDE reiniciar, abra a **Paleta de Componentes** e procure pela aba **Material Design**.  
+   Você deverá ver:
    - `TBCMaterialEdit`
    - `TBCMaterialComboEdit`
    - `TBCMaterialCheckComboEdit`
    - `TBCMaterialDateEdit`
 
-### Adding to a project (without IDE install)
+### Adicionando ao projeto sem instalar na paleta
 
-If you prefer not to install into the IDE palette, you can add the package as a dependency of your project:
+Se preferir não instalar na paleta do IDE, adicione o pacote como dependência do seu projeto:
 
-1. In your project, open **Project → Project Inspector**.
-2. Click **Add → New Requirement** and choose `materialdesign`.
-3. Add the units you need to the `uses` clause of each form:
+1. No seu projeto, abra **Projeto → Inspetor de Projeto**.
+2. Clique em **Adicionar → Novo Requisito** e escolha `materialdesign`.
+3. Adicione as units necessárias na cláusula `uses` de cada formulário:
 
 ```pascal
 uses
@@ -95,48 +95,48 @@ uses
   BCMaterialDateEdit;
 ```
 
-### Uninstalling
+### Desinstalando
 
-1. **Package → Installed Packages** → select `materialdesign` → click **Uninstall**.
-2. Confirm the IDE rebuild.
+1. **Pacote → Pacotes Instalados** → selecione `materialdesign` → clique em **Desinstalar**.
+2. Confirme a reconstrução do IDE.
 
 ---
 
 ## TBCMaterialEdit
 
-Single-line text field with Material Design style.
+Campo de texto de uma linha com estilo Material Design.
 
-### Properties
+### Propriedades
 
-| Property | Type | Default | Description |
+| Propriedade | Tipo | Padrão | Descrição |
 |---|---|---|---|
-| `Caption` | `TCaption` | `''` | Floating label text |
-| `Text` | `TCaption` | `''` | Current text value |
-| `TextHint` | `TTranslateString` | `''` | Placeholder shown when empty |
-| `AccentColor` | `TColor` | — | Colour of focused underline and label |
-| `DisabledColor` | `TColor` | — | Underline colour when disabled |
-| `ShowClearButton` | `Boolean` | `False` | Shows a `×` button when the field has text |
-| `ReadOnly` | `Boolean` | `False` | Prevents user edits |
-| `MaxLength` | `Integer` | `0` | Max characters (0 = unlimited) |
-| `EchoMode` | `TEchoMode` | `emNormal` | Use `emPassword` for password fields |
-| `PasswordChar` | `Char` | `#0` | Mask character for password mode |
-| `CharCase` | `TEditCharCase` | `ecNormal` | Force upper/lower case |
-| `NumbersOnly` | `Boolean` | `False` | Accept only numeric input |
-| `AutoSelect` | `Boolean` | `True` | Select all on focus |
-| `LabelSpacing` | `Integer` | `4` | Pixels between label and field |
-| `EditLabel` | `TBoundLabel` | — | Direct access to the internal label |
-| `ClearButton` | `TButton` | — | Direct access to the clear button (read-only) |
+| `Caption` | `TCaption` | `''` | Texto do label flutuante |
+| `Text` | `TCaption` | `''` | Valor atual do campo |
+| `TextHint` | `TTranslateString` | `''` | Placeholder exibido quando vazio |
+| `AccentColor` | `TColor` | — | Cor do sublinhado e do label com foco |
+| `DisabledColor` | `TColor` | — | Cor do sublinhado quando desabilitado |
+| `ShowClearButton` | `Boolean` | `False` | Exibe botão `×` quando o campo tem texto |
+| `ReadOnly` | `Boolean` | `False` | Impede edição pelo usuário |
+| `MaxLength` | `Integer` | `0` | Máximo de caracteres (0 = ilimitado) |
+| `EchoMode` | `TEchoMode` | `emNormal` | Use `emPassword` para campos de senha |
+| `PasswordChar` | `Char` | `#0` | Caractere de máscara para modo senha |
+| `CharCase` | `TEditCharCase` | `ecNormal` | Forçar maiúsculas/minúsculas |
+| `NumbersOnly` | `Boolean` | `False` | Aceitar apenas entrada numérica |
+| `AutoSelect` | `Boolean` | `True` | Selecionar tudo ao receber foco |
+| `LabelSpacing` | `Integer` | `4` | Pixels entre o label e o campo |
+| `EditLabel` | `TBoundLabel` | — | Acesso direto ao label interno |
+| `ClearButton` | `TButton` | — | Acesso direto ao botão de limpeza (somente leitura) |
 
-### Key Events
+### Eventos principais
 
 `OnChange`, `OnClick`, `OnEnter`, `OnExit`, `OnKeyDown`, `OnKeyPress`, `OnKeyUp`, `OnClearButtonClick`, `OnEditingDone`, `OnUTF8KeyPress`
 
-### Example
+### Exemplo
 
 ```pascal
-BCMaterialEdit1.Caption    := 'E-mail';
-BCMaterialEdit1.TextHint   := 'user@example.com';
-BCMaterialEdit1.AccentColor := RGBToColor(33, 150, 243);
+BCMaterialEdit1.Caption         := 'E-mail';
+BCMaterialEdit1.TextHint        := 'usuario@exemplo.com';
+BCMaterialEdit1.AccentColor     := RGBToColor(33, 150, 243);
 BCMaterialEdit1.ShowClearButton := True;
 ```
 
@@ -144,154 +144,148 @@ BCMaterialEdit1.ShowClearButton := True;
 
 ## TBCMaterialComboEdit
 
-Drop-down selector with Material Design style. Equivalent to an HTML `<select>`.
+Seletor do tipo lista suspensa com estilo Material Design. Equivalente ao `<select>` do HTML.
 
-### Properties
+### Propriedades
 
-| Property | Type | Default | Description |
+| Propriedade | Tipo | Padrão | Descrição |
 |---|---|---|---|
-| `Caption` | `TCaption` | `''` | Floating label text |
-| `Text` | `TCaption` | `''` | Currently displayed text |
-| `Items` | `TStrings` | — | List of options |
-| `ItemIndex` | `Integer` | `-1` | Index of the selected item |
-| `Style` | `TComboBoxStyle` | `csDropDown` | `csDropDown` (editable) or `csDropDownList` (read-only) |
-| `AccentColor` | `TColor` | — | Focused underline and label colour |
-| `DisabledColor` | `TColor` | — | Underline colour when disabled |
-| `Sorted` | `Boolean` | `False` | Sort items alphabetically |
-| `AutoComplete` | `Boolean` | `True` | Enable auto-complete while typing |
-| `DropDownCount` | `Integer` | — | Number of visible rows in the drop-down |
-| `MaxLength` | `Integer` | `0` | Max characters for editable style |
-| `ReadOnly` | `Boolean` | `False` | Disable editing in `csDropDown` mode |
-| `LabelSpacing` | `Integer` | `4` | Pixels between label and field |
+| `Caption` | `TCaption` | `''` | Texto do label flutuante |
+| `Text` | `TCaption` | `''` | Texto atualmente exibido |
+| `Items` | `TStrings` | — | Lista de opções |
+| `ItemIndex` | `Integer` | `-1` | Índice do item selecionado |
+| `Style` | `TComboBoxStyle` | `csDropDown` | `csDropDown` (editável) ou `csDropDownList` (somente seleção) |
+| `AccentColor` | `TColor` | — | Cor do sublinhado e do label com foco |
+| `DisabledColor` | `TColor` | — | Cor do sublinhado quando desabilitado |
+| `Sorted` | `Boolean` | `False` | Ordenar itens alfabeticamente |
+| `AutoComplete` | `Boolean` | `True` | Autocompletar enquanto digita |
+| `DropDownCount` | `Integer` | — | Número de linhas visíveis na lista |
+| `MaxLength` | `Integer` | `0` | Máximo de caracteres no modo editável |
+| `ReadOnly` | `Boolean` | `False` | Desabilitar edição no modo `csDropDown` |
+| `LabelSpacing` | `Integer` | `4` | Pixels entre o label e o campo |
 
-### Key Events
+### Eventos principais
 
 `OnChange`, `OnEnter`, `OnExit`, `OnKeyDown`, `OnKeyPress`, `OnKeyUp`, `OnEditingDone`
 
-### Example
+### Exemplo
 
 ```pascal
-BCMaterialComboEdit1.Caption := 'Country';
-BCMaterialComboEdit1.Items.CommaText := 'Brazil,Argentina,Chile';
-BCMaterialComboEdit1.Style := csDropDownList;
-BCMaterialComboEdit1.AccentColor := RGBToColor(76, 175, 80);
+BCMaterialComboEdit1.Caption       := 'País';
+BCMaterialComboEdit1.Items.CommaText := 'Brasil,Argentina,Chile';
+BCMaterialComboEdit1.Style         := csDropDownList;
+BCMaterialComboEdit1.AccentColor   := RGBToColor(76, 175, 80);
 ```
 
 ---
 
 ## TBCMaterialCheckComboEdit
 
-Multi-select field that opens a floating panel containing a `TCheckListBox`. Equivalent to `<select multiple>`.
+Campo de seleção múltipla que abre um painel flutuante com `TCheckListBox`. Equivalente ao `<select multiple>` do HTML.
 
-### Display formats (`TCheckComboDisplayFormat`)
+### Formatos de exibição (`TCheckComboDisplayFormat`)
 
-| Value | Displayed text example |
+| Valor | Exemplo de texto exibido |
 |---|---|
 | `cdfCommaSeparated` | `"Item1, Item2, Item3"` |
-| `cdfCountOnly` | `"3 selected"` |
+| `cdfCountOnly` | `"3 selecionado(s)"` |
 | `cdfCountAndFirst` | `"Item1 (+2)"` |
 
-### Properties
+### Propriedades
 
-| Property | Type | Default | Description |
+| Propriedade | Tipo | Padrão | Descrição |
 |---|---|---|---|
-| `Caption` | `TCaption` | `''` | Floating label text |
-| `Items` | `TStrings` | — | List of options |
-| `Checked[i]` | `Boolean` | — | Checked state of item `i` |
-| `CheckedCount` | `Integer` | — | Number of checked items (read-only) |
-| `DisplayFormat` | `TCheckComboDisplayFormat` | `cdfCommaSeparated` | How selected items are shown |
-| `EmptyText` | `string` | `''` | Text shown when nothing is selected |
-| `AccentColor` | `TColor` | — | Focused underline and label colour |
-| `DisabledColor` | `TColor` | — | Underline colour when disabled |
-| `DropDownCount` | `Integer` | — | Max visible rows in the floating list |
-| `Sorted` | `Boolean` | `False` | Sort items alphabetically |
-| `LabelSpacing` | `Integer` | `4` | Pixels between label and field |
+| `Caption` | `TCaption` | `''` | Texto do label flutuante |
+| `Items` | `TStrings` | — | Lista de opções |
+| `Checked[i]` | `Boolean` | — | Estado marcado do item `i` |
+| `CheckedCount` | `Integer` | — | Quantidade de itens marcados (somente leitura) |
+| `DisplayFormat` | `TCheckComboDisplayFormat` | `cdfCommaSeparated` | Como os itens selecionados são exibidos |
+| `EmptyText` | `string` | `''` | Texto exibido quando nada está selecionado |
+| `AccentColor` | `TColor` | — | Cor do sublinhado e do label com foco |
+| `DisabledColor` | `TColor` | — | Cor do sublinhado quando desabilitado |
+| `DropDownCount` | `Integer` | — | Máximo de linhas visíveis no painel flutuante |
+| `Sorted` | `Boolean` | `False` | Ordenar itens alfabeticamente |
+| `LabelSpacing` | `Integer` | `4` | Pixels entre o label e o campo |
 
-### Key Events
+### Eventos principais
 
-| Event | Description |
+| Evento | Descrição |
 |---|---|
-| `OnCheckChange(Sender, AIndex, AChecked)` | Fires when any checkbox changes |
-| `OnDropDownOpen` | Fires when the floating panel opens |
-| `OnDropDownClose` | Fires when the floating panel closes |
+| `OnCheckChange(Sender, AIndex, AChecked)` | Disparado quando qualquer checkbox muda de estado |
+| `OnDropDownOpen` | Disparado quando o painel flutuante abre |
+| `OnDropDownClose` | Disparado quando o painel flutuante fecha |
 
-The panel closes automatically when the user clicks outside it, or presses **Escape** or **Enter**.
+O painel fecha automaticamente ao clicar fora dele ou ao pressionar **Escape** ou **Enter**.
 
-### Example
+### Exemplo
 
 ```pascal
-BCMaterialCheckComboEdit1.Caption := 'Permissions';
-BCMaterialCheckComboEdit1.Items.CommaText := 'Read,Write,Execute';
+BCMaterialCheckComboEdit1.Caption       := 'Permissões';
+BCMaterialCheckComboEdit1.Items.CommaText := 'Ler,Gravar,Executar';
 BCMaterialCheckComboEdit1.DisplayFormat := cdfCountAndFirst;
-BCMaterialCheckComboEdit1.EmptyText := '(none selected)';
-BCMaterialCheckComboEdit1.Checked[0] := True;
+BCMaterialCheckComboEdit1.EmptyText     := '(nenhum selecionado)';
+BCMaterialCheckComboEdit1.Checked[0]   := True;
 ```
 
 ---
 
 ## TBCMaterialDateEdit
 
-Date picker with floating label and Material Design underline. Wraps the LCL `TDateEdit`.
+Seletor de data com label flutuante e sublinhado Material Design. Encapsula o `TDateEdit` da LCL.
 
-### Properties
+### Propriedades
 
-| Property | Type | Default | Description |
+| Propriedade | Tipo | Padrão | Descrição |
 |---|---|---|---|
-| `Caption` | `TCaption` | `''` | Floating label text |
-| `Date` | `TDateTime` | — | Selected date value |
-| `Text` | `TCaption` | — | Date as formatted string |
-| `TextHint` | `TTranslateString` | `''` | Placeholder shown when empty |
-| `DateOrder` | `TDateOrder` | `doNone` | Display order: `doDMY`, `doMDY`, `doYMD`, `doNone` |
-| `DirectInput` | `Boolean` | `True` | Allow typing a date; `False` = calendar only |
-| `CalendarDisplaySettings` | `TDisplaySettings` | — | Controls visible calendar elements |
-| `AccentColor` | `TColor` | — | Focused underline and label colour |
-| `DisabledColor` | `TColor` | — | Underline colour when disabled |
-| `ShowClearButton` | `Boolean` | `False` | Shows a `×` button to clear the date |
-| `ReadOnly` | `Boolean` | `False` | Prevents user edits |
-| `LabelSpacing` | `Integer` | `4` | Pixels between label and field |
-| `EditLabel` | `TBoundLabel` | — | Direct access to the internal label |
-| `DateEdit` | `TDateEdit` | — | Direct access to the internal `TDateEdit` |
-| `ClearButton` | `TButton` | — | Direct access to the clear button (read-only) |
+| `Caption` | `TCaption` | `''` | Texto do label flutuante |
+| `Date` | `TDateTime` | — | Data selecionada |
+| `Text` | `TCaption` | — | Data como string formatada |
+| `TextHint` | `TTranslateString` | `''` | Placeholder exibido quando vazio |
+| `DateOrder` | `TDateOrder` | `doNone` | Ordem de exibição: `doDMY`, `doMDY`, `doYMD`, `doNone` |
+| `DirectInput` | `Boolean` | `True` | Permite digitar a data; `False` = somente via calendário |
+| `CalendarDisplaySettings` | `TDisplaySettings` | — | Controla os elementos visíveis do calendário popup |
+| `AccentColor` | `TColor` | — | Cor do sublinhado e do label com foco |
+| `DisabledColor` | `TColor` | — | Cor do sublinhado quando desabilitado |
+| `ShowClearButton` | `Boolean` | `False` | Exibe botão `×` para limpar a data |
+| `ReadOnly` | `Boolean` | `False` | Impede edição pelo usuário |
+| `LabelSpacing` | `Integer` | `4` | Pixels entre o label e o campo |
+| `EditLabel` | `TBoundLabel` | — | Acesso direto ao label interno |
+| `DateEdit` | `TDateEdit` | — | Acesso direto ao `TDateEdit` interno |
+| `ClearButton` | `TButton` | — | Acesso direto ao botão de limpeza (somente leitura) |
 
-### Methods
+### Métodos
 
-| Method | Description |
+| Método | Descrição |
 |---|---|
-| `ClearDate` | Clears the selected date |
+| `ClearDate` | Limpa a data selecionada |
 
-### Key Events
+### Eventos principais
 
 `OnChange`, `OnClick`, `OnEnter`, `OnExit`, `OnKeyDown`, `OnKeyPress`, `OnKeyUp`, `OnAcceptDate`, `OnCustomDate`, `OnClearButtonClick`, `OnEditingDone`, `OnUTF8KeyPress`
 
-### Example
+### Exemplo
 
 ```pascal
-BCMaterialDateEdit1.Caption    := 'Birth date';
-BCMaterialDateEdit1.DateOrder  := doDMY;
-BCMaterialDateEdit1.DirectInput := False;
-BCMaterialDateEdit1.AccentColor := RGBToColor(156, 39, 176);
+BCMaterialDateEdit1.Caption         := 'Data de nascimento';
+BCMaterialDateEdit1.DateOrder       := doDMY;
+BCMaterialDateEdit1.DirectInput     := False;
+BCMaterialDateEdit1.AccentColor     := RGBToColor(156, 39, 176);
 BCMaterialDateEdit1.ShowClearButton := True;
 ```
 
 ---
 
-## Common Behaviour
+## Comportamento comum
 
-All four controls share the same visual conventions:
+Todos os quatro controles compartilham as mesmas convenções visuais:
 
-- **At rest**: thin grey underline beneath the field.
-- **On focus**: underline thickens and changes to `AccentColor`; the floating label animates to the top in `AccentColor`.
-- **Disabled**: underline uses `DisabledColor`.
-- Base class `TBCMaterialEditBase<T>` is generic; `T` is the wrapped LCL control.
+- **Em repouso**: sublinhado cinza fino abaixo do campo.
+- **Com foco**: o sublinhado engrossa e assume a `AccentColor`; o label flutuante sobe para o topo e também fica em `AccentColor`.
+- **Desabilitado**: o sublinhado usa a `DisabledColor`.
+- A classe base `TBCMaterialEditBase<T>` é genérica; `T` é o controle LCL encapsulado.
 
 ---
 
-## License
+## Licença
 
-LGPL v3 — same as [BGRAControls](https://github.com/bgrabitmap/bgracontrols).
-var
-MDBUTTONBALLOTBOX: string = '✗';
-MDBUTTONBALLOTBOXWITHCHECK: string = '✓';
-MDBUTTONRADIOBUTTON: string = '🔘';
-MDBUTTONRADIOBUTTONCIRCLE: string = '◯';
-```
+LGPL v3 — mesma licença do [BGRAControls](https://github.com/bgrabitmap/bgracontrols).
