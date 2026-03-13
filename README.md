@@ -17,6 +17,7 @@ Este pacote fornece quatro controles de entrada no estilo Material Design que en
 |---|---|---|
 | `TFRMaterialEdit` | `TEdit` | Campo de texto simples |
 | `TFRMaterialMaskEdit` | `TMaskEdit` | Campo com máscara (CPF, CNPJ, telefone, CEP…) |
+| `TFRMaterialCurrencyEdit` | `TEdit` (gerenciado) | Campo monetário com formatação automática |
 | `TFRMaterialComboEdit` | `TComboBox` | Lista suspensa / combo editável |
 | `TFRMaterialCheckComboEdit` | `TCheckListBox` (popup) | Seleção múltipla com checkboxes |
 | `TFRMaterialDateEdit` | `TDateEdit` | Seletor de data com calendário popup |
@@ -57,7 +58,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
 
 2. **Compilar**  
    Na janela do Editor de Pacotes, clique em **Compilar**.  
-   As cinco units (`FRMaterialEdit`, `FRMaterialMaskEdit`, `FRMaterialComboEdit`, `FRMaterialCheckComboEdit`, `FRMaterialDateEdit`) devem compilar sem erros.
+   As seis units (`FRMaterialEdit`, `FRMaterialMaskEdit`, `FRMaterialCurrencyEdit`, `FRMaterialComboEdit`, `FRMaterialCheckComboEdit`, `FRMaterialDateEdit`) devem compilar sem erros.
 
 3. **Instalar**  
    Ainda no Editor de Pacotes, clique em **Usar → Instalar**.  
@@ -68,6 +69,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
    Você deverá ver:
    - `TFRMaterialEdit`
    - `TFRMaterialMaskEdit`
+   - `TFRMaterialCurrencyEdit`
    - `TFRMaterialComboEdit`
    - `TFRMaterialCheckComboEdit`
    - `TFRMaterialDateEdit`
@@ -84,6 +86,7 @@ Se preferir não instalar na paleta do IDE, adicione o pacote como dependência 
 uses
   FRMaterialEdit,
   FRMaterialMaskEdit,
+  FRMaterialCurrencyEdit,
   FRMaterialComboEdit,
   FRMaterialCheckComboEdit,
   FRMaterialDateEdit;
@@ -340,6 +343,73 @@ FRMaterialMaskEdit1.ShowClearButton := True;
 ShowMessage(FRMaterialMaskEdit1.Text);        // ex.: "12345678901"
 // Ler o valor com a máscara formatada
 ShowMessage(FRMaterialMaskEdit1.MaskedText);  // ex.: "123.456.789-01"
+```
+
+---
+
+## TFRMaterialCurrencyEdit
+
+Campo de entrada de valores monetários com formatação automática no estilo Material Design.
+
+**Diferença em relação ao `TFRMaterialMaskEdit`:** a máscara do `TMaskEdit` é estática (posições fixas). Campos de moeda têm comportamento dinâmico: o valor cresce da **direita para esquerda** (centavos primeiro), com separadores reposicionados automaticamente a cada dígito digitado.
+
+### Comportamento de entrada
+
+| Teclas digitadas | Exibição |
+|---|---|
+| `1` | `R$ 0,01` |
+| `12` | `R$ 0,12` |
+| `123` | `R$ 1,23` |
+| `12345` | `R$ 123,45` |
+| `123456` | `R$ 1.234,56` |
+| `-` (com `AllowNegative = True`) | inverte o sinal |
+| Backspace | remove o último dígito |
+| Ctrl+V | cola e extrai apenas dígitos do texto colado |
+
+### Propriedades específicas
+
+| Propriedade | Tipo | Padrão | Descrição |
+|---|---|---|---|
+| `Value` | `Currency` | `0` | Valor numérico corrente (leitura/escrita) |
+| `CurrencySymbol` | `string` | `'R$'` | Prefixo exibido antes do valor; use `''` para omitir |
+| `DecimalPlaces` | `Integer` | `2` | Casas decimais (0 a 4); alterar rescala o valor atual |
+| `ThousandSeparator` | `Char` | `'.'` | Separador de milhar |
+| `DecimalSeparator` | `Char` | `','` | Separador decimal |
+| `AllowNegative` | `Boolean` | `False` | Permite valores negativos (tecla `-` inverte sinal) |
+
+As demais propriedades (`Caption`, `AccentColor`, `DisabledColor`, `Variant`, `BorderRadius`, `ShowClearButton`, `Alignment`, `ReadOnly`, etc.) são idênticas às dos outros componentes. O alinhamento padrão é `taRightJustify`.
+
+### Método público
+
+| Método | Descrição |
+|---|---|
+| `Clear` | Zera o valor (equivale a `Value := 0`) |
+
+### Exemplo
+
+```pascal
+uses FRMaterialCurrencyEdit;
+
+// Configuração
+FRMaterialCurrencyEdit1.Caption        := 'Valor total';
+FRMaterialCurrencyEdit1.CurrencySymbol := 'R$';
+FRMaterialCurrencyEdit1.DecimalPlaces  := 2;
+FRMaterialCurrencyEdit1.AccentColor    := RGBToColor(33, 150, 243);
+FRMaterialCurrencyEdit1.ShowClearButton := True;
+
+// Definir valor via código
+FRMaterialCurrencyEdit1.Value := 1234.56;
+// Campo exibe: "R$ 1.234,56"
+
+// Ler o valor numérico
+var Total: Currency;
+Total := FRMaterialCurrencyEdit1.Value;
+
+// Sem símbolo, separadores internacionais
+FRMaterialCurrencyEdit1.CurrencySymbol   := 'US$';
+FRMaterialCurrencyEdit1.ThousandSeparator := ',';
+FRMaterialCurrencyEdit1.DecimalSeparator  := '.';
+// Campo exibe: "US$ 1,234.56"
 ```
 
 ---

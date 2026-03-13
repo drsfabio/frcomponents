@@ -9,7 +9,7 @@ interface
 
 uses
   FRMaterialTheme, FRMaterialEdit, FRMaterialDateEdit, FRMaterialComboEdit,
-  FRMaterialCheckComboEdit, FRMaterialMaskEdit;
+  FRMaterialCheckComboEdit, FRMaterialMaskEdit, FRMaterialCurrencyEdit;
 
 implementation
 
