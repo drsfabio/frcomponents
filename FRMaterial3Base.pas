@@ -14,6 +14,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Graphics,
+  {$IFDEF FPC} LCLType, LCLIntf, {$ENDIF}
   BGRABitmap, BGRABitmapTypes;
 
 type
@@ -30,6 +31,22 @@ type
 
   { Interaction state for MD3 state-layer rendering }
   TFRMDInteractionState = (isNormal, isHovered, isFocused, isPressed, isDisabled);
+
+  { Named palettes }
+  TFRMDPalette = (
+    mpBaseline,    // Material 3 baseline (purple/magenta)
+    mpBlue,
+    mpGreen,
+    mpTeal,
+    mpOrange,
+    mpRed,
+    mpYellow,
+    mpCyan,
+    mpDeepPurple,
+    mpIndigo,
+    mpPink,
+    mpBrown
+  );
 
   { MD3 color scheme — all 32 color roles }
   TFRMDColorScheme = record
@@ -104,6 +121,19 @@ procedure MD3LoadLightScheme;
 { Initializes MD3Colors with the Material 3 baseline dark scheme. }
 procedure MD3LoadDarkScheme;
 
+{ Loads a named palette. ADark selects light or dark variant. }
+procedure MD3LoadPalette(APalette: TFRMDPalette; ADark: Boolean = False);
+
+{ Generates a full 32-color scheme from a seed color.
+  Uses HSL-based tonal palette generation. }
+procedure MD3GenerateScheme(ASeedColor: TColor; ADark: Boolean = False);
+
+{ Returns the current palette count. }
+function MD3PaletteCount: Integer;
+
+{ Returns the name of a palette. }
+function MD3PaletteName(APalette: TFRMDPalette): string;
+
 type
   { Base class for interactive MD3 components (buttons, switches, etc.).
     Extends TCustomControl (windowed, can receive focus).
@@ -114,6 +144,7 @@ type
     FHovered: Boolean;
     FPressed: Boolean;
   protected
+    procedure EraseBackground({%H-}DC: HDC); override;
     procedure MouseEnter; override;
     procedure MouseLeave; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -142,6 +173,91 @@ type
 implementation
 
 uses Math;
+
+{ ── HSL helpers for palette generation ── }
+
+procedure ColorToHSL(AColor: TColor; out H, S, L: Double);
+var
+  r, g, b, cmax, cmin, d: Double;
+begin
+  AColor := ColorToRGB(AColor);
+  r := Red(AColor) / 255.0;
+  g := Green(AColor) / 255.0;
+  b := Blue(AColor) / 255.0;
+  cmax := Max(r, Max(g, b));
+  cmin := Min(r, Min(g, b));
+  L := (cmax + cmin) / 2.0;
+  if cmax = cmin then
+  begin
+    H := 0;
+    S := 0;
+  end
+  else
+  begin
+    d := cmax - cmin;
+    if L > 0.5 then
+      S := d / (2.0 - cmax - cmin)
+    else
+      S := d / (cmax + cmin);
+    if cmax = r then
+      H := (g - b) / d + (IfThen(g < b, 6, 0))
+    else if cmax = g then
+      H := (b - r) / d + 2.0
+    else
+      H := (r - g) / d + 4.0;
+    H := H / 6.0;
+  end;
+end;
+
+function HueToRGB(p, q, t: Double): Double;
+begin
+  if t < 0 then t := t + 1.0;
+  if t > 1 then t := t - 1.0;
+  if t < 1/6 then
+    Result := p + (q - p) * 6.0 * t
+  else if t < 1/2 then
+    Result := q
+  else if t < 2/3 then
+    Result := p + (q - p) * (2/3 - t) * 6.0
+  else
+    Result := p;
+end;
+
+function HSLToColor(H, S, L: Double): TColor;
+var
+  r, g, b, p, q: Double;
+begin
+  H := H - Floor(H); { normalize to 0..1 }
+  if S <= 0 then
+  begin
+    r := L; g := L; b := L;
+  end
+  else
+  begin
+    if L < 0.5 then
+      q := L * (1.0 + S)
+    else
+      q := L + S - L * S;
+    p := 2.0 * L - q;
+    r := HueToRGB(p, q, H + 1/3);
+    g := HueToRGB(p, q, H);
+    b := HueToRGB(p, q, H - 1/3);
+  end;
+  Result := RGBToColor(
+    EnsureRange(Round(r * 255), 0, 255),
+    EnsureRange(Round(g * 255), 0, 255),
+    EnsureRange(Round(b * 255), 0, 255)
+  );
+end;
+
+{ Generate a tonal color at a specific tone (0=black, 100=white) }
+function ToneColor(H, S: Double; ATone: Integer): TColor;
+var
+  L: Double;
+begin
+  L := EnsureRange(ATone, 0, 100) / 100.0;
+  Result := HSLToColor(H, S, L);
+end;
 
 { ── Color scheme loaders ── }
 
@@ -221,6 +337,174 @@ begin
     InverseOnSurface        := $00333031;
     InversePrimary          := $00A45067;
   end;
+end;
+
+{ ── Palette generation ── }
+
+procedure MD3GenerateScheme(ASeedColor: TColor; ADark: Boolean);
+var
+  pH, pS, pL: Double;   { primary }
+  sH, sS: Double;       { secondary (desaturated) }
+  tH, tS: Double;       { tertiary (hue shifted +60°) }
+  eH, eS: Double;       { error (red) }
+  nH, nS: Double;       { neutral }
+  nvH, nvS: Double;     { neutral variant }
+begin
+  ColorToHSL(ASeedColor, pH, pS, pL);
+
+  { Secondary: same hue, reduced saturation }
+  sH := pH;
+  sS := pS * 0.35;
+
+  { Tertiary: hue shifted +60°, moderate saturation }
+  tH := pH + (60.0 / 360.0);
+  tS := pS * 0.65;
+
+  { Error: red }
+  eH := 0.0;
+  eS := 0.75;
+
+  { Neutral: very low saturation from primary hue }
+  nH := pH;
+  nS := pS * 0.08;
+
+  { Neutral variant: slightly more chroma }
+  nvH := pH;
+  nvS := pS * 0.18;
+
+  with MD3Colors do
+  begin
+    if ADark then
+    begin
+      { === Dark scheme === }
+      Primary                 := ToneColor(pH, pS, 80);
+      OnPrimary               := ToneColor(pH, pS, 20);
+      PrimaryContainer        := ToneColor(pH, pS, 30);
+      OnPrimaryContainer      := ToneColor(pH, pS, 90);
+
+      Secondary               := ToneColor(sH, sS, 80);
+      OnSecondary             := ToneColor(sH, sS, 20);
+      SecondaryContainer      := ToneColor(sH, sS, 30);
+      OnSecondaryContainer    := ToneColor(sH, sS, 90);
+
+      Tertiary                := ToneColor(tH, tS, 80);
+      OnTertiary              := ToneColor(tH, tS, 20);
+      TertiaryContainer       := ToneColor(tH, tS, 30);
+      OnTertiaryContainer     := ToneColor(tH, tS, 90);
+
+      Error                   := ToneColor(eH, eS, 80);
+      OnError                 := ToneColor(eH, eS, 20);
+      ErrorContainer          := ToneColor(eH, eS, 30);
+      OnErrorContainer        := ToneColor(eH, eS, 90);
+
+      Surface                 := ToneColor(nH, nS, 6);
+      OnSurface               := ToneColor(nH, nS, 90);
+      SurfaceVariant          := ToneColor(nvH, nvS, 30);
+      OnSurfaceVariant        := ToneColor(nvH, nvS, 80);
+
+      Outline                 := ToneColor(nvH, nvS, 60);
+      OutlineVariant          := ToneColor(nvH, nvS, 30);
+
+      SurfaceDim              := ToneColor(nH, nS, 6);
+      SurfaceBright           := ToneColor(nH, nS, 24);
+      SurfaceContainerLowest  := ToneColor(nH, nS, 4);
+      SurfaceContainerLow     := ToneColor(nH, nS, 10);
+      SurfaceContainer        := ToneColor(nH, nS, 12);
+      SurfaceContainerHigh    := ToneColor(nH, nS, 17);
+      SurfaceContainerHighest := ToneColor(nH, nS, 22);
+
+      InverseSurface          := ToneColor(nH, nS, 90);
+      InverseOnSurface        := ToneColor(nH, nS, 20);
+      InversePrimary          := ToneColor(pH, pS, 40);
+    end
+    else
+    begin
+      { === Light scheme === }
+      Primary                 := ToneColor(pH, pS, 40);
+      OnPrimary               := ToneColor(pH, pS, 100);
+      PrimaryContainer        := ToneColor(pH, pS, 90);
+      OnPrimaryContainer      := ToneColor(pH, pS, 10);
+
+      Secondary               := ToneColor(sH, sS, 40);
+      OnSecondary             := ToneColor(sH, sS, 100);
+      SecondaryContainer      := ToneColor(sH, sS, 90);
+      OnSecondaryContainer    := ToneColor(sH, sS, 10);
+
+      Tertiary                := ToneColor(tH, tS, 40);
+      OnTertiary              := ToneColor(tH, tS, 100);
+      TertiaryContainer       := ToneColor(tH, tS, 90);
+      OnTertiaryContainer     := ToneColor(tH, tS, 10);
+
+      Error                   := ToneColor(eH, eS, 40);
+      OnError                 := ToneColor(eH, eS, 100);
+      ErrorContainer          := ToneColor(eH, eS, 90);
+      OnErrorContainer        := ToneColor(eH, eS, 10);
+
+      Surface                 := ToneColor(nH, nS, 98);
+      OnSurface               := ToneColor(nH, nS, 10);
+      SurfaceVariant          := ToneColor(nvH, nvS, 90);
+      OnSurfaceVariant        := ToneColor(nvH, nvS, 30);
+
+      Outline                 := ToneColor(nvH, nvS, 50);
+      OutlineVariant          := ToneColor(nvH, nvS, 80);
+
+      SurfaceDim              := ToneColor(nH, nS, 87);
+      SurfaceBright           := ToneColor(nH, nS, 98);
+      SurfaceContainerLowest  := ToneColor(nH, nS, 100);
+      SurfaceContainerLow     := ToneColor(nH, nS, 96);
+      SurfaceContainer        := ToneColor(nH, nS, 94);
+      SurfaceContainerHigh    := ToneColor(nH, nS, 92);
+      SurfaceContainerHighest := ToneColor(nH, nS, 90);
+
+      InverseSurface          := ToneColor(nH, nS, 20);
+      InverseOnSurface        := ToneColor(nH, nS, 95);
+      InversePrimary          := ToneColor(pH, pS, 80);
+    end;
+  end;
+end;
+
+{ ── Named palettes ── }
+
+const
+  CPaletteSeedColors: array[TFRMDPalette] of TColor = (
+    $00A45067,   { mpBaseline  — magenta/pink }
+    $00B85A1A,   { mpBlue      }
+    $00388E3C,   { mpGreen     }
+    $0080897B,   { mpTeal      }
+    $000D8CE5,   { mpOrange    }
+    $001B1BD6,   { mpRed       }
+    $0000B8F5,   { mpYellow    }
+    $00B6A500,   { mpCyan      }
+    $00A03B67,   { mpDeepPurple}
+    $00994830,   { mpIndigo    }
+    $009C27B0,   { mpPink      — actually purple-pink }
+    $002D5D79    { mpBrown     }
+  );
+
+  CPaletteNames: array[TFRMDPalette] of string = (
+    'Baseline', 'Blue', 'Green', 'Teal', 'Orange',
+    'Red', 'Yellow', 'Cyan', 'Deep Purple', 'Indigo',
+    'Pink', 'Brown'
+  );
+
+procedure MD3LoadPalette(APalette: TFRMDPalette; ADark: Boolean);
+begin
+  if (APalette = mpBaseline) and (not ADark) then
+    MD3LoadLightScheme
+  else if (APalette = mpBaseline) and ADark then
+    MD3LoadDarkScheme
+  else
+    MD3GenerateScheme(CPaletteSeedColors[APalette], ADark);
+end;
+
+function MD3PaletteCount: Integer;
+begin
+  Result := Ord(High(TFRMDPalette)) + 1;
+end;
+
+function MD3PaletteName(APalette: TFRMDPalette): string;
+begin
+  Result := CPaletteNames[APalette];
 end;
 
 { ── Helper functions ── }
@@ -338,6 +622,21 @@ begin
   FPressed := False;
   ControlStyle := ControlStyle + [csClickEvents, csCaptureMouse];
   TabStop := True;
+end;
+
+procedure TFRMaterial3Control.EraseBackground(DC: HDC);
+var
+  ARect: TRect;
+begin
+  if DC = 0 then Exit;
+  ARect := Rect(0, 0, Width, Height);
+  { Fill with parent background so transparent corners of rounded
+    components blend seamlessly instead of showing square artefacts. }
+  if Parent <> nil then
+    Brush.Color := Parent.Brush.Color
+  else
+    Brush.Color := MD3Colors.Surface;
+  LCLIntf.FillRect(DC, ARect, HBRUSH(Brush.Reference.Handle));
 end;
 
 procedure TFRMaterial3Control.MouseEnter;

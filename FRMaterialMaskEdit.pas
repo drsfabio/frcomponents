@@ -623,6 +623,9 @@ var
 begin
   inherited Paint;
 
+  if FMaskEdit.Color <> Self.Color then
+    FMaskEdit.Color := Self.Color;
+
   CR := FBorderRadius * 2;
   if FFocused and Self.Enabled then
     DecoColor := AccentColor
@@ -696,9 +699,8 @@ begin
 
   Self.AccentColor   := clHighlight;
   Self.BorderStyle   := bsNone;
-  Self.Color         := clWindow;
   Self.DisabledColor := $00B8AFA8;
-  Self.ParentColor   := False;
+  Self.ParentColor   := True;
 
   FLabel.Align                := alTop;
   FLabel.AutoSize             := True;
@@ -723,7 +725,7 @@ begin
   FMaskEdit.BorderSpacing.Right  := 4;
   FMaskEdit.BorderSpacing.Top    := 0;
   FMaskEdit.BorderStyle          := bsNone;
-  FMaskEdit.Color                := Color;
+  FMaskEdit.ParentColor          := True;
   FMaskEdit.Parent               := Self;
   FMaskEdit.ParentFont           := True;
   FMaskEdit.ParentBiDiMode       := True;

@@ -35,7 +35,10 @@ type
     imHome, imMenu, imArrowBack, imArrowForward, imMoreVert,
     imCheck, imEdit, imDelete, imShare, imStar,
     imFavorite, imSettings, imPerson, imNotification, imMail,
-    imDownload, imUpload, imRefresh, imFilter, imAttach, imLink
+    imDownload, imUpload, imRefresh, imFilter, imAttach, imLink,
+    imNightlight, imLightMode, imList, imDashboard,
+    imExpandMore, imExpandLess, imFolder, imFolderOpen,
+    imWarning, imInfo, imError, imSuccess, imHelp
   );
 
   { TFRMaterialIconButton
@@ -104,6 +107,19 @@ function FRRefreshIconSVG(const AHex: string; AStroke: Double = 2.5): string;
 function FRFilterIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRAttachIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRLinkIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRNightlightIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRLightModeIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRListIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRDashboardIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRExpandMoreIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRExpandLessIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRFolderIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRFolderOpenIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRWarningIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRInfoIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRErrorIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRSuccessIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRHelpIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRRenderSVGIcon(const ASVG: string; AW, AH: Integer): TBGRABitmap;
 function FRGetIconSVG(AMode: TFRIconMode; const AHex: string; AStroke: Double): string;
 
@@ -499,6 +515,175 @@ begin
     '</svg>';
 end;
 
+function FRNightlightIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRLightModeIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="12" cy="12" r="5" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="12" y1="1" x2="12" y2="3" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="12" y1="21" x2="12" y2="23" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="18.36" y1="18.36" x2="19.78" y2="19.78" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="1" y1="12" x2="3" y2="12" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="21" y1="12" x2="23" y2="12" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="4.22" y1="19.78" x2="5.64" y2="18.36" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="18.36" y1="5.64" x2="19.78" y2="4.22" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+function FRListIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="8" y1="6" x2="21" y2="6" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="8" y1="12" x2="21" y2="12" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="8" y1="18" x2="21" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<circle cx="3.5" cy="6" r="1.5" fill="' + AHex + '"/>' +
+    '<circle cx="3.5" cy="12" r="1.5" fill="' + AHex + '"/>' +
+    '<circle cx="3.5" cy="18" r="1.5" fill="' + AHex + '"/>' +
+    '</svg>';
+end;
+
+function FRDashboardIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="3" y="3" width="7" height="9" rx="1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<rect x="14" y="3" width="7" height="5" rx="1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<rect x="14" y="12" width="7" height="9" rx="1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<rect x="3" y="16" width="7" height="5" rx="1" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '</svg>';
+end;
+
+{ expand_more — chevron down }
+function FRExpandMoreIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<polyline points="6,9 12,15 18,9" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+{ expand_less — chevron up }
+function FRExpandLessIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<polyline points="6,15 12,9 18,15" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+{ folder — closed folder }
+function FRFolderIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M2 6a2 2 0 012-2h5l2 2h9a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '</svg>';
+end;
+
+{ folder_open — open folder }
+function FRFolderOpenIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M2 6a2 2 0 012-2h5l2 2h9a2 2 0 012 2v2H6l-4 8V6z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<path d="M2 18l4-8h16l-4 8H2z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '</svg>';
+end;
+
+{ warning — triangle with exclamation }
+function FRWarningIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M12 2L1 21h22L12 2z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<line x1="12" y1="9" x2="12" y2="14" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<circle cx="12" cy="17" r="0.5" fill="' + AHex + '"/>' +
+    '</svg>';
+end;
+
+{ info — circle with i }
+function FRInfoIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="12" cy="12" r="10" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="12" y1="11" x2="12" y2="17" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<circle cx="12" cy="8" r="0.5" fill="' + AHex + '"/>' +
+    '</svg>';
+end;
+
+{ error — circle with X }
+function FRErrorIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="12" cy="12" r="10" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<line x1="9" y1="9" x2="15" y2="15" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<line x1="15" y1="9" x2="9" y2="15" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
+{ success — circle with checkmark }
+function FRSuccessIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="12" cy="12" r="10" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<polyline points="8,12.5 11,15.5 16,9" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+{ help — circle with question mark }
+function FRHelpIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="12" cy="12" r="10" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
+    '<path d="M9.5 9a2.5 2.5 0 014.5 1.5c0 1.5-2.5 2-2.5 3.5" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<circle cx="12" cy="17" r="0.5" fill="' + AHex + '"/>' +
+    '</svg>';
+end;
+
 function FRGetIconSVG(AMode: TFRIconMode; const AHex: string; AStroke: Double): string;
 begin
   case AMode of
@@ -531,6 +716,19 @@ begin
     imFilter:       if AStroke > 0 then Result := FRFilterIconSVG(AHex, AStroke) else Result := FRFilterIconSVG(AHex);
     imAttach:       if AStroke > 0 then Result := FRAttachIconSVG(AHex, AStroke) else Result := FRAttachIconSVG(AHex);
     imLink:         if AStroke > 0 then Result := FRLinkIconSVG(AHex, AStroke) else Result := FRLinkIconSVG(AHex);
+    imNightlight:   if AStroke > 0 then Result := FRNightlightIconSVG(AHex, AStroke) else Result := FRNightlightIconSVG(AHex);
+    imLightMode:    if AStroke > 0 then Result := FRLightModeIconSVG(AHex, AStroke) else Result := FRLightModeIconSVG(AHex);
+    imList:         if AStroke > 0 then Result := FRListIconSVG(AHex, AStroke) else Result := FRListIconSVG(AHex);
+    imDashboard:    if AStroke > 0 then Result := FRDashboardIconSVG(AHex, AStroke) else Result := FRDashboardIconSVG(AHex);
+    imExpandMore:   if AStroke > 0 then Result := FRExpandMoreIconSVG(AHex, AStroke) else Result := FRExpandMoreIconSVG(AHex);
+    imExpandLess:   if AStroke > 0 then Result := FRExpandLessIconSVG(AHex, AStroke) else Result := FRExpandLessIconSVG(AHex);
+    imFolder:       if AStroke > 0 then Result := FRFolderIconSVG(AHex, AStroke) else Result := FRFolderIconSVG(AHex);
+    imFolderOpen:   if AStroke > 0 then Result := FRFolderOpenIconSVG(AHex, AStroke) else Result := FRFolderOpenIconSVG(AHex);
+    imWarning:      if AStroke > 0 then Result := FRWarningIconSVG(AHex, AStroke) else Result := FRWarningIconSVG(AHex);
+    imInfo:         if AStroke > 0 then Result := FRInfoIconSVG(AHex, AStroke) else Result := FRInfoIconSVG(AHex);
+    imError:        if AStroke > 0 then Result := FRErrorIconSVG(AHex, AStroke) else Result := FRErrorIconSVG(AHex);
+    imSuccess:      if AStroke > 0 then Result := FRSuccessIconSVG(AHex, AStroke) else Result := FRSuccessIconSVG(AHex);
+    imHelp:         if AStroke > 0 then Result := FRHelpIconSVG(AHex, AStroke) else Result := FRHelpIconSVG(AHex);
   else
     Result := '';
   end;

@@ -8,15 +8,13 @@ unit materialdesign;
 interface
 
 uses
-  FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, FRMaterialEdit, 
-  FRMaterialDateEdit, FRMaterialComboEdit, FRMaterialCheckComboEdit, 
-  FRMaterialMaskEdit, FRMaterialCurrencyEdit, FRMaterialMemoEdit, 
-  FRMaterialSpinEdit, FRMaterialSearchEdit, FRMaterial3Base, 
-  FRMaterial3Button, FRMaterial3FAB, FRMaterial3Toggle, FRMaterial3Chip, 
-  FRMaterial3Slider, FRMaterial3Progress, FRMaterial3Divider, 
-  FRMaterial3Dialog, FRMaterial3Snackbar, FRMaterial3Tooltip, FRMaterial3List, 
-  FRMaterial3Menu, FRMaterial3Tabs, FRMaterial3AppBar, FRMaterial3Nav, 
-  FRMaterial3TimePicker, FRMaterial3Sheet, LazarusPackageIntf;
+  FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, FRMaterialEdit, FRMaterialDateEdit, 
+  FRMaterialComboEdit, FRMaterialCheckComboEdit, FRMaterialMaskEdit, FRMaterialCurrencyEdit, 
+  FRMaterialMemoEdit, FRMaterialSpinEdit, FRMaterialSearchEdit, FRMaterial3Base, 
+  FRMaterial3Button, FRMaterial3FAB, FRMaterial3Toggle, FRMaterial3Chip, FRMaterial3Slider, 
+  FRMaterial3Progress, FRMaterial3Divider, FRMaterial3Dialog, FRMaterial3Snackbar, 
+  FRMaterial3Tooltip, FRMaterial3List, FRMaterial3Menu, FRMaterial3Tabs, FRMaterial3AppBar, 
+  FRMaterial3Nav, FRMaterial3TimePicker, FRMaterial3Sheet, FRMaterial3TreeView, LazarusPackageIntf;
 
 implementation
 
@@ -48,6 +46,7 @@ begin
   RegisterUnit('FRMaterial3Nav', @FRMaterial3Nav.Register);
   RegisterUnit('FRMaterial3TimePicker', @FRMaterial3TimePicker.Register);
   RegisterUnit('FRMaterial3Sheet', @FRMaterial3Sheet.Register);
+  RegisterUnit('FRMaterial3TreeView', @FRMaterial3TreeView.Register);
 end;
 
 initialization

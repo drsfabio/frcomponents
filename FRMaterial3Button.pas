@@ -103,6 +103,7 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseLeave; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     class function GetControlClassDefaultSize: TSize; override;
   public
@@ -545,6 +546,16 @@ begin
   if inArrow <> FArrowHovered then
   begin
     FArrowHovered := inArrow;
+    Invalidate;
+  end;
+  inherited;
+end;
+
+procedure TFRMaterialSplitButton.MouseLeave;
+begin
+  if FArrowHovered then
+  begin
+    FArrowHovered := False;
     Invalidate;
   end;
   inherited;

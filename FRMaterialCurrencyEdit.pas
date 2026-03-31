@@ -743,6 +743,9 @@ var
 begin
   inherited Paint;
 
+  if FEdit.Color <> Self.Color then
+    FEdit.Color := Self.Color;
+
   CR := FBorderRadius * 2;
   if FFocused and Self.Enabled then
     DecoColor := AccentColor
@@ -816,9 +819,8 @@ begin
 
   Self.AccentColor   := clHighlight;
   Self.BorderStyle   := bsNone;
-  Self.Color         := clWindow;
   Self.DisabledColor := $00B8AFA8;
-  Self.ParentColor   := False;
+  Self.ParentColor   := True;
 
   FLabel.Align                := alTop;
   FLabel.AutoSize             := True;
@@ -844,7 +846,7 @@ begin
   FEdit.BorderSpacing.Right  := 4;
   FEdit.BorderSpacing.Top    := 0;
   FEdit.BorderStyle          := bsNone;
-  FEdit.Color                := Color;
+  FEdit.ParentColor          := True;
   FEdit.Parent               := Self;
   FEdit.ParentFont           := True;
   FEdit.ParentBiDiMode       := True;

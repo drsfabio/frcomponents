@@ -752,6 +752,9 @@ var
 begin
   inherited Paint;
 
+  if FCombo.Color <> Self.Color then
+    FCombo.Color := Self.Color;
+
   CR := FBorderRadius * 2;
   if FFocused and Self.Enabled then
     DecoColor := AccentColor
@@ -822,9 +825,8 @@ begin
 
   Self.AccentColor   := clHighlight;
   Self.BorderStyle   := bsNone;
-  Self.Color         := clWindow;
   Self.DisabledColor := $00B8AFA8;
-  Self.ParentColor   := False;
+  Self.ParentColor   := True;
 
   FLabel.Align                := alTop;
   FLabel.AutoSize             := True;
@@ -848,7 +850,7 @@ begin
   FCombo.BorderSpacing.Left   := 4;
   FCombo.BorderSpacing.Right  := 4;
   FCombo.BorderSpacing.Top    := 0;
-  FCombo.Color                := Color;
+  FCombo.ParentColor          := True;
   FCombo.DropDownCount        := 8;
   FCombo.Parent               := Self;
   FCombo.ParentFont           := True;

@@ -145,7 +145,8 @@ procedure TFRMaterialSwitch.Paint;
 var
   bmp: TBGRABitmap;
   trackColor, handleColor, stateColor: TColor;
-  trackR, handleR, handleX, handleSize: Integer;
+  trackR, handleX, handleSize: Integer;
+  op: Byte;
 begin
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
@@ -183,10 +184,14 @@ begin
       MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, trackR,
         MD3Colors.Outline, 2.0, IfThen(Enabled, 255, 30));
 
-    { State layer on handle }
+    { State layer on handle — circular, clips naturally at bitmap edges }
     if Enabled then
-      MD3StateLayer(bmp, handleX - 20, Height div 2 - 20,
-        handleX + 20, Height div 2 + 20, 20, stateColor, InteractionState);
+    begin
+      op := MD3StateOpacity(InteractionState);
+      if op > 0 then
+        bmp.FillEllipseAntialias(handleX, Height / 2.0, 20, 20,
+          ColorToBGRA(ColorToRGB(stateColor), op));
+    end;
 
     { Handle }
     bmp.FillEllipseAntialias(handleX, Height / 2.0,
@@ -275,6 +280,7 @@ var
   boxSize, boxX, boxY: Integer;
   boxColor, checkColor, borderColor: TColor;
   aRect: TRect;
+  op: Byte;
 begin
   boxSize := 18;
   boxX := 2;
@@ -314,10 +320,14 @@ begin
       end;
     end;
 
-    { State layer }
+    { State layer — circular per MD3 spec }
     if Enabled then
-      MD3StateLayer(bmp, boxX - 8, boxY - 8, boxX + boxSize + 8, boxY + boxSize + 8,
-        boxSize, MD3Colors.OnSurface, InteractionState);
+    begin
+      op := MD3StateOpacity(InteractionState);
+      if op > 0 then
+        bmp.FillEllipseAntialias(boxX + boxSize / 2.0, boxY + boxSize / 2.0,
+          17, 17, ColorToBGRA(ColorToRGB(MD3Colors.OnSurface), op));
+    end;
 
     bmp.Draw(Canvas, 0, 0, False);
   finally

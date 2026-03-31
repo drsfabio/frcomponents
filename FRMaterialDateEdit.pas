@@ -598,6 +598,9 @@ var
 begin
   inherited Paint;
 
+  if FDateEdit.Color <> Self.Color then
+    FDateEdit.Color := Self.Color;
+
   CR := FBorderRadius * 2;
   if FFocused and Self.Enabled then
     DecoColor := AccentColor
@@ -671,9 +674,8 @@ begin
 
   Self.AccentColor  := clHighlight;
   Self.BorderStyle  := bsNone;
-  Self.Color        := clWindow;
   Self.DisabledColor := $00B8AFA8;
-  Self.ParentColor  := False;
+  Self.ParentColor  := True;
 
   FLabel.Align                  := alTop;
   FLabel.AutoSize               := True;
@@ -695,7 +697,7 @@ begin
   FDateEdit.BorderSpacing.Left   := 4;
   FDateEdit.BorderSpacing.Right  := 4;
   FDateEdit.BorderSpacing.Top    := 0;
-  FDateEdit.Color                := Color;
+  FDateEdit.ParentColor          := True;
   FDateEdit.Parent               := Self;
   FDateEdit.ParentFont           := True;
   FDateEdit.ParentBiDiMode       := True;

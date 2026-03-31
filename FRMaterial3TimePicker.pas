@@ -102,10 +102,20 @@ begin
   if FTimeFormat <> AValue then
   begin
     FTimeFormat := AValue;
-    if (FTimeFormat = tfHour12) and (FHour > 12) then
+    if FTimeFormat = tfHour12 then
     begin
-      FHour := FHour - 12;
-      FIsAM := False;
+      if FHour = 0 then
+      begin
+        FHour := 12;
+        FIsAM := True;
+      end
+      else if FHour <= 12 then
+        FIsAM := True
+      else
+      begin
+        FHour := FHour - 12;
+        FIsAM := False;
+      end;
     end;
     Invalidate;
   end;

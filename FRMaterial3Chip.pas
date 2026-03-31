@@ -354,6 +354,7 @@ begin
   if (Button = mbLeft) and (FItems.Count > 0) then
   begin
     sw := GetSegmentWidth;
+    if sw <= 0 then Exit;
     idx := X div sw;
     if idx >= FItems.Count then
       idx := FItems.Count - 1;

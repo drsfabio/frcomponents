@@ -53,6 +53,7 @@ type
     FOnNavClick: TNotifyEvent;
     procedure SetTitle(const AValue: string);
     procedure SetBarSize(AValue: TFRMDAppBarSize);
+    procedure SetActions(AValue: TFRMaterialAppBarActions);
     function GetBarHeight: Integer;
   protected
     procedure Paint; override;
@@ -63,7 +64,7 @@ type
   published
     property Title: string read FTitle write SetTitle;
     property NavIcon: TFRIconMode read FNavIcon write FNavIcon;
-    property Actions: TFRMaterialAppBarActions read FActions write FActions;
+    property Actions: TFRMaterialAppBarActions read FActions write SetActions;
     property BarSize: TFRMDAppBarSize read FBarSize write SetBarSize default absSmall;
     property OnNavClick: TNotifyEvent read FOnNavClick write FOnNavClick;
     property Align;
@@ -75,6 +76,7 @@ type
   TFRMaterialToolbar = class(TFRMaterial3Control)
   private
     FActions: TFRMaterialAppBarActions;
+    procedure SetActions(AValue: TFRMaterialAppBarActions);
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -82,7 +84,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property Actions: TFRMaterialAppBarActions read FActions write FActions;
+    property Actions: TFRMaterialAppBarActions read FActions write SetActions;
     property Align;
     property Anchors;
     property Visible;
@@ -169,6 +171,11 @@ begin
     Height := GetBarHeight;
     Invalidate;
   end;
+end;
+
+procedure TFRMaterialAppBar.SetActions(AValue: TFRMaterialAppBarActions);
+begin
+  FActions.Assign(AValue);
 end;
 
 procedure TFRMaterialAppBar.Paint;
@@ -290,6 +297,11 @@ destructor TFRMaterialToolbar.Destroy;
 begin
   FActions.Free;
   inherited Destroy;
+end;
+
+procedure TFRMaterialToolbar.SetActions(AValue: TFRMaterialAppBarActions);
+begin
+  FActions.Assign(AValue);
 end;
 
 procedure TFRMaterialToolbar.Paint;

@@ -1434,6 +1434,10 @@ var
 begin
   inherited Paint;
 
+  { Sync internal edit color with container }
+  if FEdit.Color <> Self.Color then
+    FEdit.Color := Self.Color;
+
   CR := FBorderRadius * 2;
   BottomExtra := GetBottomMargin;
   DecoBottom := Height - BottomExtra;
@@ -1608,9 +1612,8 @@ begin
 
   Self.AccentColor := clHighlight;
   Self.BorderStyle := bsNone;
-  Self.Color := clWindow;
   Self.DisabledColor := $00B8AFA8;
-  Self.ParentColor := False;
+  Self.ParentColor := True;
 
   FLabel.Align := alTop;
   FLabel.AutoSize := True;
@@ -1635,7 +1638,7 @@ begin
   FEdit.BorderSpacing.Right := 4;
   FEdit.BorderSpacing.Top := 0;
   FEdit.BorderStyle := bsNone;
-  FEdit.Color := Color;
+  FEdit.ParentColor := True;
   FEdit.Font.Color := clBlack;
   FEdit.Parent := Self;
   FEdit.ParentFont := True;
@@ -2126,6 +2129,7 @@ begin
     finally
       FApplyingNumeric := False;
     end;
+    UpdateClearButton;
   end;
 end;
 

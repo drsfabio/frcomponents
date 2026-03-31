@@ -1,0 +1,56 @@
+object Form1: TForm1
+  Left = 350
+  Height = 536
+  Top = 250
+  Width = 959
+  Caption = 'Form1'
+  ClientHeight = 536
+  ClientWidth = 959
+  LCLVersion = '4.4.0.0'
+  object FRMaterialGroupBox1: TFRMaterialGroupBox
+    Left = 0
+    Height = 536
+    Top = 0
+    Width = 959
+    Align = alClient
+    Caption = 'Teste com Group Box'
+    Color = 16446199
+    Font.Color = 2104093
+    Font.Height = -13
+    object FRMaterialSwitch1: TFRMaterialSwitch
+      Left = 16
+      Height = 32
+      Top = 40
+      Width = 52
+    end
+    object FRMaterialCheckBox1: TFRMaterialCheckBox
+      Left = 16
+      Height = 24
+      Top = 80
+      Width = 150
+      Caption = 'Marcar e ser feliz'
+      Font.Height = -13
+    end
+    object FRMaterialLinearProgress1: TFRMaterialLinearProgress
+      Left = 16
+      Height = 5
+      Top = 120
+      Width = 200
+    end
+    object FRMaterialListView1: TFRMaterialListView
+      Left = 16
+      Height = 300
+      Top = 144
+      Width = 280
+      Items = <>
+    end
+    object FRMaterialTimePicker1: TFRMaterialTimePicker
+      Left = 16
+      Height = 72
+      Top = 456
+      Width = 220
+      TabStop = True
+      TabOrder = 3
+    end
+  end
+end

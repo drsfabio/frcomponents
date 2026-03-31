@@ -51,12 +51,13 @@ type
   private
     FItems: TFRMaterialMenuItems;
     FMinWidth: Integer;
+    procedure SetItems(AValue: TFRMaterialMenuItems);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Popup(X, Y: Integer);
   published
-    property Items: TFRMaterialMenuItems read FItems write FItems;
+    property Items: TFRMaterialMenuItems read FItems write SetItems;
     property MinWidth: Integer read FMinWidth write FMinWidth default 112;
   end;
 
@@ -130,6 +131,11 @@ destructor TFRMaterialMenu.Destroy;
 begin
   FItems.Free;
   inherited Destroy;
+end;
+
+procedure TFRMaterialMenu.SetItems(AValue: TFRMaterialMenuItems);
+begin
+  FItems.Assign(AValue);
 end;
 
 procedure TFRMaterialMenu.Popup(X, Y: Integer);

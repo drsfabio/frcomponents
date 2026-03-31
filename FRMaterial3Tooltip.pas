@@ -51,6 +51,8 @@ implementation
 uses Math;
 
 type
+  TControlAccess = class(TControl);
+
   TTooltipPanel = class(TCustomControl)
   private
     FTooltipText: string;
@@ -106,10 +108,18 @@ procedure TFRMaterialTooltip.SetAttachTo(AValue: TControl);
 begin
   if FAttachTo = AValue then Exit;
   if Assigned(FAttachTo) then
+  begin
     FAttachTo.RemoveFreeNotification(Self);
+    TControlAccess(FAttachTo).OnMouseEnter := nil;
+    TControlAccess(FAttachTo).OnMouseLeave := nil;
+  end;
   FAttachTo := AValue;
   if Assigned(FAttachTo) then
+  begin
     FAttachTo.FreeNotification(Self);
+    TControlAccess(FAttachTo).OnMouseEnter := @ControlMouseEnter;
+    TControlAccess(FAttachTo).OnMouseLeave := @ControlMouseLeave;
+  end;
 end;
 
 procedure TFRMaterialTooltip.Notification(AComponent: TComponent; Operation: TOperation);

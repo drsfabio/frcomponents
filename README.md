@@ -1,26 +1,312 @@
-﻿# Componentes Material Design para Lazarus
+﻿# Material Design 3 Component Library for Lazarus
 
-Componentes de entrada com estilo Material Design para Lazarus / Free Pascal, integrados ao pacote [BGRAControls](https://github.com/bgrabitmap/bgracontrols). Licenciado sob **LGPL v3**.
+Componentes Material Design 3 completos para Lazarus / Free Pascal, integrados ao pacote [BGRAControls](https://github.com/bgrabitmap/bgracontrols). Licenciado sob **LGPL v3**.
 
 ## Visão geral
 
-Este pacote fornece seis controles de entrada no estilo Material Design que encapsulam widgets padrão da LCL, adicionando:
+Este pacote fornece **41 componentes visuais** + 3 unidades utilitárias que implementam a especificação Material Design 3 (Material You), incluindo:
 
-- **Label flutuante** — o rótulo sobe acima do campo ao receber foco ou quando preenchido
-- **Sublinhado Material** — linha fina em repouso, linha dupla colorida com foco
-- **AccentColor** — cor personalizável usada no sublinhado e no label com foco
-- **Variant** — três estilos visuais: `mvStandard`, `mvFilled`, `mvOutlined`
-- **BorderRadius** — cantos arredondados configuráveis
-- **API consistente** — todos os controles seguem as mesmas convenções visuais
+- **Botões** — Button, ButtonIcon, SplitButton, FAB, ExtendedFAB, FABMenu
+- **Controles** — Switch, CheckBox, RadioButton, Chip, SegmentedButton
+- **Campos de entrada** — Edit, ComboEdit, CheckComboEdit, CurrencyEdit, DateEdit, MaskEdit, MemoEdit, SearchEdit, SpinEdit
+- **Sliders / Time** — Slider, TimePicker
+- **Progresso** — LinearProgress, CircularProgress, LoadingIndicator
+- **Dados** — Tabs, ListView, TreeView
+- **Navegação** — AppBar, Toolbar, NavBar, NavDrawer, NavRail
+- **Superfícies** — Dialog, Snackbar, Tooltip, Menu, GroupBox, Divider, BottomSheet, SideSheet
 
-| Componente | Encapsula | Uso |
+### Resumo de componentes
+
+| # | Componente | Unit | Descrição |
+|---|---|---|---|
+| 01 | `TFRMaterialButton` | `FRMaterial3Button` | Botão MD3 — Filled, Outlined, Text, Elevated, Tonal |
+| 02 | `TFRMaterialButtonIcon` | `FRMaterial3Button` | Botão de ícone — Standard, Filled, FilledTonal, Outlined |
+| 03 | `TFRMaterialSplitButton` | `FRMaterial3Button` | Botão dividido com ação + menu |
+| 04 | `TFRMaterialFAB` | `FRMaterial3FAB` | Floating Action Button (Small/Regular/Large) |
+| 05 | `TFRMaterialExtendedFAB` | `FRMaterial3FAB` | FAB estendido com texto |
+| 06 | `TFRMaterialFABMenu` | `FRMaterial3FAB` | Speed Dial — FAB expansível com sub-itens |
+| 07 | `TFRMaterialSwitch` | `FRMaterial3Toggle` | Toggle switch on/off |
+| 08 | `TFRMaterialCheckBox` | `FRMaterial3Toggle` | CheckBox com tri-state |
+| 09 | `TFRMaterialRadioButton` | `FRMaterial3Toggle` | RadioButton com GroupIndex |
+| 10 | `TFRMaterialChip` | `FRMaterial3Chip` | Chip — Assist, Filter, Input, Suggestion |
+| 11 | `TFRMaterialSegmentedButton` | `FRMaterial3Chip` | Botão segmentado (single/multi-select) |
+| 12 | `TFRMaterialEdit` | `FRMaterialEdit` | Input de texto com validação, máscara, autocomplete |
+| 13 | `TFRMaterialComboEdit` | `FRMaterialComboEdit` | ComboBox com floating label |
+| 14 | `TFRMaterialCheckComboEdit` | `FRMaterialCheckComboEdit` | Multi-select com checkboxes |
+| 15 | `TFRMaterialCurrencyEdit` | `FRMaterialCurrencyEdit` | Campo monetário (R$) |
+| 16 | `TFRMaterialDateEdit` | `FRMaterialDateEdit` | Seletor de data com calendário |
+| 17 | `TFRMaterialMaskEdit` | `FRMaterialMaskEdit` | Input com máscara (CPF, CNPJ, CEP) |
+| 18 | `TFRMaterialMemoEdit` | `FRMaterialMemoEdit` | Editor multilinha com char counter |
+| 19 | `TFRMaterialSearchEdit` | `FRMaterialSearchEdit` | Campo de busca com debounce |
+| 20 | `TFRMaterialSpinEdit` | `FRMaterialSpinEdit` | Stepper numérico (+/-) |
+| 21 | `TFRMaterialSlider` | `FRMaterial3Slider` | Slider contínuo ou discreto |
+| 22 | `TFRMaterialTimePicker` | `FRMaterial3TimePicker` | Seletor de hora 24h / 12h |
+| 23 | `TFRMaterialLinearProgress` | `FRMaterial3Progress` | Barra de progresso linear |
+| 24 | `TFRMaterialCircularProgress` | `FRMaterial3Progress` | Indicador circular de progresso |
+| 25 | `TFRMaterialLoadingIndicator` | `FRMaterial3Progress` | Animação de pontos pulsantes |
+| 26 | `TFRMaterialTabs` | `FRMaterial3Tabs` | Tabs fixas ou scrollable |
+| 27 | `TFRMaterialListView` | `FRMaterial3List` | Lista MD3 (OneLine/TwoLine/ThreeLine) |
+| 28 | `TFRMaterialTreeView` | `FRMaterial3TreeView` | Árvore hierárquica com expand/collapse |
+| 29 | `TFRMaterialAppBar` | `FRMaterial3AppBar` | Top App Bar (Small/Medium/Large) |
+| 30 | `TFRMaterialToolbar` | `FRMaterial3AppBar` | Barra de ferramentas com ações |
+| 31 | `TFRMaterialNavBar` | `FRMaterial3Nav` | Barra de navegação inferior com badges |
+| 32 | `TFRMaterialNavDrawer` | `FRMaterial3Nav` | Drawer lateral de navegação (360dp) |
+| 33 | `TFRMaterialNavRail` | `FRMaterial3Nav` | Rail vertical de navegação (80dp) |
+| 34 | `TFRMaterialDialog` | `FRMaterial3Dialog` | Diálogo modal com botões |
+| 35 | `TFRMaterialSnackbar` | `FRMaterial3Snackbar` | Toast/Snackbar com ação |
+| 36 | `TFRMaterialTooltip` | `FRMaterial3Tooltip` | Tooltip flutuante |
+| 37 | `TFRMaterialMenu` | `FRMaterial3Menu` | Menu popup com ícones e separadores |
+| 38 | `TFRMaterialGroupBox` | `FRMaterial3Dialog` | Container com borda arredondada |
+| 39 | `TFRMaterialDivider` | `FRMaterial3Divider` | Linha divisória horizontal |
+| 40 | `TFRMaterialBottomSheet` | `FRMaterial3Sheet` | Painel deslizante inferior |
+| 41 | `TFRMaterialSideSheet` | `FRMaterial3Sheet` | Painel deslizante lateral |
+
+### Unidades utilitárias
+
+| Unit | Descrição |
+|---|---|
+| `FRMaterial3Base` | Sistema de cores MD3, formas, helpers, classes base |
+| `FRMaterialTheme` | Paletas pré-definidas (12), dark mode, utilitários WCAG 2.1 |
+| `FRMaterialIcons` | 50+ ícones SVG vetoriais |
+| `FRMaterialMasks` | Máscaras PT-BR (CPF, CNPJ, Telefone, CEP) |
+
+---
+
+## Componentes MD3 (Material Design 3)
+
+### TFRMaterialButton
+
+Botão MD3 com 5 estilos visuais.
+
+| Propriedade | Tipo | Descrição |
 |---|---|---|
-| `TFRMaterialEdit` | `TEdit` | Campo de texto simples |
-| `TFRMaterialMaskEdit` | `TMaskEdit` | Campo com máscara (CPF, CNPJ, telefone, CEP…) |
-| `TFRMaterialCurrencyEdit` | `TEdit` (gerenciado) | Campo monetário com formatação automática |
-| `TFRMaterialComboEdit` | `TComboBox` | Lista suspensa / combo editável |
-| `TFRMaterialCheckComboEdit` | `TCheckListBox` (popup) | Seleção múltipla com checkboxes |
-| `TFRMaterialDateEdit` | `TDateEdit` | Seletor de data com calendário popup |
+| `ButtonStyle` | `TFRMDButtonStyle` | `mbsFilled`, `mbsOutlined`, `mbsText`, `mbsElevated`, `mbsTonal` |
+| `Caption` | `string` | Texto do botão |
+| `ShowIcon` | `Boolean` | Exibir ícone à esquerda |
+| `IconMode` | `TFRIconMode` | Ícone SVG (`imSearch`, `imEdit`, etc.) |
+| `Enabled` | `Boolean` | Habilitar/desabilitar |
+
+### TFRMaterialButtonIcon
+
+Botão somente ícone com 4 estilos + suporte a toggle.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `IconStyle` | `TFRMDIconButtonStyle` | `ibsStandard`, `ibsFilled`, `ibsFilledTonal`, `ibsOutlined` |
+| `IconMode` | `TFRIconMode` | Ícone SVG |
+| `Toggle` | `Boolean` | Habilitar modo toggle |
+| `Toggled` | `Boolean` | Estado ativo/inativo |
+
+### TFRMaterialSplitButton
+
+Botão dividido com ação principal e dropdown.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `ButtonStyle` | `TFRMDSplitButtonStyle` | `mbsFilled`, `mbsOutlined` |
+| `Caption` | `string` | Texto da ação principal |
+
+### TFRMaterialFAB / TFRMaterialExtendedFAB
+
+Floating Action Button em 3 tamanhos + versão estendida com texto.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `FABSize` | `TFRMDFABSize` | `fsSmall` (40px), `fsRegular` (56px), `fsLarge` (96px) |
+| `IconMode` | `TFRIconMode` | Ícone central |
+| `Caption` | `string` | Texto (ExtendedFAB apenas) |
+| `ShowIcon` | `Boolean` | Mostrar ícone (ExtendedFAB) |
+
+### TFRMaterialFABMenu (Speed Dial)
+
+FAB expansível com sub-itens de ação.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `IconMode` | `TFRIconMode` | Ícone do FAB principal |
+| `Items` | `TFRMaterialFABMenuItems` | Coleção de sub-ações (Caption, IconMode, OnClick) |
+| `Expanded` | `Boolean` | Estado aberto/fechado |
+
+### TFRMaterialSwitch / TFRMaterialCheckBox / TFRMaterialRadioButton
+
+Controles de estado on/off no estilo MD3.
+
+| Controle | Propriedades principais |
+|---|---|
+| `Switch` | `Checked`, `Enabled` |
+| `CheckBox` | `Checked`, `State`, `AllowGrayed`, `Caption` |
+| `RadioButton` | `Checked`, `GroupIndex`, `Caption` |
+
+### TFRMaterialChip
+
+Chip MD3 com 4 estilos.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `ChipStyle` | `TFRMDChipStyle` | `csAssist`, `csFilter`, `csInput`, `csSuggestion` |
+| `Selected` | `Boolean` | Estado selecionado |
+| `Deletable` | `Boolean` | Mostrar botão de fechar (Input) |
+| `ShowIcon` | `Boolean` | Mostrar ícone à esquerda |
+
+### TFRMaterialSegmentedButton
+
+Grupo de botões com seleção única ou múltipla.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Items` | `TStrings` | Lista de segmentos |
+| `ItemIndex` | `Integer` | Segmento selecionado |
+| `MultiSelect` | `Boolean` | Permitir seleção múltipla |
+
+### TFRMaterialSlider
+
+Slider contínuo ou discreto com label de valor.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Min` / `Max` | `Double` | Faixa de valores |
+| `Value` | `Double` | Valor atual |
+| `Discrete` | `Boolean` | Modo discreto com steps |
+| `Steps` | `Integer` | Número de passos |
+| `ShowValueLabel` | `Boolean` | Exibir tooltip com valor |
+
+### TFRMaterialTimePicker
+
+Seletor de hora com formato 24h ou 12h.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Hour` / `Minute` | `Integer` | Hora e minuto |
+| `TimeFormat` | `TFRMDTimeFormat` | `tfHour24`, `tfHour12` |
+| `IsAM` | `Boolean` | AM/PM (modo 12h) |
+| `TimeStr` | `string` | Hora formatada (leitura) |
+
+### TFRMaterialLinearProgress / TFRMaterialCircularProgress
+
+Indicadores de progresso determinado ou indeterminado.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Value` | `Double` | 0–100 (determinado) |
+| `Indeterminate` | `Boolean` | Animação infinita |
+| `StrokeWidth` | `Integer` | Espessura do traço (Circular) |
+
+### TFRMaterialLoadingIndicator
+
+Animação de pontos pulsantes.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `DotCount` | `Integer` | Número de pontos (padrão: 3) |
+
+### TFRMaterialTabs
+
+Barra de tabs fixas ou scrollable.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `TabStyle` | `TFRMDTabStyle` | `tsFixed`, `tsScrollable` |
+| `Tabs` | `TFRMaterialTabItems` | Coleção (Caption, IconMode) |
+| `TabIndex` | `Integer` | Tab ativa |
+
+### TFRMaterialListView
+
+Lista MD3 com suporte a 1, 2 ou 3 linhas, ícones e texto trailing.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `ItemType` | `TFRMDListItemType` | `litOneLine`, `litTwoLine`, `litThreeLine` |
+| `ShowDividers` | `Boolean` | Separadores entre itens |
+| `Items` | `TFRMaterialListItems` | Coleção (Headline, SupportText, LeadingIcon, TrailingText) |
+
+### TFRMaterialTreeView
+
+Árvore hierárquica com expand/collapse, ícones e seleção.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Nodes` | `TFRMaterialTreeNodes` | Nós raiz (Caption, IconMode, Children, Expanded) |
+| `ShowIcons` | `Boolean` | Exibir ícones dos nós |
+| `ShowDividers` | `Boolean` | Separadores entre nós |
+| `ItemHeight` | `Integer` | Altura de cada nó (padrão: 48px) |
+| `Indent` | `Integer` | Indentação por nível (padrão: 24px) |
+| `SelectedNode` | `TFRMaterialTreeNode` | Nó selecionado |
+
+### TFRMaterialAppBar / TFRMaterialToolbar
+
+Top App Bar e barra de ferramentas.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Title` | `string` | Texto do título (AppBar) |
+| `NavIcon` | `TFRIconMode` | Ícone de navegação (AppBar) |
+| `BarSize` | `TFRMDAppBarSize` | `absSmall`, `absMedium`, `absLarge` |
+| `Actions` | `TFRMaterialAppBarActions` | Coleção de ações (IconMode, Hint, OnClick) |
+
+### TFRMaterialNavBar / TFRMaterialNavDrawer / TFRMaterialNavRail
+
+Componentes de navegação MD3.
+
+| Componente | Diferencial |
+|---|---|
+| `NavBar` | Barra inferior (80px), itens com caption + ícone + badge |
+| `NavDrawer` | Painel lateral (360dp) com HeaderTitle |
+| `NavRail` | Rail vertical (80dp) com MenuIcon + FabIcon |
+
+### TFRMaterialDialog
+
+Diálogo modal com título, conteúdo e botões.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Title` | `string` | Título |
+| `Content` | `string` | Corpo do diálogo |
+| `Buttons` | `TFRMDDialogButtons` | Conjunto: `dbYes`, `dbNo`, `dbCancel` |
+| `Execute` | `TFRMDDialogResult` | Método — exibe e retorna resultado |
+
+### TFRMaterialSnackbar
+
+Toast/Snackbar temporário.
+
+```pascal
+FSnackbar.Show('Operação concluída!', 'DESFAZER');
+```
+
+### TFRMaterialMenu
+
+Menu popup com ícones e separadores.
+
+```pascal
+FMenu.Items.Add.Caption := 'Copiar';
+FMenu.Items.Add.IconMode := imCopy;
+FMenu.Popup(X, Y);
+```
+
+### TFRMaterialBottomSheet / TFRMaterialSideSheet
+
+Painéis deslizantes.
+
+| Componente | Propriedade | Método |
+|---|---|---|
+| `BottomSheet` | `SheetHeight`, `DragHandle` | `Toggle` |
+| `SideSheet` | `SheetWidth` | `Toggle` |
+
+### FRMaterialTheme — Paletas e Dark Mode
+
+12 paletas pré-definidas com suporte a dark mode:
+
+```pascal
+MD3LoadPalette(mpBaseline, False); { Light mode }
+MD3LoadPalette(mpOcean, True);     { Dark mode }
+```
+
+Paletas: Baseline, Ocean, Forest, Sunset, Rose, Lavender, Coral, Mint, Slate, Amber, Crimson, Teal.
+
+---
+
+## Campos de entrada (detalhes)
+
+A seção abaixo descreve as propriedades detalhadas dos campos de entrada originais.
 
 ---
 
@@ -67,7 +353,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
 
 2. **Compilar**  
    Na janela do Editor de Pacotes, clique em **Compilar**.  
-   As seis units (`FRMaterialEdit`, `FRMaterialMaskEdit`, `FRMaterialCurrencyEdit`, `FRMaterialComboEdit`, `FRMaterialCheckComboEdit`, `FRMaterialDateEdit`) devem compilar sem erros.
+   As 31 units devem compilar sem erros.
 
 3. **Instalar**  
    Ainda no Editor de Pacotes, clique em **Usar → Instalar**.  
@@ -75,13 +361,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
 
 4. **Verificar**  
    Após o IDE reiniciar, abra a **Paleta de Componentes** e procure pela aba **BGRA Controls**.  
-   Você deverá ver:
-   - `TFRMaterialEdit`
-   - `TFRMaterialMaskEdit`
-   - `TFRMaterialCurrencyEdit`
-   - `TFRMaterialComboEdit`
-   - `TFRMaterialCheckComboEdit`
-   - `TFRMaterialDateEdit`
+   Você deverá ver os 41 componentes listados acima.
 
 ### Adicionando ao projeto sem instalar na paleta
 
@@ -93,12 +373,35 @@ Se preferir não instalar na paleta do IDE, adicione o pacote como dependência 
 
 ```pascal
 uses
-  FRMaterialEdit,
-  FRMaterialMaskEdit,
-  FRMaterialCurrencyEdit,
-  FRMaterialComboEdit,
-  FRMaterialCheckComboEdit,
-  FRMaterialDateEdit;
+  FRMaterial3Base,       { cores, helpers }
+  FRMaterial3Button,     { Button, ButtonIcon, SplitButton }
+  FRMaterial3FAB,        { FAB, ExtendedFAB, FABMenu }
+  FRMaterial3Toggle,     { Switch, CheckBox, RadioButton }
+  FRMaterial3Chip,       { Chip, SegmentedButton }
+  FRMaterialEdit,        { Edit com validação/máscara }
+  FRMaterialComboEdit,   { ComboBox }
+  FRMaterialCheckComboEdit, { Multi-select }
+  FRMaterialCurrencyEdit,   { Campo monetário }
+  FRMaterialDateEdit,    { Seletor de data }
+  FRMaterialMaskEdit,    { Input com máscara }
+  FRMaterialMemoEdit,    { Editor multilinha }
+  FRMaterialSearchEdit,  { Busca com debounce }
+  FRMaterialSpinEdit,    { Stepper numérico }
+  FRMaterial3Slider,     { Slider contínuo/discreto }
+  FRMaterial3TimePicker,  { Seletor de hora }
+  FRMaterial3Progress,   { Linear/Circular/Loading }
+  FRMaterial3Tabs,       { Tabs }
+  FRMaterial3List,       { ListView }
+  FRMaterial3TreeView,   { TreeView hierárquica }
+  FRMaterial3AppBar,     { AppBar, Toolbar }
+  FRMaterial3Nav,        { NavBar, NavDrawer, NavRail }
+  FRMaterial3Dialog,     { Dialog, GroupBox }
+  FRMaterial3Snackbar,   { Snackbar }
+  FRMaterial3Tooltip,    { Tooltip }
+  FRMaterial3Menu,       { Menu popup }
+  FRMaterial3Divider,    { Divider }
+  FRMaterial3Sheet,      { BottomSheet, SideSheet }
+  FRMaterialIcons;       { Ícones SVG }
 ```
 
 ### Desinstalando

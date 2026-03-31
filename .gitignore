@@ -14,3 +14,7 @@ backup/
 # OS
 Thumbs.db
 .DS_Store
+demo/MD3Demo.exe
+demo/lib/
+*.res
+icons/treeview_temp.png

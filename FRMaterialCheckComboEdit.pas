@@ -681,6 +681,9 @@ var
 begin
   inherited Paint;
 
+  if FDisplayEdit.Color <> Self.Color then
+    FDisplayEdit.Color := Self.Color;
+
   CR := FBorderRadius * 2;
   if FFocused and Self.Enabled then
     DecoColor := AccentColor
@@ -757,9 +760,8 @@ begin
 
   Self.AccentColor   := clHighlight;
   Self.BorderStyle   := bsNone;
-  Self.Color         := clWindow;
   Self.DisabledColor := $00B8AFA8;
-  Self.ParentColor   := False;
+  Self.ParentColor   := True;
 
   FItems := TStringList.Create;
   TStringList(FItems).OnChange := @ItemsChange;
@@ -788,7 +790,7 @@ begin
   FDisplayEdit.BorderSpacing.Right  := 28; { reserva espaço para FDropButton }
   FDisplayEdit.BorderSpacing.Top    := 0;
   FDisplayEdit.BorderStyle          := bsNone;
-  FDisplayEdit.Color                := Color;
+  FDisplayEdit.ParentColor          := True;
   FDisplayEdit.ReadOnly             := True;
   FDisplayEdit.TabStop              := True;
   FDisplayEdit.Parent               := Self;

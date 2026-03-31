@@ -50,6 +50,7 @@ type
     FItemIndex: Integer;
     FOnChange: TNotifyEvent;
     procedure SetItemIndex(AValue: Integer);
+    procedure SetItems(AValue: TFRMaterialNavItems);
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -57,7 +58,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property Items: TFRMaterialNavItems read FItems write FItems;
+    property Items: TFRMaterialNavItems read FItems write SetItems;
     property ItemIndex: Integer read FItemIndex write SetItemIndex default 0;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property Align;
@@ -74,6 +75,7 @@ type
     FHeaderTitle: string;
     FOnChange: TNotifyEvent;
     procedure SetItemIndex(AValue: Integer);
+    procedure SetItems(AValue: TFRMaterialNavItems);
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -81,7 +83,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property Items: TFRMaterialNavItems read FItems write FItems;
+    property Items: TFRMaterialNavItems read FItems write SetItems;
     property ItemIndex: Integer read FItemIndex write SetItemIndex default 0;
     property HeaderTitle: string read FHeaderTitle write FHeaderTitle;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
@@ -102,6 +104,7 @@ type
     FOnMenuClick: TNotifyEvent;
     FOnFabClick: TNotifyEvent;
     procedure SetItemIndex(AValue: Integer);
+    procedure SetItems(AValue: TFRMaterialNavItems);
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -109,7 +112,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property Items: TFRMaterialNavItems read FItems write FItems;
+    property Items: TFRMaterialNavItems read FItems write SetItems;
     property ItemIndex: Integer read FItemIndex write SetItemIndex default 0;
     property MenuIcon: TFRIconMode read FMenuIcon write FMenuIcon;
     property FabIcon: TFRIconMode read FFabIcon write FFabIcon;
@@ -186,6 +189,11 @@ begin
     if Assigned(FOnChange) then
       FOnChange(Self);
   end;
+end;
+
+procedure TFRMaterialNavBar.SetItems(AValue: TFRMaterialNavItems);
+begin
+  FItems.Assign(AValue);
 end;
 
 procedure TFRMaterialNavBar.Paint;
@@ -305,6 +313,11 @@ begin
     if Assigned(FOnChange) then
       FOnChange(Self);
   end;
+end;
+
+procedure TFRMaterialNavDrawer.SetItems(AValue: TFRMaterialNavItems);
+begin
+  FItems.Assign(AValue);
 end;
 
 procedure TFRMaterialNavDrawer.Paint;
@@ -441,6 +454,11 @@ begin
     if Assigned(FOnChange) then
       FOnChange(Self);
   end;
+end;
+
+procedure TFRMaterialNavRail.SetItems(AValue: TFRMaterialNavItems);
+begin
+  FItems.Assign(AValue);
 end;
 
 procedure TFRMaterialNavRail.Paint;

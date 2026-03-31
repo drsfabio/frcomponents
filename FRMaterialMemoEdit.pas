@@ -156,9 +156,8 @@ begin
 
   Self.AccentColor  := clHighlight;
   Self.BorderStyle  := bsNone;
-  Self.Color        := clWindow;
   Self.DisabledColor := $00B8AFA8;
-  Self.ParentColor  := False;
+  Self.ParentColor  := True;
   Self.Height       := 120;
 
   FLabel.Align := alTop;
@@ -180,7 +179,7 @@ begin
   FMemo.BorderSpacing.Right := 4;
   FMemo.BorderSpacing.Bottom := 4;
   FMemo.BorderStyle := bsNone;
-  FMemo.Color := Color;
+  FMemo.ParentColor := True;
   FMemo.Font.Color := clBlack;
   FMemo.Parent := Self;
   FMemo.ParentFont := True;
@@ -440,6 +439,9 @@ var
   HelperStr, CounterStr: string;
 begin
   inherited Paint;
+
+  if FMemo.Color <> Self.Color then
+    FMemo.Color := Self.Color;
 
   CR := FBorderRadius * 2;
   BottomExtra := GetBottomMargin;
