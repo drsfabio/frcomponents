@@ -49,6 +49,7 @@ type
     property ShowIcon: Boolean read FShowIcon write SetShowIcon default False;
     { Densidade visual: Normal (40px), Compact (36px), Dense (32px), UltraDense (28px) }
     property Density: TFRMDDensity read FDensity write SetDensity default ddNormal;
+    property Anchors;
     property Caption;
     property Enabled;
     property Font;
@@ -84,6 +85,7 @@ type
     property IconMode: TFRIconMode read FIconMode write SetIconMode default imSearch;
     property Toggle: Boolean read FToggle write SetToggle default False;
     property Toggled: Boolean read FToggled write SetToggled default False;
+    property Anchors;
     property Enabled;
     property Visible;
     property OnClick;
@@ -115,6 +117,7 @@ type
   published
     property ButtonStyle: TFRMDButtonStyle read FButtonStyle write SetButtonStyle default mbsFilled;
     property DropDownMenu: TPopupMenu read FDropDownMenu write SetDropDownMenu;
+    property Anchors;
     property Caption;
     property Enabled;
     property Font;

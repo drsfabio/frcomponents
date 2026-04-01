@@ -40,6 +40,7 @@ type
   published
     property FABSize: TFRMDFABSize read FFABSize write SetFABSize default fsRegular;
     property IconMode: TFRIconMode read FIconMode write SetIconMode default imPlus;
+    property Anchors;
     property Enabled;
     property Visible;
     property OnClick;
@@ -61,6 +62,7 @@ type
   published
     property IconMode: TFRIconMode read FIconMode write SetIconMode default imPlus;
     property ShowIcon: Boolean read FShowIcon write SetShowIcon default True;
+    property Anchors;
     property Caption;
     property Font;
     property Enabled;
@@ -118,6 +120,7 @@ type
     property IconMode: TFRIconMode read FIconMode write SetIconMode default imPlus;
     property Expanded: Boolean read FExpanded write SetExpanded default False;
     property Items: TFRMaterialFABMenuItems read FItems write SetItems;
+    property Anchors;
     property Visible;
     property OnClick;
     property OnExpand: TNotifyEvent read FOnExpand write FOnExpand;

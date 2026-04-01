@@ -159,6 +159,8 @@ type
     constructor Create(AOwner: TComponent); override;
     property Hovered: Boolean read FHovered;
     property Pressed: Boolean read FPressed;
+  published
+    property Anchors;
   end;
 
   { Base class for visual-only MD3 components (dividers, progress bars, etc.).
@@ -173,6 +175,8 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     property Hovered: Boolean read FHovered;
+  published
+    property Anchors;
   end;
 
 implementation
