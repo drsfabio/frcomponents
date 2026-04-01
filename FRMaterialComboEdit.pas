@@ -1,4 +1,4 @@
-﻿unit FRMaterialComboEdit;
+unit FRMaterialComboEdit;
 
 {$mode objfpc}{$H+}
 
@@ -18,7 +18,7 @@
 interface
 
 uses
-  FRMaterialTheme, Classes, Controls, ExtCtrls, Forms, Graphics,
+  FRMaterialTheme, FRMaterial3Base, FRMaterialFieldPainter, Classes, Controls, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
   Menus, StdCtrls, SysUtils;
 
@@ -747,78 +747,56 @@ end;
 
 procedure TFRMaterialComboEdit.Paint;
 var
-  LeftPos, RightPos, FieldTop, CR: Integer;
   DecoColor: TColor;
+  P: TFRMDFieldPaintParams;
 begin
   inherited Paint;
 
   if FCombo.Color <> Self.Color then
     FCombo.Color := Self.Color;
 
-  CR := FBorderRadius * 2;
   if FFocused and Self.Enabled then
     DecoColor := AccentColor
   else
     DecoColor := DisabledColor;
 
-  if (FVariant = mvOutlined) then
-  begin
-    LeftPos  := 0;
-    RightPos := Width;
-  end else if Assigned(Parent) and (Parent.Color = Color) then
-  begin
-    LeftPos  := FCombo.Left;
-    RightPos := FCombo.Left + FCombo.Width;
-  end else
-  begin
-    LeftPos  := 0;
-    RightPos := Width;
-  end;
+  P.Canvas := Canvas;
+  P.Rect := ClientRect;
+  P.BgColor := Color;
+  if Assigned(Parent) then P.ParentBgColor := Parent.Color else P.ParentBgColor := clNone;
 
-  FieldTop := FCombo.Top - 2;
-  if FieldTop < 0 then FieldTop := 0;
+  P.Variant := FVariant;
+  P.BorderRadius := FBorderRadius;
+  
+  P.DecoColor := DecoColor;
+  P.HelperColor := DisabledColor;
+  P.DisabledColor := DisabledColor;
+  
+  P.IsFocused := FFocused;
+  P.IsEnabled := Enabled;
+  P.IsRequired := False;
+  
+  P.EditLeft := FCombo.Left;
+  P.EditTop := FCombo.Top;
+  P.EditWidth := FCombo.Width;
+  P.EditHeight := FCombo.Height;
+  
+  P.ActionRight := FCombo.Left + FCombo.Width;
+  P.BottomMargin := 0;
+  
+  P.HelperText := '';
+  P.CharCounterText := '';
+  P.PrefixText := '';
+  P.SuffixText := '';
+  
+  P.EditFont := FCombo.Font;
+  P.LabelFont := FLabel.Font;
+  P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
+  P.LabelTop := FLabel.Top;
 
-  Canvas.Pen.Width   := 1;
-  Canvas.Pen.Color   := Color;
-  Canvas.Brush.Color := Color;
-  case FVariant of
-    mvFilled:
-      if CR > 0 then
-        Canvas.RoundRect(0, 0, Width, Height, CR, CR)
-      else
-        Canvas.Rectangle(0, 0, Width, Height);
-  else
-    Canvas.Rectangle(0, 0, Width, Height);
-  end;
+  TFRMaterialFieldPainter.DrawField(P);
 
-  Canvas.Pen.Color  := DecoColor;
   FLabel.Font.Color := DecoColor;
-
-  case FVariant of
-    mvStandard, mvFilled:
-    begin
-      if FFocused and Self.Enabled then
-      begin
-        Canvas.Line(LeftPos, Height - 2, RightPos, Height - 2);
-        Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
-      end else
-        Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
-    end;
-    mvOutlined:
-    begin
-      Canvas.Brush.Style := bsClear;
-      if FFocused and Self.Enabled then
-        Canvas.Pen.Width := 2
-      else
-        Canvas.Pen.Width := 1;
-      if CR > 0 then
-        Canvas.RoundRect(LeftPos, FieldTop, RightPos, Height - 1, CR, CR)
-      else
-        Canvas.Rectangle(LeftPos, FieldTop, RightPos, Height - 1);
-      Canvas.Pen.Width   := 1;
-      Canvas.Brush.Style := bsSolid;
-    end;
-  end;
 end;
 
 constructor TFRMaterialComboEdit.Create(AOwner: TComponent);

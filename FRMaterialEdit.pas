@@ -6,7 +6,7 @@ interface
 
 uses
   FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, FRMaterial3Base,
-  BGRABitmap, BGRABitmapTypes,
+  FRMaterialFieldPainter, BGRABitmap, BGRABitmapTypes,
   Classes, Clipbrd, Controls, Dialogs, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF} Math, MaskEdit, Menus, StdCtrls, SysUtils;
 
@@ -1443,21 +1443,16 @@ end;
 
 procedure TFRMaterialEditBase.Paint;
 var
-  LeftPos, RightPos, FieldTop, CR, DecoBottom, BottomExtra: Integer;
   DecoColor, HelperColor: TColor;
-  HelperStr, CounterStr, LblCap: string;
-  PrefixW: Integer;
-  bmp: TBGRABitmap;
+  HelperStr, CounterStr: string;
+  P: TFRMDFieldPaintParams;
+  ActionRightPos: Integer;
 begin
   inherited Paint;
 
   { Sync internal edit color with container }
   if FEdit.Color <> Self.Color then
     FEdit.Color := Self.Color;
-
-  CR := FBorderRadius * 2;
-  BottomExtra := GetBottomMargin;
-  DecoBottom := Height - BottomExtra;
 
   { Prioridade: validação > foco > inativo }
   case FValidationState of
@@ -1470,156 +1465,66 @@ begin
       DecoColor := DisabledColor;
   end;
 
-  { Extensão horizontal do sublinhado/borda }
-  if (FVariant = mvOutlined) then
-  begin
-    { Outlined always uses full width for the border rectangle }
-    LeftPos  := 0;
-    RightPos := Width;
-  end
-  else if Assigned(Parent) and (Parent.Color = Color) then
-  begin
-    LeftPos := FEdit.Left;
-    { Estende até cobrir a área dos botões de ação quando visíveis }
-    if FSearchButton.Visible then
-      RightPos := FSearchButton.Left + FSearchButton.Width
-    else if FClearButton.Visible then
-      RightPos := FClearButton.Left + FClearButton.Width
-    else
-      RightPos := FEdit.Left + FEdit.Width;
-  end else
-  begin
-    LeftPos  := 0;
-    RightPos := Width;
-  end;
-
-  FieldTop := FEdit.Top - 2;
-  if FieldTop < 0 then FieldTop := 0;
-
-  { Passo 1: preenchimento do fundo }
-  Canvas.Pen.Width   := 1;
-  Canvas.Pen.Color   := Color;
-  Canvas.Brush.Color := Color;
-  case FVariant of
-    mvFilled:
-    begin
-      { MD3 spec: filled variant has top corners rounded, bottom corners square }
-      bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-      try
-        MD3FillTopRoundRect(bmp, 0, 0, Width - 1, DecoBottom - 1, CR, Color);
-        bmp.Draw(Canvas, 0, 0, False);
-      finally
-        bmp.Free;
-      end;
-    end;
+  if FValidationState = vsInvalid then
+    HelperColor := FInvalidColor
+  else if FValidationState = vsValid then
+    HelperColor := FValidColor
   else
-    Canvas.Rectangle(0, 0, Width, Height);
-  end;
+    HelperColor := DisabledColor;
 
-  { Passo 2: cor do label e decoração do campo }
-  Canvas.Pen.Color  := DecoColor;
+  HelperStr := GetDisplayHelperText;
+  CounterStr := '';
+  if FShowCharCounter and (FEdit.MaxLength > 0) then
+    CounterStr := IntToStr(Length(FEdit.Text)) + '/' + IntToStr(FEdit.MaxLength);
+
+  ActionRightPos := FEdit.Left + FEdit.Width;
+  if FSearchButton.Visible then
+    ActionRightPos := FSearchButton.Left + FSearchButton.Width
+  else if FClearButton.Visible then
+    ActionRightPos := FClearButton.Left + FClearButton.Width;
+
+  P.Canvas := Canvas;
+  P.Rect := ClientRect;
+  P.BgColor := Color;
+  if Assigned(Parent) then P.ParentBgColor := Parent.Color else P.ParentBgColor := clNone;
+  
+  P.Variant := FVariant;
+  P.BorderRadius := FBorderRadius;
+  
+  P.DecoColor := DecoColor;
+  P.HelperColor := HelperColor;
+  P.DisabledColor := DisabledColor;
+  
+  P.IsFocused := FFocused;
+  P.IsEnabled := Enabled;
+  P.IsRequired := FRequired;
+  
+  P.EditLeft := FEdit.Left;
+  P.EditTop := FEdit.Top;
+  P.EditWidth := FEdit.Width;
+  P.EditHeight := FEdit.Height;
+  
+  P.ActionRight := ActionRightPos;
+  P.BottomMargin := GetBottomMargin;
+  
+  P.HelperText := HelperStr;
+  P.CharCounterText := CounterStr;
+  P.PrefixText := FPrefixText;
+  P.SuffixText := FSuffixText;
+  
+  P.EditFont := FEdit.Font;
+  P.LabelFont := FLabel.Font;
+  P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
+  P.LabelTop := FLabel.Top;
+
+  TFRMaterialFieldPainter.DrawField(P);
 
   FLabel.Font.Color := DecoColor;
-
-  { Atualiza cor dos ícones SVG dos botões de ação conforme o estado de foco }
+  
   if FSearchButton.Visible and (FSearchButton.NormalColor <> DecoColor) then
   begin
     FSearchButton.NormalColor := DecoColor;
     FSearchButton.InvalidateCache;
-  end;
-
-  case FVariant of
-    mvStandard, mvFilled:
-    begin
-      if FFocused and Self.Enabled then
-      begin
-        Canvas.Line(LeftPos, DecoBottom - 2, RightPos, DecoBottom - 2);
-        Canvas.Line(LeftPos, DecoBottom - 1, RightPos, DecoBottom - 1);
-      end else
-        Canvas.Line(LeftPos, DecoBottom - 1, RightPos, DecoBottom - 1);
-    end;
-    mvOutlined:
-    begin
-      Canvas.Brush.Style := bsClear;
-      if FFocused and Self.Enabled then
-        Canvas.Pen.Width := 2
-      else
-        Canvas.Pen.Width := 1;
-      if CR > 0 then
-        Canvas.RoundRect(LeftPos, FieldTop, RightPos, DecoBottom - 1, CR, CR)
-      else
-        Canvas.Rectangle(LeftPos, FieldTop, RightPos, DecoBottom - 1);
-      Canvas.Pen.Width   := 1;
-      Canvas.Brush.Style := bsSolid;
-    end;
-  end;
-
-  { Passo 3: Required asterisk — desenha "•" vermelho ao lado do label }
-  if FRequired then
-  begin
-    Canvas.Font.Assign(FLabel.Font);
-    Canvas.Font.Color := FInvalidColor;
-    Canvas.Brush.Style := bsClear;
-    Canvas.TextOut(FLabel.Left + Canvas.TextWidth(FLabel.Caption) + 2,
-      FLabel.Top, ' *');
-    Canvas.Brush.Style := bsSolid;
-  end;
-
-  { Passo 4: Prefix / Suffix }
-  if FPrefixText <> '' then
-  begin
-    Canvas.Font.Assign(FEdit.Font);
-    Canvas.Font.Color := DisabledColor;
-    Canvas.Brush.Style := bsClear;
-    PrefixW := Canvas.TextWidth(FPrefixText + ' ');
-    Canvas.TextOut(FEdit.Left - PrefixW, FEdit.Top + (FEdit.Height - Canvas.TextHeight(FPrefixText)) div 2,
-      FPrefixText);
-    Canvas.Brush.Style := bsSolid;
-  end;
-
-  if FSuffixText <> '' then
-  begin
-    Canvas.Font.Assign(FEdit.Font);
-    Canvas.Font.Color := DisabledColor;
-    Canvas.Brush.Style := bsClear;
-    Canvas.TextOut(FEdit.Left + FEdit.Width + 2,
-      FEdit.Top + (FEdit.Height - Canvas.TextHeight(FSuffixText)) div 2,
-      FSuffixText);
-    Canvas.Brush.Style := bsSolid;
-  end;
-
-  { Passo 5: Helper text / Error text (abaixo da decoração) }
-  if BottomExtra > 0 then
-  begin
-    HelperStr := GetDisplayHelperText;
-    if FValidationState = vsInvalid then
-      HelperColor := FInvalidColor
-    else if FValidationState = vsValid then
-      HelperColor := FValidColor
-    else
-      HelperColor := DisabledColor;
-
-    Canvas.Font.Assign(Font);
-    Canvas.Font.Size := Font.Size - 1;
-    if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
-    Canvas.Brush.Style := bsClear;
-
-    if HelperStr <> '' then
-    begin
-      Canvas.Font.Color := HelperColor;
-      Canvas.TextOut(LeftPos + 4, DecoBottom + 2, HelperStr);
-    end;
-
-    { Contador de caracteres }
-    if FShowCharCounter and (FEdit.MaxLength > 0) then
-    begin
-      CounterStr := IntToStr(Length(FEdit.Text)) + '/' + IntToStr(FEdit.MaxLength);
-      Canvas.Font.Color := DisabledColor;
-      Canvas.TextOut(RightPos - Canvas.TextWidth(CounterStr) - 4,
-        DecoBottom + 2, CounterStr);
-    end;
-
-    Canvas.Brush.Style := bsSolid;
   end;
 end;
 

@@ -15,7 +15,7 @@ uses
   FRMaterial3Progress, FRMaterial3Divider, FRMaterial3Dialog, FRMaterial3Snackbar, 
   FRMaterial3Tooltip, FRMaterial3List, FRMaterial3Menu, FRMaterial3Tabs, FRMaterial3AppBar, 
   FRMaterial3Nav, FRMaterial3TimePicker, FRMaterial3Sheet, FRMaterial3TreeView,
-  FRMaterialThemeManager, FRMaterial3DataGrid, LazarusPackageIntf;
+  FRMaterialThemeManager, FRMaterial3DataGrid, FRMaterialFieldPainter, LazarusPackageIntf;
 
 implementation
 

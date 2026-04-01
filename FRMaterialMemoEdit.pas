@@ -17,7 +17,7 @@ unit FRMaterialMemoEdit;
 interface
 
 uses
-  FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, Classes, Controls, Dialogs, ExtCtrls, Forms, Graphics,
+  FRMaterial3Base, FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, FRMaterialFieldPainter, Classes, Controls, Dialogs, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF} Menus, StdCtrls, SysUtils;
 
 type
@@ -440,18 +440,14 @@ end;
 
 procedure TFRMaterialMemoEdit.Paint;
 var
-  LeftPos, RightPos, CR, DecoBottom, BottomExtra: Integer;
   DecoColor, HelperColor: TColor;
   HelperStr, CounterStr: string;
+  P: TFRMDFieldPaintParams;
 begin
   inherited Paint;
 
   if FMemo.Color <> Self.Color then
     FMemo.Color := Self.Color;
-
-  CR := FBorderRadius * 2;
-  BottomExtra := GetBottomMargin;
-  DecoBottom := Height - BottomExtra;
 
   case FValidationState of
     vsValid:   DecoColor := FValidColor;
@@ -463,84 +459,55 @@ begin
       DecoColor := DisabledColor;
   end;
 
-  LeftPos  := 0;
-  RightPos := Width;
+  if FValidationState = vsInvalid then
+    HelperColor := FInvalidColor
+  else if FValidationState = vsValid then
+    HelperColor := FValidColor
+  else
+    HelperColor := DisabledColor;
 
-  Canvas.Pen.Width := 1;
-  Canvas.Pen.Color := Color;
-  Canvas.Brush.Color := Color;
-  Canvas.Rectangle(0, 0, Width, Height);
+  HelperStr := GetDisplayHelperText;
+  CounterStr := '';
+  if FShowCharCounter and (FMemo.MaxLength > 0) then
+    CounterStr := IntToStr(Length(FMemo.Text)) + '/' + IntToStr(FMemo.MaxLength);
 
-  Canvas.Pen.Color  := DecoColor;
+  P.Canvas := Canvas;
+  P.Rect := ClientRect;
+  P.BgColor := Color;
+  if Assigned(Parent) then P.ParentBgColor := Parent.Color else P.ParentBgColor := clNone;
+
+  P.Variant := FVariant;
+  P.BorderRadius := FBorderRadius;
+  
+  P.DecoColor := DecoColor;
+  P.HelperColor := HelperColor;
+  P.DisabledColor := DisabledColor;
+  
+  P.IsFocused := FFocused;
+  P.IsEnabled := Enabled;
+  P.IsRequired := FRequired;
+  
+  P.EditLeft := FMemo.Left;
+  P.EditTop := FMemo.Top;
+  P.EditWidth := FMemo.Width;
+  P.EditHeight := FMemo.Height;
+  
+  P.ActionRight := Width;
+  P.BottomMargin := GetBottomMargin;
+  
+  P.HelperText := HelperStr;
+  P.CharCounterText := CounterStr;
+  P.PrefixText := '';
+  P.SuffixText := '';
+  
+  P.EditFont := FMemo.Font;
+  P.LabelFont := FLabel.Font;
+  P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
+  P.LabelTop := FLabel.Top;
+
+  TFRMaterialFieldPainter.DrawField(P);
+
   FLabel.Font.Color := DecoColor;
-
-  case FVariant of
-    mvStandard, mvFilled:
-    begin
-      if FFocused and Self.Enabled then
-      begin
-        Canvas.Line(LeftPos, DecoBottom - 2, RightPos, DecoBottom - 2);
-        Canvas.Line(LeftPos, DecoBottom - 1, RightPos, DecoBottom - 1);
-      end else
-        Canvas.Line(LeftPos, DecoBottom - 1, RightPos, DecoBottom - 1);
-    end;
-    mvOutlined:
-    begin
-      Canvas.Brush.Style := bsClear;
-      if FFocused and Self.Enabled then
-        Canvas.Pen.Width := 2
-      else
-        Canvas.Pen.Width := 1;
-      if CR > 0 then
-        Canvas.RoundRect(LeftPos, FMemo.Top - 2, RightPos, DecoBottom - 1, CR, CR)
-      else
-        Canvas.Rectangle(LeftPos, FMemo.Top - 2, RightPos, DecoBottom - 1);
-      Canvas.Pen.Width := 1;
-      Canvas.Brush.Style := bsSolid;
-    end;
-  end;
-
-  { Required asterisk }
-  if FRequired then
-  begin
-    Canvas.Font.Assign(FLabel.Font);
-    Canvas.Font.Color := FInvalidColor;
-    Canvas.Brush.Style := bsClear;
-    Canvas.TextOut(FLabel.Left + Canvas.TextWidth(FLabel.Caption) + 2, FLabel.Top, ' *');
-    Canvas.Brush.Style := bsSolid;
-  end;
-
-  { Helper / Counter }
-  if BottomExtra > 0 then
-  begin
-    HelperStr := GetDisplayHelperText;
-    if FValidationState = vsInvalid then
-      HelperColor := FInvalidColor
-    else if FValidationState = vsValid then
-      HelperColor := FValidColor
-    else
-      HelperColor := DisabledColor;
-
-    Canvas.Font.Assign(Font);
-    Canvas.Font.Size := Font.Size - 1;
-    if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
-    Canvas.Brush.Style := bsClear;
-
-    if HelperStr <> '' then
-    begin
-      Canvas.Font.Color := HelperColor;
-      Canvas.TextOut(LeftPos + 4, DecoBottom + 2, HelperStr);
-    end;
-
-    if FShowCharCounter and (FMemo.MaxLength > 0) then
-    begin
-      CounterStr := IntToStr(Length(FMemo.Text)) + '/' + IntToStr(FMemo.MaxLength);
-      Canvas.Font.Color := DisabledColor;
-      Canvas.TextOut(RightPos - Canvas.TextWidth(CounterStr) - 4, DecoBottom + 2, CounterStr);
-    end;
-
-    Canvas.Brush.Style := bsSolid;
-  end;
 end;
 
 end.

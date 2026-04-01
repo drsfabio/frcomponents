@@ -18,7 +18,7 @@ unit FRMaterialSpinEdit;
 interface
 
 uses
-  FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, Classes, Controls, Dialogs, ExtCtrls, Forms, Graphics,
+  FRMaterial3Base, FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, FRMaterialFieldPainter, Classes, Controls, Dialogs, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF} Menus, StdCtrls, SysUtils;
 
 type
@@ -360,15 +360,13 @@ end;
 
 procedure TFRMaterialSpinEdit.Paint;
 var
-  LeftPos, RightPos, CR: Integer;
   DecoColor: TColor;
+  P: TFRMDFieldPaintParams;
 begin
   inherited Paint;
 
   if FEdit.Color <> Self.Color then
     FEdit.Color := Self.Color;
-
-  CR := FBorderRadius * 2;
 
   case FValidationState of
     vsValid:   DecoColor := FValidColor;
@@ -379,17 +377,6 @@ begin
     else
       DecoColor := DisabledColor;
   end;
-
-  LeftPos  := 0;
-  RightPos := Width;
-
-  Canvas.Pen.Width   := 1;
-  Canvas.Pen.Color   := Color;
-  Canvas.Brush.Color := Color;
-  Canvas.Rectangle(0, 0, Width, Height);
-
-  Canvas.Pen.Color  := DecoColor;
-  FLabel.Font.Color := DecoColor;
 
   { Atualiza cor dos botões }
   if FMinusButton.NormalColor <> DecoColor then
@@ -403,31 +390,43 @@ begin
     FPlusButton.InvalidateCache;
   end;
 
-  case FVariant of
-    mvStandard, mvFilled:
-    begin
-      if FFocused and Self.Enabled then
-      begin
-        Canvas.Line(LeftPos, Height - 2, RightPos, Height - 2);
-        Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
-      end else
-        Canvas.Line(LeftPos, Height - 1, RightPos, Height - 1);
-    end;
-    mvOutlined:
-    begin
-      Canvas.Brush.Style := bsClear;
-      if FFocused and Self.Enabled then
-        Canvas.Pen.Width := 2
-      else
-        Canvas.Pen.Width := 1;
-      if CR > 0 then
-        Canvas.RoundRect(LeftPos, FEdit.Top - 2, RightPos, Height - 1, CR, CR)
-      else
-        Canvas.Rectangle(LeftPos, FEdit.Top - 2, RightPos, Height - 1);
-      Canvas.Pen.Width := 1;
-      Canvas.Brush.Style := bsSolid;
-    end;
-  end;
+  P.Canvas := Canvas;
+  P.Rect := ClientRect;
+  P.BgColor := Color;
+  if Assigned(Parent) then P.ParentBgColor := Parent.Color else P.ParentBgColor := clNone;
+
+  P.Variant := FVariant;
+  P.BorderRadius := FBorderRadius;
+  
+  P.DecoColor := DecoColor;
+  P.HelperColor := DisabledColor;
+  P.DisabledColor := DisabledColor;
+  
+  P.IsFocused := FFocused;
+  P.IsEnabled := Enabled;
+  P.IsRequired := False;
+  
+  P.EditLeft := FEdit.Left;
+  P.EditTop := FEdit.Top;
+  P.EditWidth := FEdit.Width;
+  P.EditHeight := FEdit.Height;
+  
+  P.ActionRight := FPlusButton.Left + FPlusButton.Width;
+  P.BottomMargin := 0;
+  
+  P.HelperText := '';
+  P.CharCounterText := '';
+  P.PrefixText := '';
+  P.SuffixText := '';
+  
+  P.EditFont := FEdit.Font;
+  P.LabelFont := FLabel.Font;
+  P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
+  P.LabelTop := FLabel.Top;
+
+  TFRMaterialFieldPainter.DrawField(P);
+
+  FLabel.Font.Color := DecoColor;
 end;
 
 end.
