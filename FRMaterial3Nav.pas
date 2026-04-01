@@ -170,6 +170,60 @@ end;
   TFRMaterialNavBar — bottom 80dp bar
   ══════════════════════════════════════════════════════════════ }
 
+{ Desenha um badge MD3 sobre um bitmap.
+  AX, AY = canto superior esquerdo do ícone (24x24).
+  ABadge  = texto do badge ('' = não exibe; '' sem número = ponto).
+  Regras MD3:
+    - Texto vazio  → ponto vermelho 6x6 no canto superior direito
+    - Texto curto  → pílula vermelha com número centralizado
+    - Texto > 3 digs → '999+' truncado }
+procedure DrawMD3Badge(ABmp: TBGRABitmap; ACanvas: TCanvas;
+  AX, AY: Integer; const ABadge: string);
+const
+  BADGE_R = $002196F3;   { não — usa Error do MD3 }
+var
+  BadgeText: string;
+  tw, bw, bh, bx, by: Integer;
+  bc: TBGRAPixel;
+begin
+  if ABadge = '' then Exit;
+
+  { Cor do badge = MD3 Error }
+  bc := ColorToBGRA(ColorToRGB(MD3Colors.Error));
+
+  if ABadge = ' ' then
+  begin
+    { Dot badge — 6x6 }
+    ABmp.FillEllipseAntialias(AX + 20, AY + 2, 4, 4, bc);
+    Exit;
+  end;
+
+  { Limita a 3 dígitos + '+' }
+  if Length(ABadge) > 3 then
+    BadgeText := '9+'
+  else
+    BadgeText := ABadge;
+
+  { Mede o texto no canvas para calcular a pílula }
+  ACanvas.Font.Size := 7;
+  tw := ACanvas.TextWidth(BadgeText);
+  bw := tw + 8;   { padding horizontal }
+  if bw < 16 then bw := 16;
+  bh := 16;
+  bx := AX + 18 - bw div 2;     { centraliza sobre o canto direito do ícone }
+  by := AY - 4;
+
+  { Pílula }
+  ABmp.FillRoundRectAntialias(bx, by, bx + bw, by + bh, 8, 8, bc);
+
+  { Texto branco centralizado — desenhado depois no Canvas }
+  ACanvas.Font.Size   := 7;
+  ACanvas.Font.Color  := ColorToRGB(MD3Colors.OnError);
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.TextOut(bx + (bw - tw) div 2, by + 1, BadgeText);
+  ACanvas.Brush.Style := bsSolid;
+end;
+
 constructor TFRMaterialNavBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -249,6 +303,10 @@ begin
             end;
           end;
         end;
+
+        { badge }
+        if item.FBadge <> '' then
+          DrawMD3Badge(bmp, Canvas, xPos + (iw - 24) div 2, 16, item.FBadge);
       end;
     end;
     bmp.Draw(Canvas, 0, 0, False);
@@ -408,8 +466,8 @@ begin
     { badge }
     if FItems[i].FBadge <> '' then
     begin
-      aRect := Rect(Width - 60, yPos, Width - 20, yPos + 56);
-      MD3DrawText(Canvas, FItems[i].FBadge, aRect, MD3Colors.OnSurfaceVariant, taRightJustify, True);
+      { Pílula MD3 no lado direito da linha }
+      DrawMD3Badge(bmp, Canvas, Width - 44, yPos + 16, FItems[i].FBadge);
     end;
 
     Inc(yPos, 56);
@@ -544,6 +602,10 @@ begin
           end;
         end;
       end;
+
+      { badge }
+      if item.FBadge <> '' then
+        DrawMD3Badge(bmp, Canvas, 28, yPos + 8, item.FBadge);
 
       Inc(yPos, 56);
     end;
