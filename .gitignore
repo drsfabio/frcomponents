@@ -18,3 +18,11 @@ demo/MD3Demo.exe
 demo/lib/
 *.res
 icons/treeview_temp.png
+
+# Build logs and temp files
+*.log
+diff.txt
+packagefiles.xml
+icons/packagefiles.xml
+lazbuild_help.txt
+virtuals.txt

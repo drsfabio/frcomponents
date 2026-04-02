@@ -166,7 +166,7 @@ begin
   FEdit.TabStop := True;
   FEdit.SetSubComponent(True);
   FEdit.OnKeyPress := @EditKeyPress;
-  FEdit.OnChange := @EditChange;
+  FEdit.AddHandlerOnChange(@EditChange);
 
   { Botão Minus (-) à esquerda }
   FMinusButton := TFRMaterialIconButton.Create(Self);
@@ -457,6 +457,8 @@ end;
 
 destructor TFRMaterialSpinEdit.Destroy;
 begin
+  if Assigned(FEdit) then
+    FEdit.RemoveHandlerOnChange(@EditChange);
   if Assigned(FLabelAnimator) then FLabelAnimator.Free;
   inherited Destroy;
 end;

@@ -14,7 +14,7 @@ unit FRMaterialDateEdit;
 interface
 
 uses
-  FRMaterial3Base, FRMaterialTheme, FRMaterialIcons, FRMaterialFieldPainter, Classes, Calendar, Controls, ExtCtrls, Forms,
+  FRMaterial3Base, FRMaterialTheme, FRMaterialIcons, FRMaterialFieldPainter, FRMaterialInternalEdits, Classes, Calendar, Controls, ExtCtrls, Forms,
   Graphics, {$IFDEF FPC} LCLType, LResources, {$ENDIF} Menus, StdCtrls, SysUtils;
 
 type
@@ -23,12 +23,10 @@ type
 
   { TFRMaterialDateEdit }
 
-  TFRMaterialDateEdit = class(TCustomPanel)
+  TFRMaterialDateEdit = class(TFRMaterialCustomControl)
   private
-    FAccentColor: TColor;
-    FDisabledColor: TColor;
     FLabel: TBoundLabel;
-    FEdit: TEdit;
+    FEdit: TFRInternalEdit;
     FCalendarButton: TFRMaterialIconButton;
     FClearButton: TFRMaterialIconButton;
     FFocused: Boolean;
@@ -131,13 +129,13 @@ type
   protected
     FLabelAnimator: TFRMDFloatingLabelAnimator;
 
-    property Edit: TEdit read FEdit;
+    property Edit: TFRInternalEdit read FEdit;
     property CalendarButton: TFRMaterialIconButton read FCalendarButton;
     property ClearButton: TFRMaterialIconButton read FClearButton;
 
   published
     property Align;
-    property AccentColor: TColor read FAccentColor write FAccentColor;
+    property AccentColor;
     property Anchors;
     property BiDiMode;
     property BorderSpacing;
@@ -145,10 +143,12 @@ type
     property Color;
     property Constraints;
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;
+    property DisabledColor;
     property Date: TDateTime read GetDate write SetDate;
     property DateFormat: TFRDateFormat read FDateFormat write SetDateFormat default dfDDMMYYYY;
     property DirectInput: Boolean read GetDirectInput write SetDirectInput default True;
-    property DisabledColor: TColor read FDisabledColor write FDisabledColor;
+    property PopupMenu: TPopupMenu read GetEditPopupMenu write SetEditPopupMenu;
+    property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
     property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
     property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
     property EditLabel: TBoundLabel read FLabel;
@@ -159,8 +159,6 @@ type
     property ParentBiDiMode;
     property ParentColor default False;
     property ParentFont default False;
-    property PopupMenu: TPopupMenu read GetEditPopupMenu write SetEditPopupMenu;
-    property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
     property ShowClearButton: Boolean read GetShowClearButton write SetShowClearButton default False;
     property ShowHint;
     property TabOrder;
@@ -965,30 +963,30 @@ begin
   P.BgColor := Color;
   if Assigned(Parent) then P.ParentBgColor := Parent.Color else P.ParentBgColor := clNone;
 
-  P.Variant := FVariant;
-  P.BorderRadius := FBorderRadius;
-  
+  P.Variant := Variant;
+  P.BorderRadius := BorderRadius;
+
   P.DecoColor := DecoColor;
   P.HelperColor := DisabledColor;
   P.DisabledColor := DisabledColor;
-  
+
   P.IsFocused := FFocused;
   P.IsEnabled := Enabled;
-  P.IsRequired := False;
-  
+  P.IsRequired := Required;
+
   P.EditLeft := FEdit.Left;
   P.EditTop := FEdit.Top;
   P.EditWidth := FEdit.Width;
   P.EditHeight := FEdit.Height;
-  
+
   P.ActionRight := ActionRightPos;
   P.BottomMargin := 0;
-  
-  P.HelperText := '';
+
+  P.HelperText := HelperText;
   P.CharCounterText := '';
   P.PrefixText := '';
   P.SuffixText := '';
-  
+
   P.EditFont := FEdit.Font;
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
@@ -1004,14 +1002,11 @@ end;
 
 constructor TFRMaterialDateEdit.Create(AOwner: TComponent);
 begin
-  FEdit  := TEdit.Create(Self);
+  FEdit  := TFRInternalEdit.Create(Self);
   FLabel := TBoundLabel.Create(Self);
   inherited Create(AOwner);
 
-  Self.BevelOuter    := bvNone;
-  Self.AccentColor   := clHighlight;
   Self.BorderStyle   := bsNone;
-  Self.DisabledColor := $00B8AFA8;
   Self.ParentColor   := True;
 
   FLabel.Align                := alNone;
@@ -1034,7 +1029,6 @@ begin
   FLabelAnimator.SnapTo(1.0);
 
   FEdit.Align                := alBottom;
-  FEdit.AutoSize             := True;
   FEdit.AutoSelect           := True;
   FEdit.BorderSpacing.Around := 0;
   FEdit.BorderSpacing.Bottom := 4;

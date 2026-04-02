@@ -35,7 +35,7 @@ unit FRMaterialCurrencyEdit;
 interface
 
 uses
-  FRMaterialTheme, FRMaterialIcons, FRMaterial3Base, FRMaterialFieldPainter, Classes, Clipbrd, Controls, ExtCtrls, Forms, Graphics,
+  FRMaterialTheme, FRMaterialIcons, FRMaterial3Base, FRMaterialFieldPainter, FRMaterialInternalEdits, Classes, Clipbrd, Controls, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
   Math, Menus, StdCtrls, SysUtils;
 
@@ -43,13 +43,10 @@ type
 
   { TFRMaterialCurrencyEdit }
 
-  TFRMaterialCurrencyEdit = class(TCustomPanel)
+  TFRMaterialCurrencyEdit = class(TFRMaterialCustomControl)
   private
-    { Visuais / layout }
-    FAccentColor: TColor;
-    FDisabledColor: TColor;
     FLabel: TBoundLabel;
-    FEdit: TEdit;
+    FEdit: TFRInternalEdit;
     FFocused: Boolean;
     FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
@@ -149,7 +146,7 @@ type
   public
 
     { Acesso direto ao TEdit interno para customizações avançadas }
-    property Edit: TEdit read FEdit;
+    property Edit: TFRInternalEdit read FEdit;
     { Botão "×" — customização de caption, hint, font, etc. }
     property ClearButton: TFRMaterialIconButton read FClearButton;
     { Valor numérico corrente }
@@ -159,32 +156,13 @@ type
     property Align;
     { Alinhamento do texto no campo (padrão: taRightJustify, comum em moeda) }
     property Alignment: TAlignment read GetAlignment write SetAlignment default taRightJustify;
-    property AccentColor: TColor read FAccentColor write FAccentColor;
-    { Permite valores negativos; pressione "-" para inverter o sinal }
-    property AllowNegative: Boolean read FAllowNegative write FAllowNegative default False;
-    property Anchors;
-    property AutoSelect: Boolean read GetAutoSelect write SetAutoSelect default True;
-    property BiDiMode;
-    property BorderSpacing;
-    { Legenda do label flutuante }
-    property Caption: TCaption read GetLabelCaption write SetLabelCaption;
     property Color;
     property Constraints;
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;
-    { Símbolo monetário exibido antes do valor. Use '' para omitir.
-      Padrão: 'R$' }
     property CurrencySymbol: string read FCurrencySymbol write FCurrencySymbol;
-    { Separador de milhar. Padrão: '.' (padrão brasileiro) }
-    property ThousandSeparator: Char
-      read FThousandSeparator write FThousandSeparator default '.';
-    { Separador decimal. Padrão: ',' (padrão brasileiro) }
-    property DecimalSeparator: Char
-      read FDecimalSeparator write FDecimalSeparator default ',';
-    { Número de casas decimais (0 a 4). Padrão: 2 (centavos).
-      Alterar em tempo de execução rescala o valor atual automaticamente. }
-    property DecimalPlaces: Integer
-      read GetDecimalPlaces write SetDecimalPlaces default 2;
-    property DisabledColor: TColor read FDisabledColor write FDisabledColor;
+    property ThousandSeparator: Char read FThousandSeparator write FThousandSeparator default '.';
+    property DecimalSeparator: Char read FDecimalSeparator write FDecimalSeparator default ',';
+    property DecimalPlaces: Integer read GetDecimalPlaces write SetDecimalPlaces default 2;
     property EditLabel: TBoundLabel read FLabel;
     property Enabled;
     property Font;
@@ -195,15 +173,11 @@ type
     property ParentFont default False;
     property PopupMenu: TPopupMenu read GetEditPopupMenu write SetEditPopupMenu;
     property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
-    { Exibe botão "×" quando o valor for diferente de zero e o campo não estiver ReadOnly }
-    property ShowClearButton: Boolean
-      read GetShowClearButton write SetShowClearButton default False;
+    property ShowClearButton: Boolean read GetShowClearButton write SetShowClearButton default False;
     property ShowHint;
     property TabOrder;
     property TabStop: Boolean read GetEditTabStop write SetEditTabStop default True;
-    { Variante visual: sublinhado (mvStandard), preenchido (mvFilled) ou contornado (mvOutlined) }
     property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
-    { Raio dos cantos arredondados em pixels; 0 = cantos retos }
     property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
     property Visible;
 
@@ -773,30 +747,30 @@ begin
   P.BgColor := Color;
   if Assigned(Parent) then P.ParentBgColor := Parent.Color else P.ParentBgColor := clNone;
 
-  P.Variant := FVariant;
-  P.BorderRadius := FBorderRadius;
-  
+  P.Variant := Variant;
+  P.BorderRadius := BorderRadius;
+
   P.DecoColor := DecoColor;
   P.HelperColor := DisabledColor;
   P.DisabledColor := DisabledColor;
-  
+
   P.IsFocused := FFocused;
   P.IsEnabled := Enabled;
-  P.IsRequired := False;
-  
+  P.IsRequired := Required;
+
   P.EditLeft := FEdit.Left;
   P.EditTop := FEdit.Top;
   P.EditWidth := FEdit.Width;
   P.EditHeight := FEdit.Height;
-  
+
   P.ActionRight := ActionRightPos;
   P.BottomMargin := 0;
-  
-  P.HelperText := '';
+
+  P.HelperText := HelperText;
   P.CharCounterText := '';
   P.PrefixText := '';
   P.SuffixText := '';
-  
+
   P.EditFont := FEdit.Font;
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
@@ -812,15 +786,12 @@ end;
 
 constructor TFRMaterialCurrencyEdit.Create(AOwner: TComponent);
 begin
-  FEdit  := TEdit.Create(Self);
+  FEdit  := TFRInternalEdit.Create(Self);
   FLabel := TBoundLabel.Create(Self);
   inherited Create(AOwner);
 
-  Self.BevelOuter    := bvNone;
-  Self.AccentColor   := clHighlight;
-  Self.BorderStyle   := bsNone;
-  Self.DisabledColor := $00B8AFA8;
-  Self.ParentColor   := True;
+  Self.BorderStyle := bsNone;
+  Self.ParentColor := True;
 
   FLabel.Align                := alNone;
   FLabel.Visible              := False;

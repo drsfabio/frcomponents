@@ -235,14 +235,8 @@ begin
 
   { Icon }
   icoSz := GetIconSize;
-  iconBmp := FRRenderSVGIcon(
-    FRGetIconSVG(FIconMode, FRColorToSVGHex(icoColor), 2.5),
-    icoSz, icoSz);
-  try
-    iconBmp.Draw(Canvas, (Width - icoSz) div 2, (Height - icoSz) div 2, False);
-  finally
-    iconBmp.Free;
-  end;
+  iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(icoColor), 2.5, icoSz, icoSz);
+  iconBmp.Draw(Canvas, (Width - icoSz) div 2, (Height - icoSz) div 2, False);
 end;
 
 { ── TFRMaterialExtendedFAB ── }
@@ -316,14 +310,8 @@ begin
     totalW := icoSz + 12 + tw;
     textX := (Width - totalW) div 2;
 
-    iconBmp := FRRenderSVGIcon(
-      FRGetIconSVG(FIconMode, FRColorToSVGHex(contentColor), 2.5),
-      icoSz, icoSz);
-    try
-      iconBmp.Draw(Canvas, textX, (Height - icoSz) div 2, False);
-    finally
-      iconBmp.Free;
-    end;
+    iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(contentColor), 2.5, icoSz, icoSz);
+    iconBmp.Draw(Canvas, textX, (Height - icoSz) div 2, False);
 
     aRect := Rect(textX + icoSz + 12, 0, Width, Height);
     MD3DrawText(Canvas, Caption, aRect, contentColor, taLeftJustify, True);
@@ -460,14 +448,8 @@ begin
   { Main FAB icon }
   icoSz := 24;
   fabY := Height - 56;
-  iconBmp := FRRenderSVGIcon(
-    FRGetIconSVG(FIconMode, FRColorToSVGHex(contentColor), 2.5),
-    icoSz, icoSz);
-  try
-    iconBmp.Draw(Canvas, (56 - icoSz) div 2, fabY + (56 - icoSz) div 2, False);
-  finally
-    iconBmp.Free;
-  end;
+  iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(contentColor), 2.5, icoSz, icoSz);
+  iconBmp.Draw(Canvas, (56 - icoSz) div 2, fabY + (56 - icoSz) div 2, False);
 
   { Item icons and labels }
   if FExpanded then
@@ -475,14 +457,8 @@ begin
     for i := 0 to FItems.Count - 1 do
     begin
       yOff := i * 52;
-      iconBmp := FRRenderSVGIcon(
-        FRGetIconSVG(FItems[i].IconMode, FRColorToSVGHex(itemContent), 2.0),
-        icoSz, icoSz);
-      try
-        iconBmp.Draw(Canvas, (56 - icoSz) div 2, yOff + (48 - icoSz) div 2, False);
-      finally
-        iconBmp.Free;
-      end;
+      iconBmp := FRGetCachedIcon(FItems[i].IconMode, FRColorToSVGHex(itemContent), 2.0, icoSz, icoSz);
+      iconBmp.Draw(Canvas, (56 - icoSz) div 2, yOff + (48 - icoSz) div 2, False);
       if FItems[i].Caption <> '' then
       begin
         aRect := Rect(60, yOff, Width, yOff + 48);

@@ -23,6 +23,7 @@ type
     FIconMode: TFRIconMode;
     FEnabled: Boolean;
     FIsSeparator: Boolean;
+    FIsHeader: Boolean;
     FOnClick: TNotifyEvent;
   public
     constructor Create(ACollection: TCollection); override;
@@ -31,6 +32,7 @@ type
     property IconMode: TFRIconMode read FIconMode write FIconMode;
     property Enabled: Boolean read FEnabled write FEnabled default True;
     property IsSeparator: Boolean read FIsSeparator write FIsSeparator default False;
+    property IsHeader: Boolean read FIsHeader write FIsHeader default False;
     property OnClick: TNotifyEvent read FOnClick write FOnClick;
   end;
 
@@ -88,6 +90,7 @@ begin
   inherited Create(ACollection);
   FEnabled := True;
   FIsSeparator := False;
+  FIsHeader := False;
 end;
 
 { ── TFRMaterialMenuItems ── }
@@ -177,6 +180,8 @@ begin
   begin
     if AMenu.FItems[i].FIsSeparator then
       Inc(h, 9)
+    else if AMenu.FItems[i].FIsHeader then
+      Inc(h, 36)
     else
       Inc(h, 48);
   end;
@@ -191,11 +196,10 @@ end;
 procedure TMenuForm.Paint;
 var
   bmp: TBGRABitmap;
-  i, yPos: Integer;
+  i, yPos, itemH: Integer;
   item: TFRMaterialMenuItem;
   aRect: TRect;
   iconBmp: TBGRABitmap;
-  svg: string;
 begin
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
@@ -213,27 +217,24 @@ begin
         Continue;
       end;
 
-      { hover highlight }
-      if i = FHoverIndex then
-        bmp.FillRect(0, yPos, Width, yPos + 48,
+      if item.FIsHeader then
+        itemH := 36
+      else
+        itemH := 48;
+
+      { hover highlight — only for normal items }
+      if (i = FHoverIndex) and (not item.FIsHeader) then
+        bmp.FillRect(0, yPos, Width, yPos + itemH,
           ColorToBGRA(MD3Colors.OnSurface, 20), dmDrawWithTransparency);
 
       { icon }
-      if item.FIconMode <> imClear then
+      if (not item.FIsHeader) and (item.FIconMode <> imClear) then
       begin
-        svg := FRGetIconSVG(item.FIconMode, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0);
-        if svg <> '' then
-        begin
-          iconBmp := FRRenderSVGIcon(svg, 24, 24);
-          try
-            bmp.PutImage(12, yPos + 12, iconBmp, dmDrawWithTransparency);
-          finally
-            iconBmp.Free;
-          end;
-        end;
+        iconBmp := FRGetCachedIcon(item.FIconMode, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 24, 24);
+        bmp.PutImage(12, yPos + (itemH - 24) div 2, iconBmp, dmDrawWithTransparency);
       end;
 
-      Inc(yPos, 48);
+      Inc(yPos, itemH);
     end;
 
     bmp.Draw(Canvas, 0, 0, False);
@@ -251,10 +252,23 @@ begin
       Inc(yPos, 9);
       Continue;
     end;
+
+    if item.FIsHeader then
+    begin
+      aRect := Rect(12, yPos, Width - 12, yPos + 36);
+      Canvas.Font.Style := [fsBold];
+      Canvas.Font.Size := 9;
+      MD3DrawText(Canvas, item.FCaption, aRect, MD3Colors.OnSurfaceVariant, taLeftJustify, True);
+      Canvas.Font.Style := [];
+      Canvas.Font.Size := 10;
+      Inc(yPos, 36);
+      Continue;
+    end;
+
     if item.FIconMode <> imClear then
       aRect := Rect(48, yPos, Width - 12, yPos + 48)
     else
-      aRect := Rect(12, yPos, Width - 12, yPos + 48);
+      aRect := Rect(24, yPos, Width - 12, yPos + 48);
     if item.FEnabled then
       MD3DrawText(Canvas, item.FCaption, aRect, MD3Colors.OnSurface, taLeftJustify, True)
     else
@@ -265,25 +279,31 @@ end;
 
 procedure TMenuForm.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  i, yPos: Integer;
+  i, yPos, itemH: Integer;
   newHover: Integer;
+  item: TFRMaterialMenuItem;
 begin
   inherited;
   newHover := -1;
   yPos := 8;
   for i := 0 to FMenu.FItems.Count - 1 do
   begin
-    if FMenu.FItems[i].FIsSeparator then
+    item := FMenu.FItems[i];
+    if item.FIsSeparator then
     begin
       Inc(yPos, 9);
       Continue;
     end;
-    if (Y >= yPos) and (Y < yPos + 48) then
+    if item.FIsHeader then
+      itemH := 36
+    else
+      itemH := 48;
+    if (not item.FIsHeader) and (Y >= yPos) and (Y < yPos + itemH) then
     begin
       newHover := i;
       Break;
     end;
-    Inc(yPos, 48);
+    Inc(yPos, itemH);
   end;
   if newHover <> FHoverIndex then
   begin
@@ -300,7 +320,7 @@ begin
   if (FHoverIndex >= 0) and (FHoverIndex < FMenu.FItems.Count) then
   begin
     item := FMenu.FItems[FHoverIndex];
-    if item.FEnabled and Assigned(item.FOnClick) then
+    if item.FEnabled and (not item.FIsHeader) and Assigned(item.FOnClick) then
       item.FOnClick(item);
   end;
   Release;

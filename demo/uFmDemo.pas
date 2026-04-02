@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, LCLType, ComCtrls, StdCtrls, ExtCtrls,
-  Menus, StrUtils,
+  Menus, StrUtils, Grids,
   FRMaterial3Base,
   FRMaterial3Button,
   FRMaterial3FAB,
@@ -26,6 +26,7 @@ uses
   FRMaterial3TimePicker,
   FRMaterial3Sheet,
   FRMaterial3TreeView,
+  FRMaterial3DataGrid,
   FRMaterialEdit,
   FRMaterialComboEdit,
   FRMaterialCheckComboEdit,
@@ -75,6 +76,7 @@ type
     FTreeView: TFRMaterialTreeView;
     FTreeEdit: TFRMaterialEdit;
     FTreeSelLabel: TLabel;
+    FDataGrid: TFRMaterialDataGrid;
 
     procedure CreatePageButtons(APage: TWinControl);
     procedure CreatePageFABs(APage: TWinControl);
@@ -1476,6 +1478,37 @@ begin
         IconMode := imDashboard;
       end;
     end;
+  end;
+
+  Y := Y + 340;
+  Y := AddSection(APage, Y, 'TFRMaterialDataGrid');
+
+  FDataGrid := TFRMaterialDataGrid.Create(Self);
+  with FDataGrid do
+  begin
+    Parent := APage;
+    SetBounds(24, Y, 550, 240);
+    ColCount := 4;
+    RowCount := 5;
+    DefaultColWidth := 130;
+    
+    // Header
+    Cells[0, 0] := 'Código';
+    Cells[1, 0] := 'Descrição';
+    Cells[2, 0] := 'Estoque';
+    Cells[3, 0] := 'Preço Unitário';
+    
+    // Dados
+    Cells[0, 1] := '001'; Cells[1, 1] := 'Monitor LCD 24"'; Cells[2, 1] := '12 un'; Cells[3, 1] := 'R$ 850,00';
+    Cells[0, 2] := '002'; Cells[1, 2] := 'Teclado Mecânico'; Cells[2, 2] := '45 un'; Cells[3, 2] := 'R$ 250,00';
+    Cells[0, 3] := '003'; Cells[1, 3] := 'Mouse Óptico'; Cells[2, 3] := '89 un'; Cells[3, 3] := 'R$ 85,00';
+    Cells[0, 4] := '004'; Cells[1, 4] := 'Cabo HDMI 2m'; Cells[2, 4] := '120 un'; Cells[3, 4] := 'R$ 25,00';
+    
+    Density := ddNormal;
+    ZebraStripes := True;
+    
+    // Habilitar a edição e remover seleção de linha inteira
+    Options := Options + [goEditing] - [goRowSelect];
   end;
 end;
 

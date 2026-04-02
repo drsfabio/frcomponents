@@ -146,7 +146,6 @@ var
   aRect: TRect;
   textColor: TColor;
   iconBmp: TBGRABitmap;
-  svg: string;
   textY: Integer;
 begin
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
@@ -175,16 +174,8 @@ begin
           textColor := MD3Colors.Primary
         else
           textColor := MD3Colors.OnSurfaceVariant;
-        svg := FRGetIconSVG(tab.FIconMode, FRColorToSVGHex(textColor), 2.0);
-        if svg <> '' then
-        begin
-          iconBmp := FRRenderSVGIcon(svg, 20, 20);
-          try
-            bmp.PutImage(xPos + (tw - 20) div 2, 8, iconBmp, dmDrawWithTransparency);
-          finally
-            iconBmp.Free;
-          end;
-        end;
+        iconBmp := FRGetCachedIcon(tab.FIconMode, FRColorToSVGHex(textColor), 2.0, 20, 20);
+        bmp.PutImage(xPos + (tw - 20) div 2, 8, iconBmp, dmDrawWithTransparency);
       end;
     end;
 

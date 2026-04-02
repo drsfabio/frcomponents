@@ -39,10 +39,8 @@ type
 
   { TFRMaterialCheckComboEdit }
 
-  TFRMaterialCheckComboEdit = class(TCustomPanel)
+  TFRMaterialCheckComboEdit = class(TFRMaterialCustomControl)
   private
-    FAccentColor: TColor;
-    FDisabledColor: TColor;
     FLabel: TBoundLabel;
     FDisplayEdit: TEdit;
     FDropButton: TButton;
@@ -126,17 +124,8 @@ type
 
   published
     property Align;
-    property AccentColor: TColor read FAccentColor write FAccentColor;
-    property Anchors;
-    property BiDiMode;
-    property BorderSpacing;
-    { Legenda do label flutuante }
-    property Caption: TCaption read GetLabelCaption write SetLabelCaption;
-    property Color;
     property Constraints;
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;
-    property DisabledColor: TColor read FDisabledColor write FDisabledColor;
-    { Variante visual: sublinhado (mvStandard), preenchido (mvFilled) ou contornado (mvOutlined) }
     property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
     { Raio dos cantos arredondados em pixels; 0 = cantos retos }
     property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
@@ -715,30 +704,31 @@ begin
   P.BgColor := Color;
   if Assigned(Parent) then P.ParentBgColor := Parent.Color else P.ParentBgColor := clNone;
 
-  P.Variant := FVariant;
-  P.BorderRadius := FBorderRadius;
-  
+  P.Variant := Variant;
+  P.BorderRadius := BorderRadius;
+
   P.DecoColor := DecoColor;
   P.HelperColor := DisabledColor;
   P.DisabledColor := DisabledColor;
-  
+
   P.IsFocused := FFocused;
   P.IsEnabled := Enabled;
-  P.IsRequired := False;
-  
+  P.IsRequired := Required;
+
   P.EditLeft := FDisplayEdit.Left;
   P.EditTop := FDisplayEdit.Top;
   P.EditWidth := FDisplayEdit.Width;
   P.EditHeight := FDisplayEdit.Height;
-  
+
   P.ActionRight := FDropButton.Left + FDropButton.Width;
   P.BottomMargin := 0;
-  
-  P.HelperText := '';
+
+  P.HelperText := HelperText;
   P.CharCounterText := '';
   P.PrefixText := '';
   P.SuffixText := '';
-  
+
+  P.EditFont := FDisplayEdit.Font;
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
   P.LabelTop := FLabel.Top;
@@ -763,11 +753,8 @@ constructor TFRMaterialCheckComboEdit.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
-  Self.BevelOuter    := bvNone;
-  Self.AccentColor   := clHighlight;
-  Self.BorderStyle   := bsNone;
-  Self.DisabledColor := $00B8AFA8;
-  Self.ParentColor   := True;
+  Self.BorderStyle := bsNone;
+  Self.ParentColor := True;
 
   FItems := TStringList.Create;
   TStringList(FItems).OnChange := @ItemsChange;

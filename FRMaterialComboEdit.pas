@@ -26,10 +26,8 @@ type
 
   { TFRMaterialComboEdit }
 
-  TFRMaterialComboEdit = class(TCustomPanel)
+  TFRMaterialComboEdit = class(TFRMaterialCustomControl)
   private
-    FAccentColor: TColor;
-    FDisabledColor: TColor;
     FLabel: TBoundLabel;
     FCombo: TComboBox;
     FFocused: Boolean;
@@ -145,26 +143,7 @@ type
 
   published
     property Align;
-    property AccentColor: TColor read FAccentColor write FAccentColor;
-    property Anchors;
-    { Habilita autocompletar ao digitar (relevante em Style=csDropDown) }
-    property AutoComplete: Boolean
-      read GetAutoComplete write SetAutoComplete default True;
-    { Configura o comportamento de autocompletar }
-    property AutoCompleteText: TComboBoxAutoCompleteText
-      read GetAutoCompleteText write SetAutoCompleteText
-      default [cbactEnabled, cbactEndOfLineComplete];
-    { Abre o dropdown automaticamente ao digitar }
-    property AutoDropDown: Boolean
-      read GetAutoDropDown write SetAutoDropDown default False;
-    property BiDiMode;
-    property BorderSpacing;
-    { Legenda do label flutuante }
-    property Caption: TCaption read GetLabelCaption write SetLabelCaption;
-    property Color;
-    property Constraints;
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;
-    property DisabledColor: TColor read FDisabledColor write FDisabledColor;
     { Variante visual: sublinhado (mvStandard), preenchido (mvFilled) ou contornado (mvOutlined) }
     property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
     { Raio dos cantos arredondados em pixels; 0 = cantos retos }
@@ -783,30 +762,30 @@ begin
   P.BgColor := Color;
   if Assigned(Parent) then P.ParentBgColor := Parent.Color else P.ParentBgColor := clNone;
 
-  P.Variant := FVariant;
-  P.BorderRadius := FBorderRadius;
-  
+  P.Variant := Variant;
+  P.BorderRadius := BorderRadius;
+
   P.DecoColor := DecoColor;
   P.HelperColor := DisabledColor;
   P.DisabledColor := DisabledColor;
-  
+
   P.IsFocused := FFocused;
   P.IsEnabled := Enabled;
-  P.IsRequired := False;
-  
+  P.IsRequired := Required;
+
   P.EditLeft := FCombo.Left;
   P.EditTop := FCombo.Top;
   P.EditWidth := FCombo.Width;
   P.EditHeight := FCombo.Height;
-  
+
   P.ActionRight := FCombo.Left + FCombo.Width;
   P.BottomMargin := 0;
-  
-  P.HelperText := '';
+
+  P.HelperText := HelperText;
   P.CharCounterText := '';
   P.PrefixText := '';
   P.SuffixText := '';
-  
+
   P.EditFont := FCombo.Font;
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
@@ -826,11 +805,8 @@ begin
   FLabel := TBoundLabel.Create(Self);
   inherited Create(AOwner);
 
-  Self.BevelOuter    := bvNone;
-  Self.AccentColor   := clHighlight;
-  Self.BorderStyle   := bsNone;
-  Self.DisabledColor := $00B8AFA8;
-  Self.ParentColor   := True;
+  Self.BorderStyle := bsNone;
+  Self.ParentColor := True;
 
   FLabel.Align                := alNone;
   FLabel.Visible              := False;

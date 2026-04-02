@@ -303,17 +303,11 @@ begin
   if FShowIcon and (tw > 0) then
     textX := textX + 8;
 
-  { Draw icon via SVG rendering }
+  { Draw icon via cached SVG }
   if FShowIcon and (iconSize > 0) then
   begin
-    iconBmp := FRRenderSVGIcon(
-      FRGetIconSVG(FIconMode, FRColorToSVGHex(textColor), 2.0),
-      iconSize, iconSize);
-    try
-      iconBmp.Draw(Canvas, iconX, (Height - iconSize) div 2, False);
-    finally
-      iconBmp.Free;
-    end;
+    iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(textColor), 2.0, iconSize, iconSize);
+    iconBmp.Draw(Canvas, iconX, (Height - iconSize) div 2, False);
   end;
 
   aRect := Rect(textX, 0, Width, Height);
@@ -460,14 +454,8 @@ begin
 
   { Icon }
   iconSize := Min(Width, Height) div 2;
-  iconBmp := FRRenderSVGIcon(
-    FRGetIconSVG(FIconMode, FRColorToSVGHex(iconColor), 2.0),
-    iconSize, iconSize);
-  try
-    iconBmp.Draw(Canvas, (Width - iconSize) div 2, (Height - iconSize) div 2, False);
-  finally
-    iconBmp.Free;
-  end;
+  iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(iconColor), 2.0, iconSize, iconSize);
+  iconBmp.Draw(Canvas, (Width - iconSize) div 2, (Height - iconSize) div 2, False);
 end;
 
 { ── TFRMaterialSplitButton ── }
@@ -639,14 +627,9 @@ begin
   MD3DrawText(Canvas, Caption, mainR, textColor, taCenter, True);
 
   { Arrow icon — chevron down (expand_more) per MD3 spec }
-  iconBmp := FRRenderSVGIcon(
-    FRGetIconSVG(imExpandMore, FRColorToSVGHex(textColor), 2.5), 18, 18);
-  try
-    iconBmp.Draw(Canvas, arrowR.Left + (arrowR.Right - arrowR.Left - 18) div 2,
-      (Height - 18) div 2, False);
-  finally
-    iconBmp.Free;
-  end;
+  iconBmp := FRGetCachedIcon(imExpandMore, FRColorToSVGHex(textColor), 2.5, 18, 18);
+  iconBmp.Draw(Canvas, arrowR.Left + (arrowR.Right - arrowR.Left - 18) div 2,
+    (Height - 18) div 2, False);
 end;
 
 end.

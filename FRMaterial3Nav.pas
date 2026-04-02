@@ -214,7 +214,7 @@ begin
   by := AY - 4;
 
   { Pílula }
-  ABmp.FillRoundRectAntialias(bx, by, bx + bw, by + bh, 8, 8, bc);
+  ABmp.FillRoundRectAntialias(bx, by, bx + bw, by + bh, 7.9, 7.9, bc);
 
   { Texto branco centralizado — desenhado depois no Canvas }
   ACanvas.Font.Size   := 7;
@@ -264,7 +264,6 @@ var
   bmp: TBGRABitmap;
   i, iw, xPos: Integer;
   item: TFRMaterialNavItem;
-  svg: string;
   iconBmp: TBGRABitmap;
   aRect: TRect;
   clr: TColor;
@@ -292,16 +291,8 @@ begin
         { icon }
         if item.FIconMode <> imClear then
         begin
-          svg := FRGetIconSVG(item.FIconMode, FRColorToSVGHex(clr), 2.0);
-          if svg <> '' then
-          begin
-            iconBmp := FRRenderSVGIcon(svg, 24, 24);
-            try
-              bmp.PutImage(xPos + (iw - 24) div 2, 16, iconBmp, dmDrawWithTransparency);
-            finally
-              iconBmp.Free;
-            end;
-          end;
+          iconBmp := FRGetCachedIcon(item.FIconMode, FRColorToSVGHex(clr), 2.0, 24, 24);
+          bmp.PutImage(xPos + (iw - 24) div 2, 16, iconBmp, dmDrawWithTransparency);
         end;
 
         { badge }
@@ -392,7 +383,6 @@ var
   bmp: TBGRABitmap;
   i, yPos: Integer;
   item: TFRMaterialNavItem;
-  svg: string;
   iconBmp: TBGRABitmap;
   aRect: TRect;
   clr: TColor;
@@ -405,7 +395,7 @@ begin
     if FHeaderTitle <> '' then
       Inc(yPos, 56);
 
-    { items }
+    { items + badges — tudo desenhado no bmp antes de liberá-lo }
     for i := 0 to FItems.Count - 1 do
     begin
       item := FItems[i];
@@ -421,17 +411,13 @@ begin
       { icon }
       if item.FIconMode <> imClear then
       begin
-        svg := FRGetIconSVG(item.FIconMode, FRColorToSVGHex(clr), 2.0);
-        if svg <> '' then
-        begin
-          iconBmp := FRRenderSVGIcon(svg, 24, 24);
-          try
-            bmp.PutImage(28, yPos + 16, iconBmp, dmDrawWithTransparency);
-          finally
-            iconBmp.Free;
-          end;
-        end;
+        iconBmp := FRGetCachedIcon(item.FIconMode, FRColorToSVGHex(clr), 2.0, 24, 24);
+        bmp.PutImage(28, yPos + 16, iconBmp, dmDrawWithTransparency);
       end;
+
+      { badge — desenhado ANTES do bmp.Free }
+      if item.FBadge <> '' then
+        DrawMD3Badge(bmp, Canvas, Width - 44, yPos + 16, item.FBadge);
 
       Inc(yPos, 56);
     end;
@@ -441,7 +427,7 @@ begin
     bmp.Free;
   end;
 
-  { text labels }
+  { text labels — desenhados diretamente no Canvas (não precisam do bmp) }
   if FHeaderTitle <> '' then
   begin
     Canvas.Font.Size := 12;
@@ -462,14 +448,6 @@ begin
       clr := MD3Colors.OnSurfaceVariant;
     aRect := Rect(68, yPos, Width - 16, yPos + 56);
     MD3DrawText(Canvas, FItems[i].FCaption, aRect, clr, taLeftJustify, True);
-
-    { badge }
-    if FItems[i].FBadge <> '' then
-    begin
-      { Pílula MD3 no lado direito da linha }
-      DrawMD3Badge(bmp, Canvas, Width - 44, yPos + 16, FItems[i].FBadge);
-    end;
-
     Inc(yPos, 56);
   end;
 end;
@@ -533,7 +511,6 @@ var
   bmp: TBGRABitmap;
   i, yPos: Integer;
   item: TFRMaterialNavItem;
-  svg: string;
   iconBmp: TBGRABitmap;
   aRect: TRect;
   clr: TColor;
@@ -545,16 +522,8 @@ begin
     { optional menu icon }
     if FMenuIcon <> imClear then
     begin
-      svg := FRGetIconSVG(FMenuIcon, FRColorToSVGHex(MD3Colors.OnSurface), 2.0);
-      if svg <> '' then
-      begin
-        iconBmp := FRRenderSVGIcon(svg, 24, 24);
-        try
-          bmp.PutImage(28, yPos, iconBmp, dmDrawWithTransparency);
-        finally
-          iconBmp.Free;
-        end;
-      end;
+      iconBmp := FRGetCachedIcon(FMenuIcon, FRColorToSVGHex(MD3Colors.OnSurface), 2.0, 24, 24);
+      bmp.PutImage(28, yPos, iconBmp, dmDrawWithTransparency);
       Inc(yPos, 56);
     end;
 
@@ -562,16 +531,8 @@ begin
     if FFabIcon <> imClear then
     begin
       MD3FillRoundRect(bmp, 12, yPos, 68, yPos + 56, 16, MD3Colors.PrimaryContainer);
-      svg := FRGetIconSVG(FFabIcon, FRColorToSVGHex(MD3Colors.OnPrimaryContainer), 2.0);
-      if svg <> '' then
-      begin
-        iconBmp := FRRenderSVGIcon(svg, 24, 24);
-        try
-          bmp.PutImage(28, yPos + 16, iconBmp, dmDrawWithTransparency);
-        finally
-          iconBmp.Free;
-        end;
-      end;
+      iconBmp := FRGetCachedIcon(FFabIcon, FRColorToSVGHex(MD3Colors.OnPrimaryContainer), 2.0, 24, 24);
+      bmp.PutImage(28, yPos + 16, iconBmp, dmDrawWithTransparency);
       Inc(yPos, 72);
     end;
 
@@ -591,16 +552,8 @@ begin
       { icon }
       if item.FIconMode <> imClear then
       begin
-        svg := FRGetIconSVG(item.FIconMode, FRColorToSVGHex(clr), 2.0);
-        if svg <> '' then
-        begin
-          iconBmp := FRRenderSVGIcon(svg, 24, 24);
-          try
-            bmp.PutImage(28, yPos + 8, iconBmp, dmDrawWithTransparency);
-          finally
-            iconBmp.Free;
-          end;
-        end;
+        iconBmp := FRGetCachedIcon(item.FIconMode, FRColorToSVGHex(clr), 2.0, 24, 24);
+        bmp.PutImage(28, yPos + 8, iconBmp, dmDrawWithTransparency);
       end;
 
       { badge }

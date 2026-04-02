@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics,
   {$IFDEF FPC} LCLType, LCLIntf, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterialTheme;
+  BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterialMasks;
 
 type
   { MD3 shape scale }
@@ -162,6 +162,7 @@ type
     property Hovered: Boolean read FHovered;
     property Pressed: Boolean read FPressed;
   published
+    property Align;
     property Anchors;
     property TabOrder;
     property TabStop;
@@ -181,6 +182,37 @@ type
     property Hovered: Boolean read FHovered;
   published
     property Anchors;
+  end;
+
+  { TFRMaterialCustomControl
+    Base para componentes MD3 que possuem estados de validação, densidade
+    e labels auxiliares (Edits, CheckCombos, etc). }
+
+  TFRMaterialCustomControl = class(TFRMaterial3Control)
+  protected
+    FAccentColor: TColor;
+    FDisabledColor: TColor;
+    FDensity: TFRMDDensity;
+    FValidationState: TFRValidationState;
+    FHelperText: string;
+    FErrorText: string;
+    FRequired: Boolean;
+
+    procedure SetDensity(AValue: TFRMDDensity); virtual;
+    procedure SetValidationState(AValue: TFRValidationState); virtual;
+    procedure SetRequired(AValue: Boolean); virtual;
+    procedure SetHelperText(const AValue: string); virtual;
+    procedure SetErrorText(const AValue: string); virtual;
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+    property AccentColor: TColor read FAccentColor write FAccentColor;
+    property DisabledColor: TColor read FDisabledColor write FDisabledColor;
+    property Density: TFRMDDensity read FDensity write SetDensity default ddNormal;
+    property ValidationState: TFRValidationState read FValidationState write SetValidationState default vsNone;
+    property HelperText: string read FHelperText write SetHelperText;
+    property ErrorText: string read FErrorText write SetErrorText;
+    property Required: Boolean read FRequired write SetRequired default False;
   end;
 
 implementation
@@ -755,6 +787,66 @@ begin
   FHovered := False;
   Invalidate;
   inherited;
+end;
+
+{ ── TFRMaterialCustomControl ── }
+
+constructor TFRMaterialCustomControl.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FAccentColor := clHighlight;
+  FDisabledColor := $00B8AFA8;
+  FDensity := ddNormal;
+  FValidationState := vsNone;
+  FRequired := False;
+end;
+
+procedure TFRMaterialCustomControl.SetDensity(AValue: TFRMDDensity);
+begin
+  if FDensity <> AValue then
+  begin
+    FDensity := AValue;
+    Invalidate;
+    DoOnResize;
+  end;
+end;
+
+procedure TFRMaterialCustomControl.SetValidationState(AValue: TFRValidationState);
+begin
+  if FValidationState <> AValue then
+  begin
+    FValidationState := AValue;
+    Invalidate;
+  end;
+end;
+
+procedure TFRMaterialCustomControl.SetRequired(AValue: Boolean);
+begin
+  if FRequired <> AValue then
+  begin
+    FRequired := AValue;
+    Invalidate;
+  end;
+end;
+
+procedure TFRMaterialCustomControl.SetHelperText(const AValue: string);
+begin
+  if FHelperText <> AValue then
+  begin
+    FHelperText := AValue;
+    DoOnResize;
+    Invalidate;
+  end;
+end;
+
+procedure TFRMaterialCustomControl.SetErrorText(const AValue: string);
+begin
+  if FErrorText <> AValue then
+  begin
+    FErrorText := AValue;
+    DoOnResize;
+    Invalidate;
+  end;
 end;
 
 initialization

@@ -26,7 +26,7 @@ unit FRMaterial3DataGrid;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, Grids, Types,
+  Classes, SysUtils, Controls, Graphics, Grids, Types, StdCtrls,
   {$IFDEF FPC} LResources, LCLType, LMessages, {$ENDIF}
   BGRABitmap, BGRABitmapTypes,
   FRMaterial3Base, FRMaterialTheme;
@@ -56,6 +56,7 @@ type
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseLeave; override;
     procedure HeaderClick(IsColumn: Boolean; Index: Integer); override;
+    procedure SelectEditor; override;
   public
     constructor Create(AOwner: TComponent); override;
     { Ordena a coluna ACol pelo índice. AscDesc: True=Asc, False=Desc }
@@ -107,6 +108,15 @@ type
 procedure Register;
 
 implementation
+
+type
+  { Editor customizado para desabilitar a seleção forçada e ajustar margens }
+  TFRMaterialCellEditor = class(TStringCellEditor)
+  protected
+    procedure DoEnter; override;
+  public
+    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
+  end;
 
 { ── helpers ── }
 
@@ -331,6 +341,46 @@ begin
     FOnSortColumn(Self, FSortCol, FSortDir);
 
   Invalidate;
+end;
+
+type
+  TAccessCustomEdit = class(TCustomEdit);
+
+procedure TFRMaterialDataGrid.SelectEditor;
+begin
+  inherited SelectEditor;
+  if Editor is TCustomEdit then
+  begin
+    TCustomEdit(Editor).BorderStyle := bsNone;
+    TCustomEdit(Editor).Color := ColorToRGB(MD3Colors.SecondaryContainer);
+    TCustomEdit(Editor).Font.Color := ColorToRGB(MD3Colors.OnSecondaryContainer);
+    TCustomEdit(Editor).Font.Size := 13;
+    { Desabilita a seleção automática total que pinta o fundo de azul nas configurações nativas do SO }
+    TAccessCustomEdit(Editor).AutoSelect := False;
+  end;
+end;
+
+
+
+{ ── TFRMaterialCellEditor ── }
+
+procedure TFRMaterialCellEditor.DoEnter;
+begin
+  inherited DoEnter;
+  SelLength := 0; { Removemos a seleção incômoda nativa }
+end;
+
+procedure TFRMaterialCellEditor.SetBounds(ALeft, ATop, AWidth, AHeight: Integer);
+begin
+  { Imita as margens exatas do Canvas (Left=16px) e centraliza verticalmente }
+  if (AWidth > 20) and (AHeight > 10) then
+  begin
+    Inc(ALeft, 14);
+    Dec(AWidth, 18);
+    Inc(ATop, (AHeight - 20) div 2); 
+    AHeight := 20; 
+  end;
+  inherited SetBounds(ALeft, ATop, AWidth, AHeight);
 end;
 
 procedure Register;

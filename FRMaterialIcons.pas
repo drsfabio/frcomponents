@@ -1129,7 +1129,7 @@ var
   svg, k: string;
   bmp: TBGRABitmap;
 begin
-  if AMode = imClear then Exit(nil);
+  { Remove the check for imClear to allow caching }
   
   { Cria a Hash identificadora única da imagem }
   k := Format('%d_%s_%f_%d_%d', [Ord(AMode), AHex, AStroke, AW, AH]);
@@ -1176,8 +1176,8 @@ end;
 
 destructor TFRMaterialIconButton.Destroy;
 begin
-  FreeAndNil(FCacheNormal);
-  FreeAndNil(FCacheHover);
+  FCacheNormal := nil;
+  FCacheHover  := nil;
   inherited Destroy;
 end;
 
@@ -1202,16 +1202,16 @@ var
   hexNormal, hexHover: string;
   sw: Double;
 begin
-  FreeAndNil(FCacheNormal);
-  FreeAndNil(FCacheHover);
+  FCacheNormal := nil;
+  FCacheHover  := nil;
   if (Width <= 0) or (Height <= 0) then Exit;
 
   hexNormal := FRColorToSVGHex(FNormalColor);
   hexHover  := FRColorToSVGHex(FHoverColor);
   sw := FStrokeWidth;
 
-  FCacheNormal := FRRenderSVGIcon(FRGetIconSVG(FIconMode, hexNormal, sw), Width, Height);
-  FCacheHover  := FRRenderSVGIcon(FRGetIconSVG(FIconMode, hexHover, sw), Width, Height);
+  FCacheNormal := FRGetCachedIcon(FIconMode, hexNormal, sw, Width, Height);
+  FCacheHover  := FRGetCachedIcon(FIconMode, hexHover, sw, Width, Height);
 
   FCacheMode := FIconMode;
   FCacheW := Width;

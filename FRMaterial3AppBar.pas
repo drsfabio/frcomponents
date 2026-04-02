@@ -183,7 +183,6 @@ var
   bmp: TBGRABitmap;
   aRect: TRect;
   iconBmp: TBGRABitmap;
-  svg: string;
   i, xAct: Integer;
   titleLeft: Integer;
 begin
@@ -193,16 +192,8 @@ begin
     titleLeft := 16;
     if FNavIcon <> imClear then
     begin
-      svg := FRGetIconSVG(FNavIcon, FRColorToSVGHex(MD3Colors.OnSurface), 2.0);
-      if svg <> '' then
-      begin
-        iconBmp := FRRenderSVGIcon(svg, 24, 24);
-        try
-          bmp.PutImage(16, 20, iconBmp, dmDrawWithTransparency);
-        finally
-          iconBmp.Free;
-        end;
-      end;
+      iconBmp := FRGetCachedIcon(FNavIcon, FRColorToSVGHex(MD3Colors.OnSurface), 2.0, 24, 24);
+      bmp.PutImage(16, 20, iconBmp, dmDrawWithTransparency);
       titleLeft := 56;
     end;
 
@@ -210,18 +201,10 @@ begin
     xAct := Width - 16;
     for i := FActions.Count - 1 downto 0 do
     begin
-      svg := FRGetIconSVG(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0);
-      if svg <> '' then
-      begin
-        iconBmp := FRRenderSVGIcon(svg, 24, 24);
-        try
-          Dec(xAct, 24);
-          bmp.PutImage(xAct, 20, iconBmp, dmDrawWithTransparency);
-          Dec(xAct, 16);
-        finally
-          iconBmp.Free;
-        end;
-      end;
+      iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 24, 24);
+      Dec(xAct, 24);
+      bmp.PutImage(xAct, 20, iconBmp, dmDrawWithTransparency);
+      Dec(xAct, 16);
     end;
 
     bmp.Draw(Canvas, 0, 0, False);
@@ -308,7 +291,6 @@ procedure TFRMaterialToolbar.Paint;
 var
   bmp: TBGRABitmap;
   i, xPos: Integer;
-  svg: string;
   iconBmp: TBGRABitmap;
 begin
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.SurfaceContainer));
@@ -316,16 +298,8 @@ begin
     xPos := (Width - FActions.Count * 48) div 2;
     for i := 0 to FActions.Count - 1 do
     begin
-      svg := FRGetIconSVG(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.OnSurface), 2.0);
-      if svg <> '' then
-      begin
-        iconBmp := FRRenderSVGIcon(svg, 24, 24);
-        try
-          bmp.PutImage(xPos + 12, 20, iconBmp, dmDrawWithTransparency);
-        finally
-          iconBmp.Free;
-        end;
-      end;
+      iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.OnSurface), 2.0, 24, 24);
+      bmp.PutImage(xPos + 12, 20, iconBmp, dmDrawWithTransparency);
       Inc(xPos, 48);
     end;
     bmp.Draw(Canvas, 0, 0, False);

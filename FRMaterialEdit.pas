@@ -6,7 +6,7 @@ interface
 
 uses
   FRMaterialTheme, FRMaterialThemeManager, FRMaterialIcons, FRMaterialMasks, FRMaterial3Base,
-  FRMaterialFieldPainter, BGRABitmap, BGRABitmapTypes,
+  FRMaterialFieldPainter, FRMaterialInternalEdits, BGRABitmap, BGRABitmapTypes,
   Classes, Clipbrd, Controls, Dialogs, ExtCtrls, Forms, Graphics,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF} Math, MaskEdit, Menus, StdCtrls, SysUtils;
 
@@ -17,10 +17,8 @@ type
 
   { TFRMaterialEditBase }
 
-  generic TFRMaterialEditBase<T> = class(TCustomPanel, IFRMaterialComponent)
+  generic TFRMaterialEditBase<T> = class(TFRMaterialCustomControl)
   private
-    FAccentColor: TColor;
-    FDisabledColor: TColor;
     FLabel: TBoundLabel;
     FFocused: boolean;
     FClearButton: TFRMaterialIconButton;
@@ -33,21 +31,16 @@ type
     FVariant: TFRMaterialVariant;
     FBorderRadius: Integer;
     FIconStrokeWidth: Double;
-    FValidationState: TFRValidationState;
     FValidColor: TColor;
     FInvalidColor: TColor;
 
-    { Novos campos — HelperText / ErrorText / Counter }
-    FHelperText: string;
-    FErrorText: string;
+    { Novos campos — CharCounter }
     FShowCharCounter: Boolean;
 
     { Novos campos — Validação avançada }
-    FRequired: Boolean;
     FMinLength: Integer;
     FValidateMode: TFRValidateMode;
     FOnValidate: TFRValidateEvent;
-    FDensity: TFRMDDensity;
 
     { Novos campos — Prefixo / Sufixo }
     FPrefixText: string;
@@ -58,7 +51,7 @@ type
     FShowLeadingIcon: Boolean;
     FLeadingIconMode: TFRIconMode;
     FOnLeadingIconClick: TNotifyEvent;
-
+    
     { Novos campos — PasswordMode }
     FPasswordMode: Boolean;
     FEyeButton: TFRMaterialIconButton;
@@ -86,14 +79,9 @@ type
     function GetSearchButtonPosition: TFRButtonPosition;
     procedure SetSearchButtonPosition(AValue: TFRButtonPosition);
     procedure AnchorButtons;
-    function GetValidationState: TFRValidationState;
-    procedure SetValidationState(AValue: TFRValidationState);
 
     { Novos setters }
-    procedure SetHelperText(const AValue: string);
-    procedure SetErrorText(const AValue: string);
     procedure SetShowCharCounter(AValue: Boolean);
-    procedure SetRequired(AValue: Boolean);
     procedure SetPrefixText(const AValue: string);
     procedure SetSuffixText(const AValue: string);
     procedure SetShowLeadingIcon(AValue: Boolean);
@@ -103,7 +91,6 @@ type
     procedure EyeButtonClick(Sender: TObject);
     procedure SetShowCopyButton(AValue: Boolean);
     procedure CopyButtonClick(Sender: TObject);
-    procedure SetDensity(AValue: TFRMDDensity);
 
     { Helpers }
     function GetBottomMargin: Integer;
@@ -199,7 +186,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure ApplyTheme(const AThemeManager: TObject);
+    procedure ApplyTheme(const AThemeManager: TObject); override;
     { Expõe o botão de limpeza para customização visual }
     property ClearButton: TFRMaterialIconButton read FClearButton;
     { Expõe o botão de pesquisa para customização visual }
@@ -213,7 +200,6 @@ type
   published
     property Align;
     property Alignment: TAlignment read GetEditAlignment write SetEditAlignment default taLeftJustify;
-    property AccentColor: TColor read FAccentColor write FAccentColor;
     property Anchors;
     property AutoSelect: Boolean read GetEditAutoSelect write SetEditAutoSelect default True;
     property AutoSize: Boolean read GetEditAutoSize write SetEditAutoSize default True;
@@ -224,7 +210,6 @@ type
     property Color;
     property Constraints;
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;
-    property DisabledColor: TColor read FDisabledColor write FDisabledColor;
     property DoubleBuffered: Boolean read GetEditDoubleBuffered write SetEditDoubleBuffered;
     property EditLabel: TBoundLabel read FLabel;
     property Enabled;
@@ -248,24 +233,14 @@ type
     property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
     { Raio dos cantos arredondados em pixels; 0 = cantos retos }
     property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
-    { Densidade visual: Normal (padrão), Compact (-4px), Dense (-8px), UltraDense (-12px) }
-    property Density: TFRMDDensity read FDensity write SetDensity default ddNormal;
     { Espessura do traço dos ícones SVG (0 = usa padrão de cada ícone) }
     property IconStrokeWidth: Double read GetIconStrokeWidth write SetIconStrokeWidth;
-    { Estado atual da validação: vsNone (neutro), vsValid (válido), vsInvalid (inválido) }
-    property ValidationState: TFRValidationState read GetValidationState write SetValidationState default vsNone;
     { Cor de destaque quando ValidationState = vsValid }
     property ValidColor: TColor read FValidColor write FValidColor default $0000B300;
     { Cor de destaque quando ValidationState = vsInvalid }
     property InvalidColor: TColor read FInvalidColor write FInvalidColor default $000000FF;
-    { Texto auxiliar exibido abaixo do campo (oculto quando ErrorText existe e estado é inválido) }
-    property HelperText: string read FHelperText write SetHelperText;
-    { Texto de erro exibido abaixo do campo quando ValidationState = vsInvalid }
-    property ErrorText: string read FErrorText write SetErrorText;
     { Quando True, exibe um contador de caracteres "N/MaxLength" abaixo do campo }
     property ShowCharCounter: Boolean read FShowCharCounter write SetShowCharCounter default False;
-    { Quando True, o campo é obrigatório; label exibe asterisco e valida campo vazio }
-    property Required: Boolean read FRequired write SetRequired default False;
     { Comprimento mínimo de texto; validado conforme ValidateMode }
     property MinLength: Integer read FMinLength write FMinLength default 0;
     { Modo de validação: vmOnExit (padrão) ou vmOnChange }
@@ -321,7 +296,7 @@ type
 
   { TFRMaterialEdit }
 
-  TFRMaterialEdit = class(specialize TFRMaterialEditBase<TMaskEdit>)
+  TFRMaterialEdit = class(specialize TFRMaterialEditBase<TFRInternalMaskEdit>)
   private
     FTextMask: TFRTextMaskType;
     FApplyingMask: Boolean;
@@ -420,7 +395,7 @@ type
     property DragCursor: TCursor read GetEditDragCursor write SetEditDragCursor default crDrag;
     property DragMode: TDragMode read GetEditDragMode write SetEditDragMode default dmManual;
     property Font;
-    property Edit: TMaskEdit read FEdit;
+    property Edit: TFRInternalMaskEdit read FEdit;
     property EditLabel;
     property EditMask: string read GetEditMask write SetEditMask;
     property Enabled;
@@ -679,8 +654,8 @@ begin
           FSearchButton.AnchorSide[akLeft].Control := Self;
           FSearchButton.AnchorSide[akLeft].Side    := asrTop;
         end;
-        FSearchButton.AnchorSide[akTop].Control  := FEdit;
-        FSearchButton.AnchorSide[akTop].Side     := asrTop;
+        FSearchButton.AnchorSide[akTop].Control    := FEdit;
+        FSearchButton.AnchorSide[akTop].Side       := asrTop;
         FSearchButton.AnchorSide[akBottom].Control := FEdit;
         FSearchButton.AnchorSide[akBottom].Side    := asrBottom;
         FSearchButton.BorderSpacing.Left := 4;
@@ -689,10 +664,10 @@ begin
       bpRight:
       begin
         FSearchButton.Anchors := FSearchButton.Anchors + [akRight];
-        FSearchButton.AnchorSide[akRight].Control := Self;
-        FSearchButton.AnchorSide[akRight].Side    := asrBottom;
-        FSearchButton.AnchorSide[akTop].Control   := FEdit;
-        FSearchButton.AnchorSide[akTop].Side      := asrTop;
+        FSearchButton.AnchorSide[akRight].Control  := Self;
+        FSearchButton.AnchorSide[akRight].Side     := asrBottom;
+        FSearchButton.AnchorSide[akTop].Control    := FEdit;
+        FSearchButton.AnchorSide[akTop].Side       := asrTop;
         FSearchButton.AnchorSide[akBottom].Control := FEdit;
         FSearchButton.AnchorSide[akBottom].Side    := asrBottom;
         FSearchButton.BorderSpacing.Right := 4;
@@ -765,48 +740,11 @@ begin
   FEdit.BorderSpacing.Right := RightSpacing;
 end;
 
-function TFRMaterialEditBase.GetValidationState: TFRValidationState;
-begin
-  Result := FValidationState;
-end;
-
-procedure TFRMaterialEditBase.SetValidationState(AValue: TFRValidationState);
-begin
-  if FValidationState = AValue then Exit;
-  FValidationState := AValue;
-  Invalidate;
-end;
-
-{ --- Novos setters --- }
-
-procedure TFRMaterialEditBase.SetHelperText(const AValue: string);
-begin
-  if FHelperText = AValue then Exit;
-  FHelperText := AValue;
-  if not (csLoading in ComponentState) then DoOnResize;
-  Invalidate;
-end;
-
-procedure TFRMaterialEditBase.SetErrorText(const AValue: string);
-begin
-  if FErrorText = AValue then Exit;
-  FErrorText := AValue;
-  if not (csLoading in ComponentState) then DoOnResize;
-  Invalidate;
-end;
-
 procedure TFRMaterialEditBase.SetShowCharCounter(AValue: Boolean);
 begin
   if FShowCharCounter = AValue then Exit;
   FShowCharCounter := AValue;
   if not (csLoading in ComponentState) then DoOnResize;
-  Invalidate;
-end;
-
-procedure TFRMaterialEditBase.SetRequired(AValue: Boolean);
-begin
-  if FRequired = AValue then Exit;
-  FRequired := AValue;
   Invalidate;
 end;
 
@@ -862,7 +800,7 @@ begin
     if FPasswordMode then
     begin
       FEdit.EchoMode := emPassword;
-      FEdit.PasswordChar := '*';
+      FEdit.PasswordChar  := '*';
       FEyeButton.IconMode := imEyeClosed;
     end
     else
@@ -888,7 +826,7 @@ begin
   else
   begin
     FEdit.EchoMode := emPassword;
-    FEdit.PasswordChar := '*';
+    FEdit.PasswordChar  := '*';
     FEyeButton.IconMode := imEyeClosed;
   end;
   FEyeButton.InvalidateCache;
@@ -920,14 +858,6 @@ begin
   Result := 0;
   if (FHelperText <> '') or (FErrorText <> '') or FShowCharCounter then
     Result := Canvas.TextHeight('Hg') + 4;
-end;
-
-procedure TFRMaterialEditBase.SetDensity(AValue: TFRMDDensity);
-begin
-  if FDensity = AValue then Exit;
-  FDensity := AValue;
-  if not (csLoading in ComponentState) then DoOnResize;
-  Invalidate;
 end;
 
 function TFRMaterialEditBase.GetDisplayHelperText: string;
@@ -1477,7 +1407,7 @@ begin
     FEdit.Color := Self.Color;
 
   { Prioridade: validação > foco > inativo }
-  case FValidationState of
+  case ValidationState of
     vsValid:   DecoColor := FValidColor;
     vsInvalid: DecoColor := FInvalidColor;
   else
@@ -1487,14 +1417,14 @@ begin
       DecoColor := DisabledColor;
   end;
 
-  if FValidationState = vsInvalid then
+  if ValidationState = vsInvalid then
     HelperColor := FInvalidColor
-  else if FValidationState = vsValid then
+  else if ValidationState = vsValid then
     HelperColor := FValidColor
   else
     HelperColor := DisabledColor;
 
-  HelperStr := GetDisplayHelperText;
+  HelperStr  := GetDisplayHelperText;
   CounterStr := '';
   if FShowCharCounter and (FEdit.MaxLength > 0) then
     CounterStr := IntToStr(Length(FEdit.Text)) + '/' + IntToStr(FEdit.MaxLength);
@@ -1509,31 +1439,31 @@ begin
   P.Rect := ClientRect;
   P.BgColor := Color;
   if Assigned(Parent) then P.ParentBgColor := Parent.Color else P.ParentBgColor := clNone;
-  
+
   P.Variant := FVariant;
   P.BorderRadius := FBorderRadius;
-  
+
   P.DecoColor := DecoColor;
   P.HelperColor := HelperColor;
   P.DisabledColor := DisabledColor;
-  
+
   P.IsFocused := FFocused;
   P.IsEnabled := Enabled;
-  P.IsRequired := FRequired;
-  
+  P.IsRequired := Required;
+
   P.EditLeft := FEdit.Left;
   P.EditTop := FEdit.Top;
   P.EditWidth := FEdit.Width;
   P.EditHeight := FEdit.Height;
-  
+
   P.ActionRight := ActionRightPos;
   P.BottomMargin := GetBottomMargin;
-  
+
   P.HelperText := HelperStr;
   P.CharCounterText := CounterStr;
   P.PrefixText := FPrefixText;
   P.SuffixText := FSuffixText;
-  
+
   P.EditFont := FEdit.Font;
   P.LabelFont := FLabel.Font;
   P.LabelRight := FLabel.Left + Canvas.TextWidth(FLabel.Caption);
@@ -1545,7 +1475,7 @@ begin
     P.LabelProgress := 1.0;
 
   TFRMaterialFieldPainter.DrawField(P);
-  
+
   if FSearchButton.Visible and (FSearchButton.NormalColor <> DecoColor) then
   begin
     FSearchButton.NormalColor := DecoColor;
@@ -1567,7 +1497,6 @@ begin
     Self.DisabledColor := $00B8AFA8;
   end;
   
-  Self.BevelOuter := bvNone;
   Self.BorderStyle := bsNone;
   Self.ParentColor := True;
   
@@ -1678,15 +1607,11 @@ begin
   FVariant              := mvStandard;
   FBorderRadius         := 0;
   FIconStrokeWidth      := 0;
-  FValidationState      := vsNone;
   FValidColor           := $0000B300;
   FInvalidColor         := $000000FF;
 
   { Valores padrão — novos campos }
-  FHelperText       := '';
-  FErrorText        := '';
   FShowCharCounter  := False;
-  FRequired         := False;
   FMinLength        := 0;
   FValidateMode     := vmOnExit;
   FPrefixText       := '';
@@ -2002,6 +1927,7 @@ destructor TFRMaterialEdit.Destroy;
 begin
   HideAutoCompletePopup;
   FreeAndNil(FAutoCompleteItems);
+  if Assigned(FAutoCompletePopup) then FreeAndNil(FAutoCompletePopup);
   inherited Destroy;
 end;
 

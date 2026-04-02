@@ -166,7 +166,7 @@ begin
   FEdit.ParentFont := True;
   FEdit.TabStop := True;
   FEdit.SetSubComponent(True);
-  FEdit.OnChange := @InternalEditChange;
+  FEdit.AddHandlerOnChange(@InternalEditChange);
   FEdit.OnKeyDown := @InternalEditKeyDown;
 
   { Ícone de lupa à esquerda }
@@ -221,6 +221,8 @@ end;
 
 destructor TFRMaterialSearchEdit.Destroy;
 begin
+  if Assigned(FEdit) then
+    FEdit.RemoveHandlerOnChange(@InternalEditChange);
   if Assigned(FLabelAnimator) then FLabelAnimator.Free;
   FDebounceTimer.Enabled := False;
   inherited Destroy;

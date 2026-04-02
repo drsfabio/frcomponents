@@ -228,24 +228,14 @@ begin
   { Leading icon or check (for filter chips when selected) }
   if FSelected and (FChipStyle = csFilter) then
   begin
-    iconBmp := FRRenderSVGIcon(
-      FRGetIconSVG(imSearch, FRColorToSVGHex(textColor), 2.0), icoSz, icoSz);
-    try
-      iconBmp.Draw(Canvas, 8, (Height - icoSz) div 2, False);
-    finally
-      iconBmp.Free;
-    end;
+    iconBmp := FRGetCachedIcon(imSearch, FRColorToSVGHex(textColor), 2.0, icoSz, icoSz);
+    iconBmp.Draw(Canvas, 8, (Height - icoSz) div 2, False);
     textX := 8 + icoSz + 8;
   end
   else if FShowIcon then
   begin
-    iconBmp := FRRenderSVGIcon(
-      FRGetIconSVG(FIconMode, FRColorToSVGHex(textColor), 2.0), icoSz, icoSz);
-    try
-      iconBmp.Draw(Canvas, 8, (Height - icoSz) div 2, False);
-    finally
-      iconBmp.Free;
-    end;
+    iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(textColor), 2.0, icoSz, icoSz);
+    iconBmp.Draw(Canvas, 8, (Height - icoSz) div 2, False);
     textX := 8 + icoSz + 8;
   end;
 
@@ -259,13 +249,8 @@ begin
   { Delete icon }
   if FDeletable then
   begin
-    iconBmp := FRRenderSVGIcon(
-      FRGetIconSVG(imClear, FRColorToSVGHex(textColor), 2.0), icoSz, icoSz);
-    try
-      iconBmp.Draw(Canvas, Width - 8 - icoSz, (Height - icoSz) div 2, False);
-    finally
-      iconBmp.Free;
-    end;
+    iconBmp := FRGetCachedIcon(imClear, FRColorToSVGHex(textColor), 2.0, icoSz, icoSz);
+    iconBmp.Draw(Canvas, Width - 8 - icoSz, (Height - icoSz) div 2, False);
   end;
 end;
 
