@@ -68,6 +68,7 @@ type
     FItems: TFRMaterialMenuItems;
     FMinWidth: Integer;
     FSubMenuTrigger: TFRMDSubMenuTrigger;
+    FRootForm: TCustomForm;
     procedure SetItems(AValue: TFRMaterialMenuItems);
   public
     constructor Create(AOwner: TComponent); override;
@@ -260,6 +261,7 @@ end;
 
 destructor TFRMaterialMenu.Destroy;
 begin
+  CloseAll;
   FItems.Free;
   inherited Destroy;
 end;
@@ -273,14 +275,21 @@ procedure TFRMaterialMenu.Popup(X, Y: Integer);
 var
   frm: TMenuForm;
 begin
+  CloseAll;
   frm := TMenuForm.CreateMenu(FItems, FMinWidth, Self, nil, FSubMenuTrigger, X, Y);
+  FRootForm := frm;
   frm.Show;
   frm.SetFocus;
 end;
 
 procedure TFRMaterialMenu.CloseAll;
 begin
-  { nothing — root forms handle their own lifecycle }
+  if Assigned(FRootForm) and (FRootForm is TMenuForm) then
+  begin
+    TMenuForm(FRootForm).CloseChildMenu;
+    FRootForm.Release;
+    FRootForm := nil;
+  end;
 end;
 
 { ── TMenuForm ── }
@@ -311,9 +320,8 @@ begin
   PopupMode := pmExplicit;
   PopupParent := Screen.ActiveForm;
 
-  { Only the root popup gets deactivate handler }
-  if FParentMenuForm = nil then
-    OnDeactivate := @FormDeactivate;
+  { All popups in the chain get deactivate handler }
+  OnDeactivate := @FormDeactivate;
 
   FHoverTimer := TTimer.Create(Self);
   FHoverTimer.Interval := 300;
@@ -486,6 +494,8 @@ var
 begin
   root := RootForm;
   root.CloseChildMenu;
+  if Assigned(root.FRootMenu) then
+    root.FRootMenu.FRootForm := nil;
   root.Release;
 end;
 
@@ -537,7 +547,7 @@ begin
       { hover highlight }
       if (i = FHoverIndex) and item.FEnabled then
         bmp.FillRect(0, yPos, Width, yPos + 48,
-          ColorToBGRA(MD3Colors.OnSurface, 20), dmDrawWithTransparency);
+          ColorToBGRA(MD3Colors.PrimaryContainer), dmDrawWithTransparency);
 
       { icon }
       if item.FIconMode <> imClear then
@@ -800,12 +810,31 @@ begin
 end;
 
 procedure TMenuForm.FormDeactivate(Sender: TObject);
+var
+  root: TMenuForm;
 begin
   { Ignore transient deactivation caused by child submenu closing }
   if FClosingChild then Exit;
+  { If focus moved to another form in the same menu chain, ignore }
   if IsInChain(Screen.ActiveCustomForm) then Exit;
-  CloseChildMenu;
-  Release;
+
+  { Delegate to root form to close the entire chain }
+  root := RootForm;
+  if root <> Self then
+  begin
+    if root.FClosingChild then Exit;
+    root.CloseChildMenu;
+    if Assigned(root.FRootMenu) then
+      root.FRootMenu.FRootForm := nil;
+    root.Release;
+  end
+  else
+  begin
+    CloseChildMenu;
+    if Assigned(FRootMenu) then
+      FRootMenu.FRootForm := nil;
+    Release;
+  end;
 end;
 
 procedure Register;
@@ -813,7 +842,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialmenu_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialMenu]);
+  RegisterComponents('Material Design 3', [TFRMaterialMenu]);
 end;
 
 end.

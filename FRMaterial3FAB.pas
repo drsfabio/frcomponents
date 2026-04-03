@@ -138,7 +138,7 @@ begin
     {$I icons\frmaterialextendedfab_icon.lrs}
     {$I icons\frmaterialfabmenu_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialFAB, TFRMaterialExtendedFAB, TFRMaterialFABMenu]);
+  RegisterComponents('Material Design 3', [TFRMaterialFAB, TFRMaterialExtendedFAB, TFRMaterialFABMenu]);
 end;
 
 { ── TFRMaterialFAB ── }

@@ -11,7 +11,9 @@ uses
   FRMaterial3Tabs, FRMaterial3TimePicker, FRMaterial3Toggle, FRMaterial3Tooltip,
   FRMaterial3TreeView, FRMaterialCheckComboEdit, FRMaterialComboEdit, FRMaterialCurrencyEdit,
   FRMaterialDateEdit, FRMaterialEdit, FRMaterialIcons, FRMaterialMaskEdit, FRMaterialMasks,
-  FRMaterialMemoEdit, FRMaterialSearchEdit, FRMaterialSpinEdit, FRMaterialTheme, materialdesign;
+  FRMaterialMemoEdit, FRMaterialSearchEdit, FRMaterialSpinEdit, FRMaterialTheme, materialdesign,
+  FRMaterial3DataGrid, FRMaterial3PageControl, FRMaterialFieldPainter, FRMaterialInternalEdits,
+  FRMaterialThemeManager;
 
 {$R *.res}
 

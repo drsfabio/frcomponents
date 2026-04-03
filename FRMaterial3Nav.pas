@@ -282,8 +282,8 @@ begin
         begin
           { active indicator pill }
           MD3FillRoundRect(bmp, xPos + iw div 2 - 32, 12,
-            xPos + iw div 2 + 32, 44, 16, MD3Colors.SecondaryContainer);
-          clr := MD3Colors.OnSecondaryContainer;
+            xPos + iw div 2 + 32, 44, 16, MD3Colors.PrimaryContainer);
+          clr := MD3Colors.OnPrimaryContainer;
         end
         else
           clr := MD3Colors.OnSurfaceVariant;
@@ -402,8 +402,8 @@ begin
       if i = FItemIndex then
       begin
         MD3FillRoundRect(bmp, 12, yPos, Width - 12, yPos + 56, 28,
-          MD3Colors.SecondaryContainer);
-        clr := MD3Colors.OnSecondaryContainer;
+          MD3Colors.PrimaryContainer);
+        clr := MD3Colors.OnPrimaryContainer;
       end
       else
         clr := MD3Colors.OnSurfaceVariant;
@@ -443,7 +443,7 @@ begin
   for i := 0 to FItems.Count - 1 do
   begin
     if i = FItemIndex then
-      clr := MD3Colors.OnSecondaryContainer
+      clr := MD3Colors.OnPrimaryContainer
     else
       clr := MD3Colors.OnSurfaceVariant;
     aRect := Rect(68, yPos, Width - 16, yPos + 56);
@@ -543,8 +543,8 @@ begin
       if i = FItemIndex then
       begin
         MD3FillRoundRect(bmp, 12, yPos + 4, 68, yPos + 36, 16,
-          MD3Colors.SecondaryContainer);
-        clr := MD3Colors.OnSecondaryContainer;
+          MD3Colors.PrimaryContainer);
+        clr := MD3Colors.OnPrimaryContainer;
       end
       else
         clr := MD3Colors.OnSurfaceVariant;
@@ -577,7 +577,7 @@ begin
   for i := 0 to FItems.Count - 1 do
   begin
     if i = FItemIndex then
-      clr := MD3Colors.OnSurface
+      clr := MD3Colors.Primary
     else
       clr := MD3Colors.OnSurfaceVariant;
     aRect := Rect(0, yPos + 36, 80, yPos + 56);
@@ -628,7 +628,7 @@ begin
     {$I icons\frmaterialnavdrawer_icon.lrs}
     {$I icons\frmaterialnavrail_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialNavBar, TFRMaterialNavDrawer, TFRMaterialNavRail]);
+  RegisterComponents('Material Design 3', [TFRMaterialNavBar, TFRMaterialNavDrawer, TFRMaterialNavRail]);
 end;
 
 end.

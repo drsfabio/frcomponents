@@ -276,7 +276,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmateriallistview_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialListView]);
+  RegisterComponents('Material Design 3', [TFRMaterialListView]);
 end;
 
 end.

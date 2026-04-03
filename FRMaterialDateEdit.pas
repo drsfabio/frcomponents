@@ -192,7 +192,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialdateedit_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialDateEdit]);
+  RegisterComponents('Material Design 3', [TFRMaterialDateEdit]);
 end;
 
 { ── Helpers ── }

@@ -188,24 +188,28 @@ var
 begin
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
-    { nav icon }
+    { nav icon — Primary tint for theme integration }
     titleLeft := 16;
     if FNavIcon <> imClear then
     begin
-      iconBmp := FRGetCachedIcon(FNavIcon, FRColorToSVGHex(MD3Colors.OnSurface), 2.0, 24, 24);
+      iconBmp := FRGetCachedIcon(FNavIcon, FRColorToSVGHex(MD3Colors.Primary), 2.0, 24, 24);
       bmp.PutImage(16, 20, iconBmp, dmDrawWithTransparency);
       titleLeft := 56;
     end;
 
-    { actions from right }
+    { actions from right — Primary tint }
     xAct := Width - 16;
     for i := FActions.Count - 1 downto 0 do
     begin
-      iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 24, 24);
+      iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.Primary), 2.0, 24, 24);
       Dec(xAct, 24);
       bmp.PutImage(xAct, 20, iconBmp, dmDrawWithTransparency);
       Dec(xAct, 16);
     end;
+
+    { bottom accent line }
+    bmp.DrawLineAntialias(0, Height - 1, Width, Height - 1,
+      ColorToBGRA(MD3Colors.Primary), 2);
 
     bmp.Draw(Canvas, 0, 0, False);
   finally
@@ -333,7 +337,7 @@ begin
     {$I icons\frmaterialappbar_icon.lrs}
     {$I icons\frmaterialtoolbar_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialAppBar, TFRMaterialToolbar]);
+  RegisterComponents('Material Design 3', [TFRMaterialAppBar, TFRMaterialToolbar]);
 end;
 
 end.

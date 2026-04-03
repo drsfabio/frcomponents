@@ -207,7 +207,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialcheckcomboedit_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialCheckComboEdit]);
+  RegisterComponents('Material Design 3', [TFRMaterialCheckComboEdit]);
 end;
 
 { TCheckComboDropDown }

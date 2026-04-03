@@ -63,6 +63,14 @@ type
     { Novos campos — AutoFocusNext }
     FAutoFocusNext: Boolean;
 
+    { Novo campo — Locked (campo bloqueado após resultado de pesquisa) }
+    FLocked: Boolean;
+    FLockedColor: TColor;
+
+    { Dimensões dos painéis (Mockup Universal Field) }
+    FLeftPanelWidth: Integer;
+    FRightPanelWidth: Integer;
+
     function IsNeededAdjustSize: boolean;
 
     function GetShowClearButton: Boolean;
@@ -91,6 +99,7 @@ type
     procedure EyeButtonClick(Sender: TObject);
     procedure SetShowCopyButton(AValue: Boolean);
     procedure CopyButtonClick(Sender: TObject);
+    procedure SetLocked(AValue: Boolean);
 
     { Helpers }
     function GetBottomMargin: Integer;
@@ -184,11 +193,16 @@ type
     procedure DoEnter; override;
     procedure DoExit; override;
     procedure DoOnResize; override;
+    procedure Loaded; override;
     procedure Paint; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure ApplyTheme(const AThemeManager: TObject); override;
+    { Bloqueia o campo (ReadOnly + visual MD3 locked) }
+    procedure Lock;
+    { Desbloqueia o campo (editável + visual MD3 normal) }
+    procedure Unlock;
     { Expõe o botão de limpeza para customização visual }
     property ClearButton: TFRMaterialIconButton read FClearButton;
     { Expõe o botão de pesquisa para customização visual }
@@ -266,6 +280,10 @@ type
     property ShowCopyButton: Boolean read FShowCopyButton write SetShowCopyButton default False;
     { Quando True, ao completar máscara/validação o foco avança para o próximo controle }
     property AutoFocusNext: Boolean read FAutoFocusNext write FAutoFocusNext default False;
+    { Quando True, campo está bloqueado (ReadOnly + visual MD3 locked) }
+    property Locked: Boolean read FLocked write SetLocked default False;
+    { Cor de fundo quando Locked = True. Se clNone, usa MD3Colors.SurfaceContainerHigh }
+    property LockedColor: TColor read FLockedColor write FLockedColor default clNone;
     property ShowHint: Boolean read GetEditShowHint write SetEditShowHint default False;
     property Tag: PtrInt read GetEditTag write SetEditTag default 0;
     property TabOrder;
@@ -479,7 +497,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialedit_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialEdit]);
+  RegisterComponents('Material Design 3', [TFRMaterialEdit]);
 end;
 
 { TFRMaterialEditBase }
@@ -500,6 +518,8 @@ end;
 
 procedure TFRMaterialEditBase.ClearButtonClick(Sender: TObject);
 begin
+  if FLocked then
+    Unlock;
   FEdit.Text := '';
   FEdit.SetFocus;
   if Assigned(FOnClearButtonClick) then
@@ -515,7 +535,7 @@ begin
     
   if Assigned(FLabelAnimator) then
   begin
-    if (Trim(FEdit.Text) <> '') or FFocused then
+    if (FLabel.Caption <> '') or (Trim(FEdit.Text) <> '') or FFocused then
       FLabelAnimator.FloatLabel
     else
       FLabelAnimator.InlineLabel;
@@ -535,7 +555,7 @@ procedure TFRMaterialEditBase.UpdateClearButton;
 var
   ShouldShow: Boolean;
 begin
-  ShouldShow := FShowClearButton and (FEdit.Text <> '') and not FEdit.ReadOnly;
+  ShouldShow := FShowClearButton and (FEdit.Text <> '');
   if ShouldShow = FClearButton.Visible then Exit;
 
   DisableAlign;
@@ -611,12 +631,16 @@ end;
 
 procedure TFRMaterialEditBase.AnchorButtons;
 var
-  LeftSpacing, RightSpacing: Integer;
-  RightAnchorCtrl: TControl;
-  RightAnchorSide: TAnchorSideReference;
+  LeftCursor, RightCursor: Integer;
 begin
-  LeftSpacing  := 4;
-  RightSpacing := 4;
+  if csLoading in ComponentState then Exit;
+
+  { Reinicia larguras dos painéis }
+  FLeftPanelWidth  := 4; { Margem inicial }
+  FRightPanelWidth := 4; { Margem inicial }
+  
+  LeftCursor  := 4;
+  RightCursor := 4;
 
   { Limpa âncoras dos botões antes de reconfigurar }
   FClearButton.Anchors  := [];
@@ -625,122 +649,107 @@ begin
   FEyeButton.Anchors    := [];
   FCopyButton.Anchors   := [];
 
-  { LeadingIcon — sempre à esquerda }
+  { --- Left Panel Slot --- }
+  
+  { 1. LeadingIcon }
   if FShowLeadingIcon then
   begin
     FLeadingIcon.Anchors := [akLeft, akTop, akBottom];
-    FLeadingIcon.AnchorSide[akLeft].Control   := Self;
-    FLeadingIcon.AnchorSide[akLeft].Side      := asrTop;
-    FLeadingIcon.AnchorSide[akTop].Control    := FEdit;
-    FLeadingIcon.AnchorSide[akTop].Side       := asrTop;
+    FLeadingIcon.AnchorSide[akLeft].Control := Self;
+    FLeadingIcon.AnchorSide[akLeft].Side    := asrTop;
+    FLeadingIcon.AnchorSide[akTop].Control  := FEdit;
+    FLeadingIcon.AnchorSide[akTop].Side     := asrTop;
     FLeadingIcon.AnchorSide[akBottom].Control := FEdit;
     FLeadingIcon.AnchorSide[akBottom].Side    := asrBottom;
-    FLeadingIcon.BorderSpacing.Left := 4;
-    Inc(LeftSpacing, FLeadingIcon.Width + 2);
+    FLeadingIcon.BorderSpacing.Left := LeftCursor;
+    
+    LeftCursor := FLeadingIcon.Width + 4;
+    Inc(FLeftPanelWidth, FLeadingIcon.Width + 4);
   end;
 
-  { Botão de pesquisa — posição configurável }
-  if FShowSearchButton then
+  { 2. Pesquisa (se na esquerda) }
+  if FShowSearchButton and (FSearchButtonPosition = bpLeft) then
   begin
-    FSearchButton.Anchors := [akTop, akBottom];
-    case FSearchButtonPosition of
-      bpLeft:
-      begin
-        FSearchButton.Anchors := FSearchButton.Anchors + [akLeft];
-        if FShowLeadingIcon then
-        begin
-          FSearchButton.AnchorSide[akLeft].Control := FLeadingIcon;
-          FSearchButton.AnchorSide[akLeft].Side    := asrBottom;
-        end
-        else
-        begin
-          FSearchButton.AnchorSide[akLeft].Control := Self;
-          FSearchButton.AnchorSide[akLeft].Side    := asrTop;
-        end;
-        FSearchButton.AnchorSide[akTop].Control    := FEdit;
-        FSearchButton.AnchorSide[akTop].Side       := asrTop;
-        FSearchButton.AnchorSide[akBottom].Control := FEdit;
-        FSearchButton.AnchorSide[akBottom].Side    := asrBottom;
-        FSearchButton.BorderSpacing.Left := 4;
-        Inc(LeftSpacing, FSearchButton.Width + 2);
-      end;
-      bpRight:
-      begin
-        FSearchButton.Anchors := FSearchButton.Anchors + [akRight];
-        FSearchButton.AnchorSide[akRight].Control  := Self;
-        FSearchButton.AnchorSide[akRight].Side     := asrBottom;
-        FSearchButton.AnchorSide[akTop].Control    := FEdit;
-        FSearchButton.AnchorSide[akTop].Side       := asrTop;
-        FSearchButton.AnchorSide[akBottom].Control := FEdit;
-        FSearchButton.AnchorSide[akBottom].Side    := asrBottom;
-        FSearchButton.BorderSpacing.Right := 4;
-        Inc(RightSpacing, FSearchButton.Width + 2);
-      end;
-    end;
+    FSearchButton.Anchors := [akLeft, akTop, akBottom];
+    FSearchButton.AnchorSide[akLeft].Control := Self;
+    FSearchButton.AnchorSide[akLeft].Side    := asrTop;
+    FSearchButton.AnchorSide[akTop].Control  := FEdit;
+    FSearchButton.AnchorSide[akTop].Side     := asrTop;
+    FSearchButton.AnchorSide[akBottom].Control := FEdit;
+    FSearchButton.AnchorSide[akBottom].Side    := asrBottom;
+    FSearchButton.BorderSpacing.Left := LeftCursor;
+    
+    Inc(FLeftPanelWidth, FSearchButton.Width + 4);
   end;
 
-  { Determina referência de âncora direita para botões internos }
+  { --- Right Panel Slot --- }
+  
+  { 1. Pesquisa (se na direita) }
   if FShowSearchButton and (FSearchButtonPosition = bpRight) then
   begin
-    RightAnchorCtrl := FSearchButton;
-    RightAnchorSide := asrTop;
-  end
-  else
-  begin
-    RightAnchorCtrl := Self;
-    RightAnchorSide := asrBottom;
+    FSearchButton.Anchors := [akRight, akTop, akBottom];
+    FSearchButton.AnchorSide[akRight].Control := Self;
+    FSearchButton.AnchorSide[akRight].Side    := asrBottom;
+    FSearchButton.AnchorSide[akTop].Control   := FEdit;
+    FSearchButton.AnchorSide[akTop].Side      := asrTop;
+    FSearchButton.AnchorSide[akBottom].Control := FEdit;
+    FSearchButton.AnchorSide[akBottom].Side    := asrBottom;
+    FSearchButton.BorderSpacing.Right := RightCursor;
+    
+    RightCursor := FSearchButton.Width + 4;
+    Inc(FRightPanelWidth, FSearchButton.Width + 4);
   end;
 
-  { EyeButton — à direita (antes do search se bpRight) }
+  { 2. EyeButton (Senha) }
   if FPasswordMode and FEyeButton.Visible then
   begin
-    FEyeButton.Anchors := [akTop, akRight, akBottom];
-    FEyeButton.AnchorSide[akTop].Control    := FEdit;
-    FEyeButton.AnchorSide[akTop].Side       := asrTop;
+    FEyeButton.Anchors := [akRight, akTop, akBottom];
+    FEyeButton.AnchorSide[akRight].Control := Self;
+    FEyeButton.AnchorSide[akRight].Side    := asrBottom;
+    FEyeButton.AnchorSide[akTop].Control   := FEdit;
+    FEyeButton.AnchorSide[akTop].Side      := asrTop;
     FEyeButton.AnchorSide[akBottom].Control := FEdit;
     FEyeButton.AnchorSide[akBottom].Side    := asrBottom;
-    FEyeButton.AnchorSide[akRight].Control  := RightAnchorCtrl;
-    FEyeButton.AnchorSide[akRight].Side     := RightAnchorSide;
-    FEyeButton.BorderSpacing.Right := 2;
-    Inc(RightSpacing, FEyeButton.Width + 2);
-    { Atualiza referência para o próximo botão }
-    RightAnchorCtrl := FEyeButton;
-    RightAnchorSide := asrTop;
+    FEyeButton.BorderSpacing.Right := RightCursor;
+    
+    RightCursor := RightCursor + FEyeButton.Width + 2;
+    Inc(FRightPanelWidth, FEyeButton.Width + 2);
   end;
 
-  { CopyButton — à direita }
+  { 3. CopyButton }
   if FShowCopyButton then
   begin
-    FCopyButton.Anchors := [akTop, akRight, akBottom];
-    FCopyButton.AnchorSide[akTop].Control    := FEdit;
-    FCopyButton.AnchorSide[akTop].Side       := asrTop;
+    FCopyButton.Anchors := [akRight, akTop, akBottom];
+    FCopyButton.AnchorSide[akRight].Control := Self;
+    FCopyButton.AnchorSide[akRight].Side    := asrBottom;
+    FCopyButton.AnchorSide[akTop].Control   := FEdit;
+    FCopyButton.AnchorSide[akTop].Side      := asrTop;
     FCopyButton.AnchorSide[akBottom].Control := FEdit;
     FCopyButton.AnchorSide[akBottom].Side    := asrBottom;
-    FCopyButton.AnchorSide[akRight].Control  := RightAnchorCtrl;
-    FCopyButton.AnchorSide[akRight].Side     := RightAnchorSide;
-    FCopyButton.BorderSpacing.Right := 2;
-    Inc(RightSpacing, FCopyButton.Width + 2);
-    { Atualiza referência para o próximo botão }
-    RightAnchorCtrl := FCopyButton;
-    RightAnchorSide := asrTop;
+    FCopyButton.BorderSpacing.Right := RightCursor;
+    
+    RightCursor := RightCursor + FCopyButton.Width + 2;
+    Inc(FRightPanelWidth, FCopyButton.Width + 2);
   end;
 
-  { Botão de limpeza — sempre à direita, antes dos anteriores }
-  if FShowClearButton then
+  { 4. ClearButton }
+  if FShowClearButton and FClearButton.Visible then
   begin
-    FClearButton.Anchors := [akTop, akRight, akBottom];
-    FClearButton.AnchorSide[akTop].Control    := FEdit;
-    FClearButton.AnchorSide[akTop].Side       := asrTop;
+    FClearButton.Anchors := [akRight, akTop, akBottom];
+    FClearButton.AnchorSide[akRight].Control := Self;
+    FClearButton.AnchorSide[akRight].Side    := asrBottom;
+    FClearButton.AnchorSide[akTop].Control   := FEdit;
+    FClearButton.AnchorSide[akTop].Side      := asrTop;
     FClearButton.AnchorSide[akBottom].Control := FEdit;
     FClearButton.AnchorSide[akBottom].Side    := asrBottom;
-    FClearButton.AnchorSide[akRight].Control  := RightAnchorCtrl;
-    FClearButton.AnchorSide[akRight].Side     := RightAnchorSide;
-    FClearButton.BorderSpacing.Right := 2;
-    Inc(RightSpacing, FClearButton.Width + 2);
+    FClearButton.BorderSpacing.Right := RightCursor;
+    
+    Inc(FRightPanelWidth, FClearButton.Width + 4);
   end;
 
-  FEdit.BorderSpacing.Left  := LeftSpacing;
-  FEdit.BorderSpacing.Right := RightSpacing;
+  { Aplica as margens calculadas ao painel central (FEdit) }
+  FEdit.BorderSpacing.Left  := FLeftPanelWidth;
+  FEdit.BorderSpacing.Right := FRightPanelWidth;
 end;
 
 procedure TFRMaterialEditBase.SetShowCharCounter(AValue: Boolean);
@@ -854,6 +863,49 @@ end;
 procedure TFRMaterialEditBase.CopyButtonClick(Sender: TObject);
 begin
   Clipboard.AsText := FEdit.Text;
+end;
+
+{ --- Locked (campo bloqueado após resultado de pesquisa) --- }
+
+procedure TFRMaterialEditBase.SetLocked(AValue: Boolean);
+begin
+  if FLocked = AValue then Exit;
+  FLocked := AValue;
+  if FLocked then
+  begin
+    FEdit.ReadOnly := True;
+    FEdit.AutoSelect := False;
+    if FLockedColor <> clNone then
+      Self.Color := FLockedColor
+    else
+      Self.Color := MD3Colors.SurfaceContainerHigh;
+  end
+  else
+  begin
+    FEdit.ReadOnly := False;
+    FEdit.AutoSelect := True;
+    if Assigned(FRMaterialDefaultThemeManager) then
+    begin
+      if FVariant = mvFilled then
+        Self.Color := MD3Colors.SurfaceContainerHighest
+      else
+        Self.Color := MD3Colors.Surface;
+    end
+    else
+      Self.Color := clWhite;
+  end;
+  UpdateClearButton;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.Lock;
+begin
+  SetLocked(True);
+end;
+
+procedure TFRMaterialEditBase.Unlock;
+begin
+  SetLocked(False);
 end;
 
 function TFRMaterialEditBase.GetBottomMargin: Integer;
@@ -1331,12 +1383,15 @@ begin
   if FValidateMode = vmOnExit then
     InternalValidate;
     
+  { MD3 floating label: permanece flutuante se há Caption definido,
+    mesmo com campo vazio — o TEdit cobre a posição inline, tornando
+    o label invisível. Só anima para inline quando não há Caption. }
   if Assigned(FLabelAnimator) then
   begin
-    if Trim(FEdit.Text) = '' then
-      FLabelAnimator.InlineLabel
+    if (FLabel.Caption <> '') or (Trim(FEdit.Text) <> '') then
+      FLabelAnimator.FloatLabel
     else
-      FLabelAnimator.FloatLabel;
+      FLabelAnimator.InlineLabel;
   end;
   
   Invalidate;
@@ -1350,17 +1405,19 @@ var
 begin
   BottomExtra := GetBottomMargin;
 
+  { Sempre alBottom para que o FEdit não cubra o label pintado pelo FieldPainter }
+  FEdit.Align := alBottom;
+
   if IsNeededAdjustSize then
   begin
-    FEdit.Align := alBottom;
     { Aplica delta de densidade na altura do edit interno }
-    FEdit.Constraints.MinHeight := Max(18, FEdit.Height + MD3DensityDelta(FDensity));
+    FEdit.Constraints.MinHeight := Max(24, FEdit.Height + MD3DensityDelta(FDensity));
     AutoSizedHeight :=
       FLabel.Height +
       FLabel.BorderSpacing.Around +
       FLabel.BorderSpacing.Bottom +
       FLabel.BorderSpacing.Top +
-      FEdit.Height +
+      FEdit.Constraints.MinHeight +
       FEdit.BorderSpacing.Around +
       FEdit.BorderSpacing.Bottom +
       FEdit.BorderSpacing.Top +
@@ -1368,14 +1425,11 @@ begin
 
     if Self.Height <> AutoSizedHeight then
       Self.Height := AutoSizedHeight;
-  end else
-  begin
-    FEdit.Align := alClient;
   end;
 
   { Dimensiona os botões proporcionais ao Edit; âncoras cuidam do posicionamento }
-  BtnSize := FEdit.Height - 2;
-  if BtnSize < 8 then BtnSize := 8;
+  BtnSize := FEdit.Height - 4;
+  if BtnSize < 16 then BtnSize := 16;
 
   if Assigned(FSearchButton) then
   begin
@@ -1402,6 +1456,13 @@ begin
     FCopyButton.Width  := BtnSize;
     FCopyButton.Height := BtnSize;
   end;
+
+  { Recalcula o layout dos painéis (Left, Center, Right) }
+  AnchorButtons;
+
+  { Responsividade: adaptar Font.Size proporcionalmente à altura do componente.
+    Referência MD3: Height 54 → Font.Size 12.  Mínimo 8, máximo 16. }
+  FEdit.Font.Size := EnsureRange(Self.Height * 12 div 54, 8, 16);
 
   inherited DoOnResize;
 end;
@@ -1463,11 +1524,15 @@ begin
   P.IsFocused := FFocused;
   P.IsEnabled := Enabled;
   P.IsRequired := Required;
+  P.IsLocked := FLocked;
 
   P.EditLeft := FEdit.Left;
   P.EditTop := FEdit.Top;
   P.EditWidth := FEdit.Width;
   P.EditHeight := FEdit.Height;
+
+  P.LeftPanelWidth := FLeftPanelWidth;
+  P.RightPanelWidth := FRightPanelWidth;
 
   P.ActionRight := ActionRightPos;
   P.BottomMargin := GetBottomMargin;
@@ -1634,6 +1699,8 @@ begin
   FPasswordMode     := False;
   FShowCopyButton   := False;
   FAutoFocusNext    := False;
+  FLocked           := False;
+  FLockedColor      := clNone;
 
   FEdit.Text := '';
 end;
@@ -1647,15 +1714,55 @@ begin
   inherited Destroy;
 end;
 
+procedure TFRMaterialEditBase.Loaded;
+begin
+  inherited Loaded;
+  if Assigned(FRMaterialDefaultThemeManager) then
+    ApplyTheme(FRMaterialDefaultThemeManager);
+end;
+
 procedure TFRMaterialEditBase.ApplyTheme(const AThemeManager: TObject);
 begin
-  // As the ThemeManager repopulates the global MD3Colors, we just extract from there!
   FAccentColor := MD3Colors.Primary;
-  FDisabledColor := MD3Colors.OnSurface; // MD3 uses OnSurface with low opacity for disabled
-  if FVariant = mvFilled then
-    Self.Color := MD3Colors.SurfaceContainerHighest;
+  FDisabledColor := MD3Colors.OnSurfaceVariant;
+
+  { Cores de fundo conforme variante e tema }
+  case FVariant of
+    mvFilled:   Self.Color := MD3Colors.SurfaceContainerHighest;
+    mvOutlined: Self.Color := MD3Colors.Surface;
+  else
+    Self.ParentColor := True;
+  end;
+
+  { Cores de texto — OnSurface contrasta com Surface/Container }
+  Self.Font.Color := MD3Colors.OnSurface;
+  FLabel.Font.Color := MD3Colors.OnSurfaceVariant;
   if Assigned(FSearchButton) then
+  begin
     FSearchButton.NormalColor := MD3Colors.Primary;
+    FSearchButton.HoverColor  := MD3Colors.OnPrimaryContainer;
+    FSearchButton.InvalidateCache;
+  end;
+  if Assigned(FClearButton) then
+  begin
+    FClearButton.NormalColor := MD3Colors.OnSurfaceVariant;
+    FClearButton.HoverColor  := MD3Colors.Error;
+    FClearButton.InvalidateCache;
+  end;
+  if Assigned(FLeadingIcon) then
+  begin
+    FLeadingIcon.NormalColor := MD3Colors.OnSurfaceVariant;
+    FLeadingIcon.HoverColor  := MD3Colors.Primary;
+    FLeadingIcon.InvalidateCache;
+  end;
+  { Atualiza cor de fundo conforme estado locked }
+  if FLocked then
+  begin
+    if FLockedColor <> clNone then
+      Self.Color := FLockedColor
+    else
+      Self.Color := MD3Colors.SurfaceContainerHigh;
+  end;
   Invalidate;
 end;
 

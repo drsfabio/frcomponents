@@ -147,7 +147,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialmemoedit_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialMemoEdit]);
+  RegisterComponents('Material Design 3', [TFRMaterialMemoEdit]);
 end;
 
 { TFRMaterialMemoEdit }

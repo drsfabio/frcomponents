@@ -101,7 +101,7 @@ begin
     {$I icons\frmaterialchip_icon.lrs}
     {$I icons\frmaterialsegmentedbutton_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialChip, TFRMaterialSegmentedButton]);
+  RegisterComponents('Material Design 3', [TFRMaterialChip, TFRMaterialSegmentedButton]);
 end;
 
 { ── TFRMaterialChip ── }

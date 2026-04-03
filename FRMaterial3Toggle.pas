@@ -54,6 +54,7 @@ type
   protected
     procedure Paint; override;
     procedure Click; override;
+    procedure Resize; override;
     class function GetControlClassDefaultSize: TSize; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -81,6 +82,7 @@ type
   protected
     procedure Paint; override;
     procedure Click; override;
+    procedure Resize; override;
     class function GetControlClassDefaultSize: TSize; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -108,7 +110,7 @@ begin
     {$I icons\frmaterialcheckbox_icon.lrs}
     {$I icons\frmaterialradiobutton_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialSwitch, TFRMaterialCheckBox, TFRMaterialRadioButton]);
+  RegisterComponents('Material Design 3', [TFRMaterialSwitch, TFRMaterialCheckBox, TFRMaterialRadioButton]);
 end;
 
 { ── TFRMaterialSwitch ── }
@@ -279,6 +281,14 @@ begin
   inherited;
 end;
 
+procedure TFRMaterialCheckBox.Resize;
+begin
+  inherited Resize;
+  { Responsividade: adaptar Font.Size proporcionalmente à altura.
+    Referência MD3: Height 24 → Font.Size 10.  Mínimo 8, máximo 14. }
+  Font.Size := EnsureRange(Height * 10 div 24, 8, 14);
+end;
+
 procedure TFRMaterialCheckBox.Paint;
 var
   bmp: TBGRABitmap;
@@ -287,7 +297,8 @@ var
   aRect: TRect;
   op: Byte;
 begin
-  boxSize := 18;
+  { Box proporcional à altura — referência: 18px para Height 24 }
+  boxSize := EnsureRange(Height * 18 div 24, 12, 22);
   boxX := 2;
   boxY := (Height - boxSize) div 2;
 
@@ -408,17 +419,27 @@ begin
   inherited;
 end;
 
+procedure TFRMaterialRadioButton.Resize;
+begin
+  inherited Resize;
+  { Responsividade: adaptar Font.Size proporcionalmente à altura.
+    Referência MD3: Height 24 → Font.Size 10.  Mínimo 8, máximo 14. }
+  Font.Size := EnsureRange(Height * 10 div 24, 8, 14);
+end;
+
 procedure TFRMaterialRadioButton.Paint;
 var
   bmp: TBGRABitmap;
-  circSize, circX, circY, circR: Integer;
+  circSize, circX, circY, circR, dotR: Integer;
   ringColor: TColor;
   aRect: TRect;
 begin
-  circSize := 20;
+  { Proporcional à altura — referência: 20px para Height 24 }
+  circSize := EnsureRange(Height * 20 div 24, 14, 24);
   circX := 2 + circSize div 2;
   circY := Height div 2;
   circR := circSize div 2;
+  dotR  := EnsureRange(circSize * 5 div 20, 3, 7);
 
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
@@ -429,7 +450,7 @@ begin
       bmp.EllipseAntialias(circX, circY, circR, circR,
         ColorToBGRA(ColorToRGB(ringColor)), 2.0);
       { Inner dot }
-      bmp.FillEllipseAntialias(circX, circY, 5, 5,
+      bmp.FillEllipseAntialias(circX, circY, dotR, dotR,
         ColorToBGRA(ColorToRGB(ringColor)));
     end
     else

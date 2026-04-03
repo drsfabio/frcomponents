@@ -67,7 +67,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialslider_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialSlider]);
+  RegisterComponents('Material Design 3', [TFRMaterialSlider]);
 end;
 
 constructor TFRMaterialSlider.Create(AOwner: TComponent);

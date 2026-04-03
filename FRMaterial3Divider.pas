@@ -49,17 +49,25 @@ type
   private
     FBorderRadius: Integer;
     FShowBorder: Boolean;
+    FContentPadding: Integer;
     procedure SetBorderRadius(AValue: Integer);
     procedure SetShowBorder(AValue: Boolean);
+    procedure SetContentPadding(AValue: Integer);
+    function GetCaptionHeight: Integer;
   protected
     procedure Paint; override;
+    procedure AdjustClientRect(var ARect: TRect); override;
   public
     constructor Create(AOwner: TComponent); override;
+    property CaptionHeight: Integer read GetCaptionHeight;
   published
     property BorderRadius: Integer read FBorderRadius write SetBorderRadius default 12;
     property ShowBorder: Boolean read FShowBorder write SetShowBorder default True;
+    { Padding interno aplicado aos 4 lados (top inclui altura da caption) }
+    property ContentPadding: Integer read FContentPadding write SetContentPadding default 16;
     property Align;
     property Anchors;
+    property BorderSpacing;
     property Caption;
     property Color;
     property Constraints;
@@ -82,7 +90,7 @@ begin
     {$I icons\frmaterialdivider_icon.lrs}
     {$I icons\frmaterialgroupbox_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialDivider, TFRMaterialGroupBox]);
+  RegisterComponents('Material Design 3', [TFRMaterialDivider, TFRMaterialGroupBox]);
 end;
 
 { ── TFRMaterialDivider ── }
@@ -153,6 +161,7 @@ begin
   inherited Create(AOwner);
   FBorderRadius := 12;
   FShowBorder := True;
+  FContentPadding := 16;
   Width := 250;
   Height := 150;
   BevelOuter := bvNone;
@@ -174,6 +183,41 @@ begin
   if FShowBorder = AValue then Exit;
   FShowBorder := AValue;
   Invalidate;
+end;
+
+procedure TFRMaterialGroupBox.SetContentPadding(AValue: Integer);
+begin
+  if AValue < 0 then AValue := 0;
+  if FContentPadding = AValue then Exit;
+  FContentPadding := AValue;
+  ReAlign;
+  Invalidate;
+end;
+
+function TFRMaterialGroupBox.GetCaptionHeight: Integer;
+begin
+  if Caption <> '' then
+  begin
+    Canvas.Font := Self.Font;
+    Canvas.Font.Style := [fsBold];
+    Result := Canvas.TextHeight('Áy') + 12; { text height + top margin }
+  end
+  else
+    Result := 0;
+end;
+
+procedure TFRMaterialGroupBox.AdjustClientRect(var ARect: TRect);
+var
+  topOffset: Integer;
+begin
+  inherited AdjustClientRect(ARect);
+  topOffset := FContentPadding;
+  if Caption <> '' then
+    topOffset := GetCaptionHeight + 8; { caption area + gap below caption }
+  ARect.Left := ARect.Left + FContentPadding;
+  ARect.Top := ARect.Top + topOffset;
+  ARect.Right := ARect.Right - FContentPadding;
+  ARect.Bottom := ARect.Bottom - FContentPadding;
 end;
 
 procedure TFRMaterialGroupBox.Paint;

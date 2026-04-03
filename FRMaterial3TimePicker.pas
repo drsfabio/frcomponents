@@ -294,7 +294,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialtimepicker_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialTimePicker]);
+  RegisterComponents('Material Design 3', [TFRMaterialTimePicker]);
 end;
 
 end.

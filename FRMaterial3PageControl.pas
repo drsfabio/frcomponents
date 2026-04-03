@@ -26,6 +26,7 @@ uses
   BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons;
 
 type
+  TFRTabPosition = (tpTop, tpBottom);
   TFRMaterialPageControl = class;
 
   { ── TFRMaterialTabPage ── }
@@ -70,12 +71,14 @@ type
     FOnCloseTab: TFRMDCloseTabEvent;
     FHoverTabIndex: Integer;
     FHoverClose: Boolean;
+    FTabPosition: TFRTabPosition;
     function GetPageCount: Integer;
     function GetPage(Index: Integer): TFRMaterialTabPage;
     function GetActivePage: TFRMaterialTabPage;
     procedure SetActivePage(AValue: TFRMaterialTabPage);
     procedure SetActivePageIndex(AValue: Integer);
     procedure SetShowCloseButton(AValue: Boolean);
+    procedure SetTabPosition(AValue: TFRTabPosition);
     procedure BackgroundImageChanged(Sender: TObject);
     function CalcTabWidth: Integer;
     function TabRect(AIndex: Integer): TRect;
@@ -103,6 +106,7 @@ type
     property BackgroundImage: TPicture read FBackgroundImage write FBackgroundImage;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnCloseTab: TFRMDCloseTabEvent read FOnCloseTab write FOnCloseTab;
+    property TabPosition: TFRTabPosition read FTabPosition write SetTabPosition default tpTop;
     property Align;
     property Anchors;
     property BorderSpacing;
@@ -187,6 +191,7 @@ begin
   FShowCloseButton := False;
   FHoverTabIndex := -1;
   FHoverClose := False;
+  FTabPosition := tpTop;
   FBackgroundImage := TPicture.Create;
   FBackgroundImage.OnChange := @BackgroundImageChanged;
   Width := 400;
@@ -256,6 +261,14 @@ begin
   Invalidate;
 end;
 
+procedure TFRMaterialPageControl.SetTabPosition(AValue: TFRTabPosition);
+begin
+  if FTabPosition = AValue then Exit;
+  FTabPosition := AValue;
+  UpdatePageLayout;
+  Invalidate;
+end;
+
 procedure TFRMaterialPageControl.BackgroundImageChanged(Sender: TObject);
 begin
   Invalidate;
@@ -298,9 +311,13 @@ var
   i, contentTop, contentH: Integer;
   page: TFRMaterialTabPage;
 begin
-  contentTop := FTabHeight;
   contentH := Height - FTabHeight;
   if contentH < 0 then contentH := 0;
+
+  if FTabPosition = tpTop then
+    contentTop := FTabHeight
+  else
+    contentTop := 0;
 
   for i := 0 to FPages.Count - 1 do
   begin
@@ -324,10 +341,14 @@ end;
 
 function TFRMaterialPageControl.TabRect(AIndex: Integer): TRect;
 var
-  tw: Integer;
+  tw, tabTop: Integer;
 begin
   tw := CalcTabWidth;
-  Result := Rect(AIndex * tw, 0, (AIndex + 1) * tw, FTabHeight);
+  if FTabPosition = tpTop then
+    tabTop := 0
+  else
+    tabTop := Height - FTabHeight;
+  Result := Rect(AIndex * tw, tabTop, (AIndex + 1) * tw, tabTop + FTabHeight);
 end;
 
 function TFRMaterialPageControl.CloseRect(AIndex: Integer): TRect;
@@ -335,46 +356,66 @@ var
   tr: TRect;
 begin
   tr := TabRect(AIndex);
-  Result := Rect(tr.Right - 26, (FTabHeight - 18) div 2,
-                 tr.Right - 8, (FTabHeight + 18) div 2);
+  Result := Rect(tr.Right - 26, tr.Top + (FTabHeight - 18) div 2,
+                 tr.Right - 8, tr.Top + (FTabHeight + 18) div 2);
 end;
 
 procedure TFRMaterialPageControl.Paint;
 var
   bmp: TBGRABitmap;
-  i, tw: Integer;
+  i, tw, tabBarY: Integer;
   page: TFRMaterialTabPage;
   tr, aRect: TRect;
   textColor: TColor;
   iconBmp: TBGRABitmap;
+  bx: Integer; { bitmap-local X for current tab }
+  closeX, closeY, closeCX, closeCY: Integer;
+  clipText: string;
+  availW: Integer;
 begin
-  { Tab bar }
+  if FTabPosition = tpTop then
+    tabBarY := 0
+  else
+    tabBarY := Height - FTabHeight;
+
+  { Tab bar bitmap — always FTabHeight tall, drawn at tabBarY }
   bmp := TBGRABitmap.Create(Width, FTabHeight, ColorToBGRA(MD3Colors.Surface));
   try
     { Background image on tab bar }
     if Assigned(FBackgroundImage.Graphic) and (not FBackgroundImage.Graphic.Empty) then
       bmp.Canvas.StretchDraw(Rect(0, 0, Width, FTabHeight), FBackgroundImage.Graphic);
 
-    { Bottom divider }
-    bmp.DrawLineAntialias(0, FTabHeight - 1, Width, FTabHeight - 1,
-      ColorToBGRA(MD3Colors.SurfaceContainerHighest), 1);
+    { Divider line }
+    if FTabPosition = tpTop then
+      bmp.DrawLineAntialias(0, FTabHeight - 1, Width, FTabHeight - 1,
+        ColorToBGRA(MD3Colors.SurfaceContainerHighest), 1)
+    else
+      bmp.DrawLineAntialias(0, 0, Width, 0,
+        ColorToBGRA(MD3Colors.SurfaceContainerHighest), 1);
 
     tw := CalcTabWidth;
     for i := 0 to FPages.Count - 1 do
     begin
       page := TFRMaterialTabPage(FPages[i]);
-      tr := TabRect(i);
+      bx := i * tw;
 
       { Hover highlight }
       if (i = FHoverTabIndex) and (not FHoverClose) then
-        bmp.FillRect(tr.Left, tr.Top, tr.Right, tr.Bottom,
+        bmp.FillRect(bx, 0, bx + tw, FTabHeight,
           ColorToBGRA(MD3Colors.OnSurface, 12), dmDrawWithTransparency);
 
       { Active indicator }
       if i = FActivePageIndex then
-        bmp.FillRect(tr.Left + tw div 4, FTabHeight - 3,
-                     tr.Left + tw - tw div 4, FTabHeight,
-          ColorToBGRA(MD3Colors.Primary), dmDrawWithTransparency);
+      begin
+        if FTabPosition = tpTop then
+          bmp.FillRect(bx + tw div 4, FTabHeight - 3,
+                       bx + tw - tw div 4, FTabHeight,
+            ColorToBGRA(MD3Colors.Primary), dmDrawWithTransparency)
+        else
+          bmp.FillRect(bx + tw div 4, 0,
+                       bx + tw - tw div 4, 3,
+            ColorToBGRA(MD3Colors.Primary), dmDrawWithTransparency);
+      end;
 
       { Icon }
       if page.FIconMode <> imClear then
@@ -384,22 +425,31 @@ begin
         else
           textColor := MD3Colors.OnSurfaceVariant;
         iconBmp := FRGetCachedIcon(page.FIconMode, FRColorToSVGHex(textColor), 2.0, 20, 20);
-        bmp.PutImage(tr.Left + (tw - 20) div 2, 8, iconBmp, dmDrawWithTransparency);
+        bmp.PutImage(bx + (tw - 20) div 2, 8, iconBmp, dmDrawWithTransparency);
       end;
 
       { Close button }
       if FShowCloseButton then
       begin
+        closeX := bx + tw - 24;
+        closeY := (FTabHeight - 14) div 2;
+        closeCX := closeX + 7;  { center X of 14px icon }
+        closeCY := closeY + 7;  { center Y of 14px icon }
         if (i = FHoverTabIndex) and FHoverClose then
-          textColor := MD3Colors.Error
+        begin
+          { MD3 state-layer circle behind close icon }
+          bmp.FillEllipseAntialias(closeCX, closeCY, 11, 11,
+            ColorToBGRA(MD3Colors.OnSurface, 30));
+          textColor := MD3Colors.Error;
+        end
         else
           textColor := MD3Colors.OnSurfaceVariant;
         iconBmp := FRGetCachedIcon(imClear, FRColorToSVGHex(textColor), 2.0, 14, 14);
-        bmp.PutImage(tr.Right - 24, (FTabHeight - 14) div 2, iconBmp, dmDrawWithTransparency);
+        bmp.PutImage(closeX, closeY, iconBmp, dmDrawWithTransparency);
       end;
     end;
 
-    bmp.Draw(Canvas, 0, 0, False);
+    bmp.Draw(Canvas, 0, tabBarY, False);
   finally
     bmp.Free;
   end;
@@ -419,23 +469,38 @@ begin
       textColor := MD3Colors.OnSurfaceVariant;
 
     aRect := tr;
+    aRect.Left := aRect.Left + 8;
     if FShowCloseButton then
       aRect.Right := aRect.Right - 28;
 
     if page.FIconMode <> imClear then
     begin
-      aRect.Top := 30;
-      aRect.Bottom := FTabHeight - 4;
+      aRect.Top := tr.Top + 30;
+      aRect.Bottom := tr.Top + FTabHeight - 4;
     end;
 
-    MD3DrawText(Canvas, page.FTabCaption, aRect, textColor, taCenter, True);
+    { Truncate text with ellipsis when it exceeds available width }
+    clipText := page.FTabCaption;
+    availW := aRect.Right - aRect.Left;
+    if Canvas.TextWidth(clipText) > availW then
+    begin
+      while (Length(clipText) > 1) and
+            (Canvas.TextWidth(clipText + '...') > availW) do
+        Delete(clipText, Length(clipText), 1);
+      clipText := clipText + '...';
+    end;
+
+    MD3DrawText(Canvas, clipText, aRect, textColor, taCenter, True);
   end;
 
   { Content area — only visible when no pages }
   if FPages.Count = 0 then
   begin
     Canvas.Brush.Color := MD3Colors.Surface;
-    Canvas.FillRect(Rect(0, FTabHeight, Width, Height));
+    if FTabPosition = tpTop then
+      Canvas.FillRect(Rect(0, FTabHeight, Width, Height))
+    else
+      Canvas.FillRect(Rect(0, 0, Width, Height - FTabHeight));
   end;
 end;
 
@@ -447,7 +512,9 @@ var
   allowClose: Boolean;
 begin
   inherited;
-  if (Button = mbLeft) and (Y < FTabHeight) then
+  if (Button = mbLeft) and
+     (((FTabPosition = tpTop) and (Y < FTabHeight)) or
+      ((FTabPosition = tpBottom) and (Y >= Height - FTabHeight))) then
   begin
     tw := CalcTabWidth;
     if tw > 0 then
@@ -483,7 +550,8 @@ var
   newClose: Boolean;
 begin
   inherited;
-  if Y < FTabHeight then
+  if ((FTabPosition = tpTop) and (Y < FTabHeight)) or
+     ((FTabPosition = tpBottom) and (Y >= Height - FTabHeight)) then
   begin
     tw := CalcTabWidth;
     if tw > 0 then
@@ -532,7 +600,7 @@ end;
 
 procedure Register;
 begin
-  RegisterComponents('BGRA Controls', [TFRMaterialPageControl]);
+  RegisterComponents('Material Design 3', [TFRMaterialPageControl]);
 end;
 
 end.

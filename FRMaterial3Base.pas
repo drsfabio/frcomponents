@@ -165,6 +165,8 @@ type
     property Align;
     property Anchors;
     property BorderSpacing;
+    property ShowHint;
+    property ParentShowHint;
     property TabOrder;
     property TabStop;
   end;

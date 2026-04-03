@@ -267,7 +267,7 @@ begin
     {$I icons\frmaterialbottomsheet_icon.lrs}
     {$I icons\frmaterialsidesheet_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialBottomSheet, TFRMaterialSideSheet]);
+  RegisterComponents('Material Design 3', [TFRMaterialBottomSheet, TFRMaterialSideSheet]);
 end;
 
 end.

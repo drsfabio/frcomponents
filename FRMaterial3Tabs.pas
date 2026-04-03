@@ -18,6 +18,7 @@ uses
 
 type
   TFRMDTabStyle = (tsFixed, tsScrollable);
+  TFRMDTabAlignment = (taSpread, taLeading);
 
   TFRMaterialTabItem = class(TCollectionItem)
   private
@@ -46,10 +47,14 @@ type
     FTabs: TFRMaterialTabItems;
     FTabIndex: Integer;
     FTabStyle: TFRMDTabStyle;
+    FTabAlignment: TFRMDTabAlignment;
     FBackgroundImage: TPicture;
     FOnChange: TNotifyEvent;
     procedure SetTabIndex(AValue: Integer);
+    procedure SetTabAlignment(AValue: TFRMDTabAlignment);
     function GetTabWidth: Integer;
+    function MeasureTabWidth(AIndex: Integer): Integer;
+    function GetTabLeft(AIndex: Integer): Integer;
     procedure BackgroundImageChanged(Sender: TObject);
   protected
     procedure Paint; override;
@@ -61,6 +66,7 @@ type
     property Tabs: TFRMaterialTabItems read FTabs write FTabs;
     property TabIndex: Integer read FTabIndex write SetTabIndex default 0;
     property TabStyle: TFRMDTabStyle read FTabStyle write FTabStyle default tsFixed;
+    property TabAlignment: TFRMDTabAlignment read FTabAlignment write SetTabAlignment default taSpread;
     property BackgroundImage: TPicture read FBackgroundImage write FBackgroundImage;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property Align;
@@ -109,6 +115,7 @@ begin
   FTabs := TFRMaterialTabItems.Create(Self);
   FTabIndex := 0;
   FTabStyle := tsFixed;
+  FTabAlignment := taSpread;
   FBackgroundImage := TPicture.Create;
   FBackgroundImage.OnChange := @BackgroundImageChanged;
   Width := 400;
@@ -128,6 +135,48 @@ begin
     Result := Width div FTabs.Count
   else
     Result := 90;
+end;
+
+function TFRMaterialTabs.MeasureTabWidth(AIndex: Integer): Integer;
+const
+  PAD = 32; { 16px padding each side }
+var
+  iconW: Integer;
+begin
+  Canvas.Font.Assign(Font);
+  Canvas.Font.Size := 10;
+  Result := Canvas.TextWidth(FTabs[AIndex].FCaption) + PAD;
+  if FTabs[AIndex].FIconMode <> imClear then
+  begin
+    iconW := 20 + 6; { icon + gap }
+    Result := Result + iconW;
+  end;
+  if Result < 72 then Result := 72; { MD3 min tab width }
+end;
+
+function TFRMaterialTabs.GetTabLeft(AIndex: Integer): Integer;
+var
+  j: Integer;
+begin
+  if FTabAlignment = taSpread then
+  begin
+    Result := AIndex * GetTabWidth;
+  end
+  else
+  begin
+    Result := 0;
+    for j := 0 to AIndex - 1 do
+      Result := Result + MeasureTabWidth(j);
+  end;
+end;
+
+procedure TFRMaterialTabs.SetTabAlignment(AValue: TFRMDTabAlignment);
+begin
+  if FTabAlignment <> AValue then
+  begin
+    FTabAlignment := AValue;
+    Invalidate;
+  end;
 end;
 
 procedure TFRMaterialTabs.SetTabIndex(AValue: Integer);
@@ -153,6 +202,7 @@ var
   textColor: TColor;
   iconBmp: TBGRABitmap;
   textY: Integer;
+  clipText: string;
 begin
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
@@ -166,11 +216,14 @@ begin
     bmp.DrawLineAntialias(0, Height - 1, Width, Height - 1,
       ColorToBGRA(MD3Colors.SurfaceContainerHighest), 1);
 
-    tw := GetTabWidth;
     for i := 0 to FTabs.Count - 1 do
     begin
       tab := FTabs[i];
-      xPos := i * tw;
+      xPos := GetTabLeft(i);
+      if FTabAlignment = taLeading then
+        tw := MeasureTabWidth(i)
+      else
+        tw := GetTabWidth;
 
       if i = FTabIndex then
       begin
@@ -197,11 +250,14 @@ begin
   end;
 
   { text labels — second pass on Canvas after bmp.Draw }
-  tw := GetTabWidth;
   for i := 0 to FTabs.Count - 1 do
   begin
     tab := FTabs[i];
-    xPos := i * tw;
+    xPos := GetTabLeft(i);
+    if FTabAlignment = taLeading then
+      tw := MeasureTabWidth(i)
+    else
+      tw := GetTabWidth;
 
     if i = FTabIndex then
       textColor := MD3Colors.Primary
@@ -213,8 +269,19 @@ begin
     else
       textY := 0;
 
-    aRect := Rect(xPos, textY, xPos + tw, Height - 4);
-    MD3DrawText(Canvas, tab.FCaption, aRect, textColor, taCenter, True);
+    aRect := Rect(xPos + 4, textY, xPos + tw - 4, Height - 4);
+
+    { Clipping: truncar texto com ellipsis se não couber }
+    Canvas.Font.Size := 10;
+    clipText := tab.FCaption;
+    if Canvas.TextWidth(clipText) > (aRect.Right - aRect.Left) then
+    begin
+      while (Length(clipText) > 1) and (Canvas.TextWidth(clipText + '...') > (aRect.Right - aRect.Left)) do
+        Delete(clipText, Length(clipText), 1);
+      clipText := clipText + '...';
+    end;
+
+    MD3DrawText(Canvas, clipText, aRect, textColor, taCenter, True);
   end;
 end;
 
@@ -225,17 +292,35 @@ end;
 
 procedure TFRMaterialTabs.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  tw, idx: Integer;
+  tw, idx, accX: Integer;
 begin
   inherited;
   if Button = mbLeft then
   begin
-    tw := GetTabWidth;
-    if tw > 0 then
+    if FTabAlignment = taLeading then
     begin
-      idx := X div tw;
-      if (idx >= 0) and (idx < FTabs.Count) then
-        SetTabIndex(idx);
+      { hit test por acumulação de larguras }
+      accX := 0;
+      for idx := 0 to FTabs.Count - 1 do
+      begin
+        tw := MeasureTabWidth(idx);
+        if (X >= accX) and (X < accX + tw) then
+        begin
+          SetTabIndex(idx);
+          Break;
+        end;
+        accX := accX + tw;
+      end;
+    end
+    else
+    begin
+      tw := GetTabWidth;
+      if tw > 0 then
+      begin
+        idx := X div tw;
+        if (idx >= 0) and (idx < FTabs.Count) then
+          SetTabIndex(idx);
+      end;
     end;
   end;
 end;
@@ -245,7 +330,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialtabs_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialTabs]);
+  RegisterComponents('Material Design 3', [TFRMaterialTabs]);
 end;
 
 end.

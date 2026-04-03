@@ -225,7 +225,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialmaskedit_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialMaskEdit]);
+  RegisterComponents('Material Design 3', [TFRMaterialMaskEdit]);
 end;
 
 { TFRMaterialMaskEdit }

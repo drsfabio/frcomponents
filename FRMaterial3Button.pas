@@ -139,7 +139,7 @@ begin
     {$I icons\frmaterialbuttonicon_icon.lrs}
     {$I icons\frmaterialsplitbutton_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialButton, TFRMaterialButtonIcon, TFRMaterialSplitButton]);
+  RegisterComponents('Material Design 3', [TFRMaterialButton, TFRMaterialButtonIcon, TFRMaterialSplitButton]);
 end;
 
 { ── Helpers for resolving MD3 colors by style ── }

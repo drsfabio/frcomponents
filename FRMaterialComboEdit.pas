@@ -221,7 +221,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialcomboedit_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialComboEdit]);
+  RegisterComponents('Material Design 3', [TFRMaterialComboEdit]);
 end;
 
 { TFRMaterialComboEdit }

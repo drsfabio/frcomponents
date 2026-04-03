@@ -117,7 +117,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialsearchedit_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialSearchEdit]);
+  RegisterComponents('Material Design 3', [TFRMaterialSearchEdit]);
 end;
 
 { TFRMaterialSearchEdit }

@@ -208,7 +208,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialcurrencyedit_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialCurrencyEdit]);
+  RegisterComponents('Material Design 3', [TFRMaterialCurrencyEdit]);
 end;
 
 { TFRMaterialCurrencyEdit }

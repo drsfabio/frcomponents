@@ -45,6 +45,10 @@ type
     property DialogIcon: TFRMDDialogIcon read FDialogIcon write FDialogIcon default diNone;
   end;
 
+{ Global helper — substitui MessageDlg com visual MD3 }
+function MessageDialog(const ATitle, AContent: string;
+  AIcon: TFRMDDialogIcon; AButtons: TFRMDDialogButtons): TFRMDDialogResult;
+
 procedure Register;
 
 implementation
@@ -58,9 +62,9 @@ type
     FIconLeft: Integer;
     FIconTop: Integer;
   protected
-    procedure EraseBackground(DC: HDC); override;
     procedure Paint; override;
   public
+    procedure EraseBackground(DC: HDC); override;
     destructor Destroy; override;
   end;
 
@@ -68,9 +72,12 @@ type
   private
     FResult: TFRMDDialogResult;
     FDialogPanel: TFRDialogPanel;
+    FDefaultBtn: TFRMaterialButton;
     procedure BtnClick(Sender: TObject);
+    procedure DialogShow(Sender: TObject);
   protected
     procedure Paint; override;
+    procedure Resize; override;
   public
     constructor CreateDialog(ATitle, AContent: string;
       AButtons: TFRMDDialogButtons; AIcon: TFRMDDialogIcon);
@@ -80,7 +87,7 @@ type
 
 procedure TFRDialogPanel.EraseBackground(DC: HDC);
 begin
-  { Do nothing — Paint handles everything with rounded corners }
+  if DC = 0 then ; { suppress hint }
 end;
 
 procedure TFRDialogPanel.Paint;
@@ -142,16 +149,20 @@ var
     btnX := btnX - btn.Width - BTN_GAP;
     btn.Left := btnX + BTN_GAP;
     btn.Top := dlgHeight - PADDING - BTN_H;
+    if (AStyle = mbsFilled) and (FDefaultBtn = nil) then
+      FDefaultBtn := btn;
   end;
 
 begin
   inherited CreateNew(nil);
   FResult := drNone;
+  FDefaultBtn := nil;
   BorderStyle := bsNone;
   Position := poScreenCenter;
   Color := clBlack;
   Font.Name := 'Segoe UI';
   Font.Quality := fqClearTypeNatural;
+  OnShow := @DialogShow;
   { Full screen scrim — painted via BGRABitmap in Paint }
   WindowState := wsMaximized;
 
@@ -189,8 +200,8 @@ begin
   FDialogPanel.Parent := Self;
   FDialogPanel.Width := DLG_WIDTH;
   FDialogPanel.Height := dlgHeight;
-  FDialogPanel.Left := (Screen.Width - DLG_WIDTH) div 2;
-  FDialogPanel.Top := (Screen.Height - dlgHeight) div 2;
+  { Centralizado via Anchors — funciona em qualquer monitor/resolução }
+  FDialogPanel.Anchors := [];
   FDialogPanel.Color := MD3Colors.SurfaceContainerHigh;
 
   { Icon — rendered directly on the panel's BGRABitmap }
@@ -262,6 +273,12 @@ begin
   if dbCancel in AButtons then AddBtn(dbCancel, 'Cancelar', mbsText);
 end;
 
+procedure TFRDialogForm.DialogShow(Sender: TObject);
+begin
+  if Assigned(FDefaultBtn) then
+    ActiveControl := FDefaultBtn;
+end;
+
 procedure TFRDialogForm.Paint;
 var
   bmp: TBGRABitmap;
@@ -272,6 +289,16 @@ begin
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
+  end;
+end;
+
+procedure TFRDialogForm.Resize;
+begin
+  inherited Resize;
+  if Assigned(FDialogPanel) then
+  begin
+    FDialogPanel.Left := (ClientWidth - FDialogPanel.Width) div 2;
+    FDialogPanel.Top := (ClientHeight - FDialogPanel.Height) div 2;
   end;
 end;
 
@@ -326,7 +353,22 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialdialog_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialDialog]);
+  RegisterComponents('Material Design 3', [TFRMaterialDialog]);
+end;
+
+function MessageDialog(const ATitle, AContent: string;
+  AIcon: TFRMDDialogIcon; AButtons: TFRMDDialogButtons): TFRMDDialogResult;
+begin
+  with TFRMaterialDialog.Create(nil) do
+  try
+    Title      := ATitle;
+    Content    := AContent;
+    DialogIcon := AIcon;
+    Buttons    := AButtons;
+    Result     := Execute;
+  finally
+    Free;
+  end;
 end;
 
 end.

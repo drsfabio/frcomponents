@@ -20,7 +20,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Forms, Graphics,
-  FRMaterial3Base, FRMaterialTheme;
+  FRMaterial3Base, FRMaterialTheme, FRMaterial3Button, FRMaterial3DataGrid;
 
 type
   TFRMaterialThemeManager = class(TComponent)
@@ -29,12 +29,15 @@ type
     FDarkMode : Boolean;
     FSeedColor: TColor;
     FUseSeed  : Boolean;
-    FListeners: TInterfaceList;
+    FDensity: TFRMDDensity;
+    FListeners: TFPList;
     procedure SetPalette(AValue: TFRMDPalette);
     procedure SetDarkMode(AValue: Boolean);
     procedure SetSeedColor(AValue: TColor);
     procedure SetUseSeed(AValue: Boolean);
+    procedure SetDensity(AValue: TFRMDDensity);
     procedure ApplyTheme;
+    procedure ApplyDensityToAll;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -53,6 +56,8 @@ type
     property SeedColor: TColor read FSeedColor write SetSeedColor default $006750A4;
     { Quando True, ignora Palette e gera o esquema a partir de SeedColor }
     property UseSeed: Boolean read FUseSeed write SetUseSeed default False;
+    { Densidade visual global: propaga para todos os componentes MD3 }
+    property Density: TFRMDDensity read FDensity write SetDensity default ddNormal;
   end;
 
 procedure Register;
@@ -64,7 +69,7 @@ implementation
 constructor TFRMaterialThemeManager.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FListeners := TInterfaceList.Create;
+  FListeners := TFPList.Create;
   if FRMaterialDefaultThemeManager = nil then
     FRMaterialDefaultThemeManager := Self;
     
@@ -72,6 +77,7 @@ begin
   FDarkMode  := False;
   FSeedColor := $006750A4; { Material Baseline purple }
   FUseSeed   := False;
+  FDensity   := ddNormal;
 end;
 
 destructor TFRMaterialThemeManager.Destroy;
@@ -84,14 +90,14 @@ end;
 
 procedure TFRMaterialThemeManager.RegisterComponent(AComponent: IFRMaterialComponent);
 begin
-  if Assigned(FListeners) and (FListeners.IndexOf(AComponent) < 0) then
-    FListeners.Add(AComponent);
+  if Assigned(FListeners) and (FListeners.IndexOf(Pointer(AComponent)) < 0) then
+    FListeners.Add(Pointer(AComponent));
 end;
 
 procedure TFRMaterialThemeManager.UnregisterComponent(AComponent: IFRMaterialComponent);
 begin
   if Assigned(FListeners) then
-    FListeners.Remove(AComponent);
+    FListeners.Remove(Pointer(AComponent));
 end;
 
 procedure TFRMaterialThemeManager.ApplyTheme;
@@ -107,7 +113,7 @@ begin
 
   { Propaga invalidação para todos os observers }
   if Assigned(FListeners) then
-    for i := 0 to FListeners.Count - 1 do
+    for i := FListeners.Count - 1 downto 0 do
     begin
       Comp := IFRMaterialComponent(FListeners[i]);
       if Assigned(Comp) then
@@ -152,6 +158,36 @@ begin
   FUseSeed := AValue;
   if not (csLoading in ComponentState) then
     ApplyTheme;
+end;
+
+procedure TFRMaterialThemeManager.SetDensity(AValue: TFRMDDensity);
+begin
+  if FDensity = AValue then Exit;
+  FDensity := AValue;
+  if not (csLoading in ComponentState) then
+    ApplyDensityToAll;
+end;
+
+procedure TFRMaterialThemeManager.ApplyDensityToAll;
+var
+  i, j: Integer;
+  F: TForm;
+  C: TComponent;
+begin
+  for i := 0 to Screen.FormCount - 1 do
+  begin
+    F := Screen.Forms[i];
+    for j := 0 to F.ComponentCount - 1 do
+    begin
+      C := F.Components[j];
+      if C is TFRMaterialCustomControl then
+        TFRMaterialCustomControl(C).Density := FDensity
+      else if C is TFRMaterialButton then
+        TFRMaterialButton(C).Density := FDensity
+      else if C is TFRMaterialDataGrid then
+        TFRMaterialDataGrid(C).Density := FDensity;
+    end;
+  end;
 end;
 
 procedure Register;

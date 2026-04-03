@@ -115,7 +115,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialspinedit_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialSpinEdit]);
+  RegisterComponents('Material Design 3', [TFRMaterialSpinEdit]);
 end;
 
 { TFRMaterialSpinEdit }

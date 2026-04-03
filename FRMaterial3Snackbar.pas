@@ -186,7 +186,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialsnackbar_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialSnackbar]);
+  RegisterComponents('Material Design 3', [TFRMaterialSnackbar]);
 end;
 
 end.

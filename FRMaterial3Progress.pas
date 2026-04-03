@@ -101,7 +101,7 @@ begin
     {$I icons\frmaterialcircularprogress_icon.lrs}
     {$I icons\frmaterialloadingindicator_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialLinearProgress,
+  RegisterComponents('Material Design 3', [TFRMaterialLinearProgress,
     TFRMaterialCircularProgress, TFRMaterialLoadingIndicator]);
 end;
 

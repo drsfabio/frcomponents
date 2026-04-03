@@ -32,9 +32,14 @@ type
     IsFocused: Boolean;
     IsEnabled: Boolean;
     IsRequired: Boolean;
+    IsLocked: Boolean;
     
     { Dimensões do controle interno (TEdit, TMemo) para envolver com bordas }
     EditLeft, EditTop, EditWidth, EditHeight: Integer;
+    
+    { Dimensões dos painéis laterais }
+    LeftPanelWidth: Integer;
+    RightPanelWidth: Integer;
     
     { Limite direito máximo para estender o sublinhado/borda se houver botões }
     ActionRight: Integer;   
@@ -97,24 +102,25 @@ begin
   CR := P.BorderRadius * 2;
   DecoBottom := P.Rect.Bottom - P.BottomMargin;
 
-  { Extensão horizontal do sublinhado/borda }
+  { Extensão horizontal do sublinhado/borda conforme arquitetura de painéis }
   if P.Variant = mvOutlined then
   begin
     LeftPos  := P.Rect.Left;
     RightPos := P.Rect.Right;
   end
-  else if P.ParentBgColor = P.BgColor then
-  begin
-    LeftPos := P.EditLeft;
-    if P.ActionRight > (P.EditLeft + P.EditWidth) then
-      RightPos := P.ActionRight
-    else
-      RightPos := P.EditLeft + P.EditWidth;
-  end
   else
   begin
+    { No modo Standard/Filled, o sublinhado cobre do início do LeftPanel até o fim do RightPanel }
     LeftPos  := P.Rect.Left;
     RightPos := P.Rect.Right;
+    
+    { Se não estiver preenchendo o componente todo (ParentBgColor=BgColor), 
+      podemos querer limitar ao conteúdo, mas no MD3 o container geralmente é o componente todo. }
+    if (P.ParentBgColor = P.BgColor) and (P.Variant = mvStandard) then
+    begin
+        LeftPos := P.Rect.Left + P.LeftPanelWidth;
+        RightPos := P.Rect.Right - P.RightPanelWidth;
+    end;
   end;
 
   FieldTop := P.EditTop - 2;
@@ -142,12 +148,20 @@ begin
   end;
 
   { Passo 2: Decoração do campo (Borda/Sublinhado) }
-  P.Canvas.Pen.Color := P.DecoColor;
+  if P.IsLocked then
+    P.Canvas.Pen.Color := P.DisabledColor
+  else
+    P.Canvas.Pen.Color := P.DecoColor;
 
   case P.Variant of
     mvStandard, mvFilled:
     begin
-      if P.IsFocused and P.IsEnabled then
+      if P.IsLocked then
+      begin
+        { Locked: linha sólida OnSurfaceVariant }
+        P.Canvas.Line(LeftPos, DecoBottom - 1, RightPos, DecoBottom - 1);
+      end
+      else if P.IsFocused and P.IsEnabled then
       begin
         P.Canvas.Line(LeftPos, DecoBottom - 2, RightPos, DecoBottom - 2);
         P.Canvas.Line(LeftPos, DecoBottom - 1, RightPos, DecoBottom - 1);
@@ -157,7 +171,9 @@ begin
     mvOutlined:
     begin
       P.Canvas.Brush.Style := bsClear;
-      if P.IsFocused and P.IsEnabled then
+      if P.IsLocked then
+        P.Canvas.Pen.Width := 1
+      else if P.IsFocused and P.IsEnabled then
         P.Canvas.Pen.Width := 2
       else
         P.Canvas.Pen.Width := 1;

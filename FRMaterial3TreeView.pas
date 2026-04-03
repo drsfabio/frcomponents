@@ -368,7 +368,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialtreeview_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialTreeView]);
+  RegisterComponents('Material Design 3', [TFRMaterialTreeView]);
 end;
 
 end.

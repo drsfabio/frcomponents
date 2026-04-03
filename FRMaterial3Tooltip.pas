@@ -203,7 +203,7 @@ begin
   {$IFDEF FPC}
     {$I icons\frmaterialtooltip_icon.lrs}
   {$ENDIF}
-  RegisterComponents('BGRA Controls', [TFRMaterialTooltip]);
+  RegisterComponents('Material Design 3', [TFRMaterialTooltip]);
 end;
 
 end.
