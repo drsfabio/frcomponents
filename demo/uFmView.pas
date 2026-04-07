@@ -9,7 +9,7 @@ uses
   FRMaterialComboEdit, FRMaterialCheckComboEdit, FRMaterialMaskEdit, FRMaterialCurrencyEdit,
   FRMaterialSpinEdit, FRMaterialSearchEdit, FRMaterial3Button, FRMaterial3Chip, FRMaterial3Progress,
   FRMaterial3Divider, FRMaterial3Sheet, FRMaterial3Nav, FRMaterial3AppBar, FRMaterial3Tabs,
-  FRMaterialThemeManager, FRMaterial3Dialog;
+  FRMaterialThemeManager, FRMaterial3Dialog, FRMaterial3Slider, FRMaterial3TimePicker;
 
 type
 
@@ -17,10 +17,21 @@ type
 
   TFmView = class(TForm)
     FRMaterialAppBar1: TFRMaterialAppBar;
-    FRMaterialDialog1: TFRMaterialDialog;
+    FRMaterialButton1: TFRMaterialButton;
+    FRMaterialChip1: TFRMaterialChip;
+    FRMaterialCircularProgress1: TFRMaterialCircularProgress;
+    FRMaterialDateEdit1: TFRMaterialDateEdit;
+    FRMaterialDivider1: TFRMaterialDivider;
+    FRMaterialLinearProgress1: TFRMaterialLinearProgress;
+    FRMaterialLinearProgress2: TFRMaterialLinearProgress;
+    FRMaterialLoadingIndicator1: TFRMaterialLoadingIndicator;
     FRMaterialNavRail1: TFRMaterialNavRail;
-    FRMaterialTabs1: TFRMaterialTabs;
+    FRMaterialSegmentedButton1: TFRMaterialSegmentedButton;
+    FRMaterialSlider1: TFRMaterialSlider;
     FRMaterialThemeManager1: TFRMaterialThemeManager;
+    FRMaterialThemeManager2: TFRMaterialThemeManager;
+    FRMaterialTimePicker1: TFRMaterialTimePicker;
+    FRMaterialTimePicker2: TFRMaterialTimePicker;
   private
 
   public

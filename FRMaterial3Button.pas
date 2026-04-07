@@ -32,14 +32,13 @@ type
     FButtonStyle: TFRMDButtonStyle;
     FIconMode: TFRIconMode;
     FShowIcon: Boolean;
-    FDensity: TFRMDDensity;
     procedure SetButtonStyle(AValue: TFRMDButtonStyle);
     procedure SetShowIcon(AValue: Boolean);
     procedure SetIconMode(AValue: TFRIconMode);
-    procedure SetDensity(AValue: TFRMDDensity);
     procedure GetStyleColors(out ABg, AText, ABorder: TColor);
   protected
     procedure Paint; override;
+    procedure DoOnResize; override;
     class function GetControlClassDefaultSize: TSize; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -48,8 +47,6 @@ type
     property ButtonStyle: TFRMDButtonStyle read FButtonStyle write SetButtonStyle default mbsFilled;
     property IconMode: TFRIconMode read FIconMode write SetIconMode default imSearch;
     property ShowIcon: Boolean read FShowIcon write SetShowIcon default False;
-    { Densidade visual: Normal (40px), Compact (36px), Dense (32px), UltraDense (28px) }
-    property Density: TFRMDDensity read FDensity write SetDensity default ddNormal;
     property Anchors;
     property Caption;
     property Enabled;
@@ -210,15 +207,6 @@ begin
   Result.cy := 40;
 end;
 
-procedure TFRMaterialButton.SetDensity(AValue: TFRMDDensity);
-begin
-  if FDensity = AValue then Exit;
-  FDensity := AValue;
-  { Ajusta a altura do botão conforme a densidade }
-  Height := 40 + MD3DensityDelta(AValue);
-  Invalidate;
-end;
-
 procedure TFRMaterialButton.SetButtonStyle(AValue: TFRMDButtonStyle);
 begin
   if FButtonStyle = AValue then Exit;
@@ -238,6 +226,16 @@ begin
   if FIconMode = AValue then Exit;
   FIconMode := AValue;
   Invalidate;
+end;
+
+procedure TFRMaterialButton.DoOnResize;
+begin
+  inherited DoOnResize;
+  if not (csLoading in ComponentState) then
+  begin
+    { Ajusta a altura fixa do botão de acordo com a densidade MD3 }
+    Height := 40 + MD3DensityDelta(Density);
+  end;
 end;
 
 procedure TFRMaterialButton.Paint;

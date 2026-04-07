@@ -25,7 +25,7 @@ type
 
   { TFRMaterialSpinEdit }
 
-  TFRMaterialSpinEdit = class(TCustomPanel)
+  TFRMaterialSpinEdit = class(TCustomPanel, IFRMaterialComponent)
   private
     FAccentColor: TColor;
     FDisabledColor: TColor;
@@ -71,6 +71,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
     property Edit: TEdit read FEdit;
     property MinusButton: TFRMaterialIconButton read FMinusButton;
     property PlusButton: TFRMaterialIconButton read FPlusButton;
@@ -131,6 +132,8 @@ begin
   Self.BorderStyle  := bsNone;
   Self.DisabledColor := $00B8AFA8;
   Self.ParentColor  := True;
+  
+  FRMDRegisterComponent(Self);
 
   FLabel.Align := alNone;
   FLabel.Visible := False;
@@ -460,7 +463,14 @@ begin
   if Assigned(FEdit) then
     FEdit.RemoveHandlerOnChange(@EditChange);
   if Assigned(FLabelAnimator) then FLabelAnimator.Free;
+  FRMDUnregisterComponent(Self);
   inherited Destroy;
+end;
+
+procedure TFRMaterialSpinEdit.ApplyTheme(const AThemeManager: TObject);
+begin
+  if not Assigned(AThemeManager) then Exit;
+  Invalidate;
 end;
 
 end.

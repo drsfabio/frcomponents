@@ -37,8 +37,9 @@ type
   TFRMDSortEvent = procedure(Sender: TObject; ACol: Integer;
     var ADirection: TFRMDSortDirection) of object;
 
-  TFRMaterialDataGrid = class(TStringGrid)
+  TFRMaterialDataGrid = class(TStringGrid, IFRMaterialComponent)
   private
+    FSyncWithTheme: TFRMDSyncOptions;
     FDensity: TFRMDDensity;
     FZebraStripes: Boolean;
     FSortCol: Integer;
@@ -59,6 +60,8 @@ type
     procedure SelectEditor; override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
     { Ordena a coluna ACol pelo índice. AscDesc: True=Asc, False=Desc }
     procedure SortByColumn(ACol: Integer; AAscending: Boolean);
     { Col/linha ativamente ordenada (somente leitura) }
@@ -71,6 +74,7 @@ type
     property ZebraStripes: Boolean read FZebraStripes write SetZebraStripes default False;
     { Disparado ao clicar em um cabeçalho de coluna }
     property OnSortColumn: TFRMDSortEvent read FOnSortColumn write FOnSortColumn;
+    property SyncWithTheme: TFRMDSyncOptions read FSyncWithTheme write FSyncWithTheme default [toColor, toDensity, toVariant];
     { Herda todas as propriedades do TStringGrid }
     property Align;
     property Anchors;
@@ -140,6 +144,7 @@ begin
   FSortCol      := -1;
   FSortDir      := sdNone;
   FHoveredRow   := -1;
+  FSyncWithTheme := [toColor, toDensity, toVariant];
 
   { Defaults do grid }
   FixedRows     := 1;
@@ -149,6 +154,24 @@ begin
   DefaultColWidth := 120;
   Options       := Options + [goRowSelect, goColSizing, goSmoothScroll]
                             - [goVertLine, goHorzLine, goDrawFocusSelected];
+
+  ApplyMD3Style;
+  
+  FRMDRegisterComponent(Self);
+end;
+
+destructor TFRMaterialDataGrid.Destroy;
+begin
+  FRMDUnregisterComponent(Self);
+  inherited Destroy;
+end;
+
+procedure TFRMaterialDataGrid.ApplyTheme(const AThemeManager: TObject);
+begin
+  if not Assigned(AThemeManager) then Exit;
+
+  if toDensity in FSyncWithTheme then
+    SetDensity(FRMDGetThemeDensity(AThemeManager));
 
   ApplyMD3Style;
 end;

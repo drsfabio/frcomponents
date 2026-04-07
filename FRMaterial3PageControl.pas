@@ -23,7 +23,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, Forms, Types,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons;
+  BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterial3Base, FRMaterialIcons;
 
 type
   TFRTabPosition = (tpTop, tpBottom);
@@ -31,7 +31,7 @@ type
 
   { ── TFRMaterialTabPage ── }
 
-  TFRMaterialTabPage = class(TCustomControl)
+  TFRMaterialTabPage = class(TCustomControl, IFRMaterialComponent)
   private
     FPageControl: TFRMaterialPageControl;
     FTabCaption: TCaption;
@@ -42,6 +42,7 @@ type
     procedure SetIconMode(AValue: TFRIconMode);
   protected
     procedure Paint; override;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -60,7 +61,7 @@ type
 
   { ── TFRMaterialPageControl ── }
 
-  TFRMaterialPageControl = class(TCustomControl)
+  TFRMaterialPageControl = class(TCustomControl, IFRMaterialComponent)
   private
     FPages: TList;
     FActivePageIndex: Integer;
@@ -88,6 +89,7 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseLeave; override;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
     procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -130,6 +132,9 @@ uses Math;
 constructor TFRMaterialTabPage.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  
+  FRMDRegisterComponent(Self);
+
   FPageControl := nil;
   FIconMode := imClear;
   FImageIndex := -1;
@@ -140,7 +145,16 @@ destructor TFRMaterialTabPage.Destroy;
 begin
   if Assigned(FPageControl) then
     FPageControl.RemovePage(Self);
+    
+  FRMDUnregisterComponent(Self);
+    
   inherited Destroy;
+end;
+
+procedure TFRMaterialTabPage.ApplyTheme(const AThemeManager: TObject);
+begin
+  if not Assigned(AThemeManager) then Exit;
+  Invalidate;
 end;
 
 procedure TFRMaterialTabPage.SetPageControl(AValue: TFRMaterialPageControl);
@@ -185,6 +199,9 @@ end;
 constructor TFRMaterialPageControl.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  
+  FRMDRegisterComponent(Self);
+
   FPages := TList.Create;
   FActivePageIndex := -1;
   FTabHeight := 48;
@@ -207,7 +224,16 @@ begin
     TFRMaterialTabPage(FPages[i]).FPageControl := nil;
   FPages.Free;
   FBackgroundImage.Free;
+  
+  FRMDUnregisterComponent(Self);
+
   inherited Destroy;
+end;
+
+procedure TFRMaterialPageControl.ApplyTheme(const AThemeManager: TObject);
+begin
+  if not Assigned(AThemeManager) then Exit;
+  Invalidate;
 end;
 
 function TFRMaterialPageControl.GetPageCount: Integer;

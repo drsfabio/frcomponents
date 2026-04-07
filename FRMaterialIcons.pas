@@ -39,7 +39,7 @@ type
     imNightlight, imLightMode, imList, imDashboard,
     imExpandMore, imExpandLess, imFolder, imFolderOpen,
     imWarning, imInfo, imError, imSuccess, imHelp,
-    imLock,
+    imLock, imShield,
     { Financeiro }
     imMoney, imCreditCard, imWallet, imReceipt,
     imBarChart, imPieChart, imTrendUp, imTrendDown,
@@ -134,6 +134,8 @@ function FRInfoIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRErrorIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRSuccessIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRHelpIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRLockIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRShieldIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 { Financeiro }
 function FRMoneyIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRCreditCardIconSVG(const AHex: string; AStroke: Double = 2.0): string;
@@ -1273,6 +1275,29 @@ begin
     '</svg>';
 end;
 
+function FRLockIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="3" y="11" width="18" height="11" rx="2" ry="2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<path d="M7 11V7a5 5 0 0110 0v4" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<circle cx="12" cy="16" r="1.5" fill="' + AHex + '"/>' +
+    '</svg>';
+end;
+
+function FRShieldIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linejoin="round"/>' +
+    '<polyline points="9 12 11 14 15 10" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
 { Uses AStroke if > 0, otherwise falls back to ADefault.
   Avoids the repetitive 'if AStroke > 0 then ... else ...' pattern. }
 function UseStroke(AStroke, ADefault: Double): Double; inline;
@@ -1325,6 +1350,8 @@ begin
     imError:        Result := FRErrorIconSVG(AHex,         UseStroke(AStroke, 2.0));
     imSuccess:      Result := FRSuccessIconSVG(AHex,       UseStroke(AStroke, 2.0));
     imHelp:         Result := FRHelpIconSVG(AHex,          UseStroke(AStroke, 2.0));
+    imLock:         Result := FRLockIconSVG(AHex,          UseStroke(AStroke, 2.0));
+    imShield:       Result := FRShieldIconSVG(AHex,        UseStroke(AStroke, 2.0));
     { Financeiro }
     imMoney:        Result := FRMoneyIconSVG(AHex,         UseStroke(AStroke, 2.0));
     imCreditCard:   Result := FRCreditCardIconSVG(AHex,    UseStroke(AStroke, 2.0));
@@ -1530,8 +1557,7 @@ procedure TFRMaterialIconButton.Paint;
 var
   bmp: TBGRABitmap;
 begin
-  Canvas.Brush.Color := Parent.Color;
-  Canvas.FillRect(ClientRect);
+  { Não preenche fundo — o parent (TFRMaterialEditBase) já pintou a região }
 
   if (FCacheW <> Width) or (FCacheH <> Height) or (FCacheMode <> FIconMode) then
     RebuildCache;

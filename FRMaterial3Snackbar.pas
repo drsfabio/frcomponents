@@ -15,10 +15,10 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, Forms, ExtCtrls,
   {$IFDEF FPC} LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base;
+  BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterial3Base;
 
 type
-  TFRMaterialSnackbar = class(TComponent)
+  TFRMaterialSnackbar = class(TComponent, IFRMaterialComponent)
   private
     FMessage: string;
     FActionText: string;
@@ -37,6 +37,7 @@ type
     procedure Show(const AMessage: string); overload;
     procedure Show(const AMessage, AAction: string); overload;
     procedure Hide;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
   published
     property Message: string read FMessage write FMessage;
     property ActionText: string read FActionText write FActionText;
@@ -101,13 +102,25 @@ begin
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
   FTimer.OnTimer := @OnTimerFire;
+  
+  FRMDRegisterComponent(Self);
 end;
 
 destructor TFRMaterialSnackbar.Destroy;
 begin
   Hide;
   FTimer.Free;
+  
+  FRMDUnregisterComponent(Self);
+    
   inherited Destroy;
+end;
+
+procedure TFRMaterialSnackbar.ApplyTheme(const AThemeManager: TObject);
+begin
+  if not Assigned(AThemeManager) then Exit;
+  if Assigned(FPanel) then
+    FPanel.Invalidate;
 end;
 
 procedure TFRMaterialSnackbar.Show;

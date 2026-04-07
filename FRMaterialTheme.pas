@@ -16,7 +16,7 @@ unit FRMaterialTheme;
 interface
 
 uses
-  Graphics, Math;
+  Graphics, Math, SysUtils;
 
 type
   { Variante visual do campo Material Design.
@@ -34,17 +34,34 @@ type
   { Density scale MD3. Cada nível reduz alturas em 4px.
     Equiv: 0, -1, -2, -3 na spec MD3. }
   TFRMDDensity = (
-    ddNormal,     { 0dp  — padrão MD3          }
-    ddCompact,    { -4px — formulários médios  }
-    ddDense,      { -8px — tabelas / grids     }
-    ddUltraDense  { -12px — espaço mínimo      }
+    ddNormal,      {  0px — espaço padrão    }
+    ddCompact,     { -4px — compacto         }
+    ddDense,       { -8px — denso            }
+    ddUltraDense   { -12px — espaço mínimo   }
   );
+
+  { Opções de sincronização com o ThemeManager global }
+  TFRMDSyncOption = (toColor, toDensity, toVariant);
+  TFRMDSyncOptions = set of TFRMDSyncOption;
 
   { Interface a ser implementada por todo componente que desejar
     ouvir mudanças globais de tema/paleta. }
   IFRMaterialComponent = interface
     ['{6BC17C2F-4A93-4B0F-8761-DCED7B94B5CB}']
     procedure ApplyTheme(const AThemeManager: TObject);
+  end;
+
+  { Interface exposta pelo TFRMaterialThemeManager para que componentes
+    base possam registrar-se e ler propriedades sem criar dependência
+    circular de unidade. }
+  IFRMaterialThemeManager = interface
+    ['{A3D71C8F-9642-4E30-B812-3F5E9C1A7B20}']
+    procedure RegisterComponent(AComponent: IFRMaterialComponent);
+    procedure UnregisterComponent(AComponent: IFRMaterialComponent);
+    function GetDensity: TFRMDDensity;
+    function GetVariant: TFRMaterialVariant;
+    property Density: TFRMDDensity read GetDensity;
+    property Variant: TFRMaterialVariant read GetVariant;
   end;
 
 var
@@ -70,6 +87,22 @@ function MCContrastText(ABg: TColor): TColor;
 { Retorna o delta em pixels para a escala de densidade.
   Normal=0, Compact=-4, Dense=-8, UltraDense=-12. }
 function MD3DensityDelta(ADensity: TFRMDDensity): Integer;
+
+{ Registra AComponent no ThemeManager global, se disponível.
+  Chame no constructor dos componentes MD3. }
+procedure FRMDRegisterComponent(AComponent: IFRMaterialComponent);
+
+{ Remove o registro de AComponent no ThemeManager global, se disponível.
+  Chame no destructor dos componentes MD3. }
+procedure FRMDUnregisterComponent(AComponent: IFRMaterialComponent);
+
+{ Retorna a densidade do AThemeManager (via IFRMaterialThemeManager).
+  Retorna ddNormal se AThemeManager não implementar a interface. }
+function FRMDGetThemeDensity(AThemeManager: TObject): TFRMDDensity;
+
+{ Retorna a variante visual do AThemeManager (via IFRMaterialThemeManager).
+  Retorna mvStandard se AThemeManager não implementar a interface. }
+function FRMDGetThemeVariant(AThemeManager: TObject): TFRMaterialVariant;
 
 implementation
 
@@ -124,6 +157,42 @@ const
   Deltas: array[TFRMDDensity] of Integer = (0, -4, -8, -12);
 begin
   Result := Deltas[ADensity];
+end;
+
+procedure FRMDRegisterComponent(AComponent: IFRMaterialComponent);
+var
+  TM: IFRMaterialThemeManager;
+begin
+  if Supports(FRMaterialDefaultThemeManager, IFRMaterialThemeManager, TM) then
+    TM.RegisterComponent(AComponent);
+end;
+
+procedure FRMDUnregisterComponent(AComponent: IFRMaterialComponent);
+var
+  TM: IFRMaterialThemeManager;
+begin
+  if Supports(FRMaterialDefaultThemeManager, IFRMaterialThemeManager, TM) then
+    TM.UnregisterComponent(AComponent);
+end;
+
+function FRMDGetThemeDensity(AThemeManager: TObject): TFRMDDensity;
+var
+  TM: IFRMaterialThemeManager;
+begin
+  if Supports(AThemeManager, IFRMaterialThemeManager, TM) then
+    Result := TM.Density
+  else
+    Result := ddNormal;
+end;
+
+function FRMDGetThemeVariant(AThemeManager: TObject): TFRMaterialVariant;
+var
+  TM: IFRMaterialThemeManager;
+begin
+  if Supports(AThemeManager, IFRMaterialThemeManager, TM) then
+    Result := TM.Variant
+  else
+    Result := mvStandard;
 end;
 
 end.

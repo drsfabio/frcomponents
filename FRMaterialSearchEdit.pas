@@ -26,7 +26,7 @@ type
 
   { TFRMaterialSearchEdit }
 
-  TFRMaterialSearchEdit = class(TCustomPanel)
+  TFRMaterialSearchEdit = class(TCustomPanel, IFRMaterialComponent)
   private
     FAccentColor: TColor;
     FDisabledColor: TColor;
@@ -76,6 +76,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
     property Edit: TEdit read FEdit;
   published
     property Align;
@@ -133,6 +134,8 @@ begin
   Self.BorderStyle  := bsNone;
   Self.DisabledColor := $00B8AFA8;
   Self.ParentColor  := True;
+  
+  FRMDRegisterComponent(Self);
 
   FLabel.Align := alNone;
   FLabel.Visible := False;
@@ -221,11 +224,18 @@ end;
 
 destructor TFRMaterialSearchEdit.Destroy;
 begin
-  if Assigned(FEdit) then
-    FEdit.RemoveHandlerOnChange(@InternalEditChange);
   if Assigned(FLabelAnimator) then FLabelAnimator.Free;
   FDebounceTimer.Enabled := False;
+  
+  FRMDUnregisterComponent(Self);
+    
   inherited Destroy;
+end;
+
+procedure TFRMaterialSearchEdit.ApplyTheme(const AThemeManager: TObject);
+begin
+  if not Assigned(AThemeManager) then Exit;
+  Invalidate;
 end;
 
 procedure TFRMaterialSearchEdit.SetColor(AValue: TColor);

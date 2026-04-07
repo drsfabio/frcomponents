@@ -19,25 +19,28 @@ unit FRMaterialThemeManager;
 interface
 
 uses
-  Classes, SysUtils, Controls, Forms, Graphics,
-  FRMaterial3Base, FRMaterialTheme, FRMaterial3Button, FRMaterial3DataGrid;
+  Classes, SysUtils, Controls, Forms, Graphics, TypInfo,
+  FRMaterial3Base, FRMaterialTheme;
 
 type
-  TFRMaterialThemeManager = class(TComponent)
+  TFRMaterialThemeManager = class(TComponent, IFRMaterialThemeManager)
   private
     FPalette  : TFRMDPalette;
     FDarkMode : Boolean;
     FSeedColor: TColor;
     FUseSeed  : Boolean;
     FDensity: TFRMDDensity;
+    FVariant: TFRMaterialVariant;
     FListeners: TFPList;
     procedure SetPalette(AValue: TFRMDPalette);
     procedure SetDarkMode(AValue: Boolean);
     procedure SetSeedColor(AValue: TColor);
     procedure SetUseSeed(AValue: Boolean);
     procedure SetDensity(AValue: TFRMDDensity);
+    procedure SetVariant(AValue: TFRMaterialVariant);
     procedure ApplyTheme;
-    procedure ApplyDensityToAll;
+    function GetDensity: TFRMDDensity;
+    function GetVariant: TFRMaterialVariant;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -58,6 +61,8 @@ type
     property UseSeed: Boolean read FUseSeed write SetUseSeed default False;
     { Densidade visual global: propaga para todos os componentes MD3 }
     property Density: TFRMDDensity read FDensity write SetDensity default ddNormal;
+    { Variante visual global dos campos: Standard, Filled ou Outlined }
+    property Variant: TFRMaterialVariant read FVariant write SetVariant default mvStandard;
   end;
 
 procedure Register;
@@ -78,6 +83,7 @@ begin
   FSeedColor := $006750A4; { Material Baseline purple }
   FUseSeed   := False;
   FDensity   := ddNormal;
+  FVariant   := mvStandard;
 end;
 
 destructor TFRMaterialThemeManager.Destroy;
@@ -126,6 +132,16 @@ begin
   ApplyTheme;
 end;
 
+function TFRMaterialThemeManager.GetDensity: TFRMDDensity;
+begin
+  Result := FDensity;
+end;
+
+function TFRMaterialThemeManager.GetVariant: TFRMaterialVariant;
+begin
+  Result := FVariant;
+end;
+
 procedure TFRMaterialThemeManager.SetPalette(AValue: TFRMDPalette);
 begin
   if FPalette = AValue then Exit;
@@ -165,30 +181,18 @@ begin
   if FDensity = AValue then Exit;
   FDensity := AValue;
   if not (csLoading in ComponentState) then
-    ApplyDensityToAll;
+    ApplyTheme;
 end;
 
-procedure TFRMaterialThemeManager.ApplyDensityToAll;
-var
-  i, j: Integer;
-  F: TForm;
-  C: TComponent;
+
+procedure TFRMaterialThemeManager.SetVariant(AValue: TFRMaterialVariant);
 begin
-  for i := 0 to Screen.FormCount - 1 do
-  begin
-    F := Screen.Forms[i];
-    for j := 0 to F.ComponentCount - 1 do
-    begin
-      C := F.Components[j];
-      if C is TFRMaterialCustomControl then
-        TFRMaterialCustomControl(C).Density := FDensity
-      else if C is TFRMaterialButton then
-        TFRMaterialButton(C).Density := FDensity
-      else if C is TFRMaterialDataGrid then
-        TFRMaterialDataGrid(C).Density := FDensity;
-    end;
-  end;
+  if FVariant = AValue then Exit;
+  FVariant := AValue;
+  if not (csLoading in ComponentState) then
+    ApplyTheme;
 end;
+
 
 procedure Register;
 begin

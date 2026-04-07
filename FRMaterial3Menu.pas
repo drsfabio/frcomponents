@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, Forms, Menus, ExtCtrls, ActnList,
   {$IFDEF FPC} LCLType, LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons;
+  BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterial3Base, FRMaterialIcons;
 
 type
   TFRMaterialMenuItem = class;
@@ -63,7 +63,7 @@ type
     property Items[Index: Integer]: TFRMaterialMenuItem read GetItem write SetItem; default;
   end;
 
-  TFRMaterialMenu = class(TComponent)
+  TFRMaterialMenu = class(TComponent, IFRMaterialComponent)
   private
     FItems: TFRMaterialMenuItems;
     FMinWidth: Integer;
@@ -75,6 +75,7 @@ type
     destructor Destroy; override;
     procedure Popup(X, Y: Integer);
     procedure CloseAll;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
   published
     property Items: TFRMaterialMenuItems read FItems write SetItems;
     property MinWidth: Integer read FMinWidth write FMinWidth default 112;
@@ -257,13 +258,29 @@ begin
   FItems := TFRMaterialMenuItems.Create(Self);
   FMinWidth := 112;
   FSubMenuTrigger := smtHover;
+  
+  FRMDRegisterComponent(Self);
 end;
 
 destructor TFRMaterialMenu.Destroy;
 begin
   CloseAll;
   FItems.Free;
+  
+  FRMDUnregisterComponent(Self);
+    
   inherited Destroy;
+end;
+
+procedure TFRMaterialMenu.ApplyTheme(const AThemeManager: TObject);
+var
+  i: Integer;
+begin
+  if not Assigned(AThemeManager) then Exit;
+  { If a menu form is currently showing, we might find it in Screen.Forms }
+  for i := 0 to Screen.FormCount - 1 do
+    if Screen.Forms[i] is TMenuForm then
+      Screen.Forms[i].Invalidate;
 end;
 
 procedure TFRMaterialMenu.SetItems(AValue: TFRMaterialMenuItems);
@@ -662,6 +679,8 @@ end;
 procedure TMenuForm.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   item: TFRMaterialMenuItem;
+  SavedAction: TBasicAction;
+  SavedOnClick: TNotifyEvent;
 begin
   inherited;
   if (FHoverIndex >= 0) and (FHoverIndex < FItems.Count) then
@@ -680,9 +699,14 @@ begin
       Exit;
     end;
 
-    { Normal item — fire action/click and close all }
-    item.ExecuteAction;
+    { Normal item — close menu first, then fire action/click }
+    SavedAction  := item.FAction;
+    SavedOnClick := item.FOnClick;
     CloseAll;
+    if Assigned(SavedAction) then
+      SavedAction.Execute
+    else if Assigned(SavedOnClick) then
+      SavedOnClick(item);
   end
   else
     CloseAll;
@@ -753,8 +777,8 @@ begin
             end
             else
             begin
-              item.ExecuteAction;
               CloseAll;
+              item.ExecuteAction;
             end;
           end;
         end;
@@ -796,8 +820,8 @@ begin
           end
           else
           begin
-            FItems[idx].ExecuteAction;
             CloseAll;
+            FItems[idx].ExecuteAction;
           end;
           Key := 0;
           Break;

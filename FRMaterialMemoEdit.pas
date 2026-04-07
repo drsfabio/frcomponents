@@ -24,7 +24,7 @@ type
 
   { TFRMaterialMemoEdit }
 
-  TFRMaterialMemoEdit = class(TCustomPanel)
+  TFRMaterialMemoEdit = class(TCustomPanel, IFRMaterialComponent)
   private
     FAccentColor: TColor;
     FDisabledColor: TColor;
@@ -91,6 +91,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
     property Memo: TMemo read FMemo;
   published
     property Align;
@@ -164,6 +165,8 @@ begin
   Self.DisabledColor := $00B8AFA8;
   Self.ParentColor  := True;
   Self.Height       := 120;
+  
+  FRMDRegisterComponent(Self);
 
   FLabel.Align := alNone;
   FLabel.Visible := False;
@@ -542,7 +545,16 @@ end;
 destructor TFRMaterialMemoEdit.Destroy;
 begin
   if Assigned(FLabelAnimator) then FLabelAnimator.Free;
+  
+  FRMDUnregisterComponent(Self);
+    
   inherited Destroy;
+end;
+
+procedure TFRMaterialMemoEdit.ApplyTheme(const AThemeManager: TObject);
+begin
+  if not Assigned(AThemeManager) then Exit;
+  Invalidate;
 end;
 
 end.

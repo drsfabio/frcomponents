@@ -7,56 +7,157 @@ object FmView: TFmView
   ClientHeight = 579
   ClientWidth = 773
   LCLVersion = '4.4.0.0'
+  object FRMaterialButton1: TFRMaterialButton
+    Left = 160
+    Height = 40
+    Top = 232
+    Width = 264
+    TabOrder = 0
+    TabStop = True
+    IconMode = imShield
+    ShowIcon = True
+    Caption = 'FRMaterialButton1'
+    Font.Height = -13
+    Font.Style = [fsBold]
+  end
+  object FRMaterialLinearProgress1: TFRMaterialLinearProgress
+    Left = 284
+    Height = 5
+    Top = 390
+    Width = 200
+  end
+  object FRMaterialCircularProgress1: TFRMaterialCircularProgress
+    Left = 248
+    Height = 48
+    Top = 432
+    Width = 48
+  end
+  object FRMaterialChip1: TFRMaterialChip
+    Left = 176
+    Height = 32
+    Top = 168
+    Width = 196
+    TabOrder = 1
+    TabStop = True
+    Caption = 'FRMaterialChip1'
+    Font.Height = -12
+  end
+  object FRMaterialLinearProgress2: TFRMaterialLinearProgress
+    Left = 185
+    Height = 5
+    Top = 94
+    Width = 200
+  end
+  object FRMaterialSlider1: TFRMaterialSlider
+    Left = 214
+    Height = 40
+    Top = 320
+    Width = 200
+    TabOrder = 2
+    TabStop = True
+    Max = 100
+  end
+  object FRMaterialLoadingIndicator1: TFRMaterialLoadingIndicator
+    Left = 320
+    Height = 20
+    Top = 448
+    Width = 60
+  end
+  object FRMaterialDivider1: TFRMaterialDivider
+    Left = 246
+    Height = 5
+    Top = 507
+    Width = 200
+  end
+  object FRMaterialAppBar1: TFRMaterialAppBar
+    Left = 0
+    Height = 64
+    Hint = 'App bar moderna'
+    Top = 0
+    Width = 773
+    Align = alTop
+    ShowHint = True
+    ParentShowHint = False
+    TabOrder = 3
+    TabStop = True
+    Title = 'Título da AppBar'
+    NavIcon = imAssignment
+    Actions = <>
+  end
+  object FRMaterialDateEdit1: TFRMaterialDateEdit
+    Left = 574
+    Height = 42
+    Top = 356
+    Width = 162
+    TabOrder = 4
+    AccentColor = clHighlight
+    DisabledColor = 12103592
+    Caption = 'Data'
+    EditLabel.Height = 15
+    EditLabel.Width = 26
+    EditLabel.Caption = 'Data'
+    EditLabel.ParentFont = False
+    EditLabel.Font.Color = 12103592
+    EditLabel.Font.Style = [fsBold]
+    ParentColor = True
+    ParentFont = True
+    ShowClearButton = True
+    Text = '1'
+  end
   object FRMaterialNavRail1: TFRMaterialNavRail
     Left = 0
     Height = 515
     Top = 64
     Width = 80
     Align = alLeft
-    TabOrder = 0
+    TabOrder = 5
     TabStop = True
     Items = <    
       item
-        Caption = 'Menu'
-        IconMode = imHome
+        Caption = 'Home'
+        IconMode = imDownload
       end    
       item
-        Caption = 'Dashboard'
-        IconMode = imDashboard
+        Caption = 'Cadastros'
+        IconMode = imFactory
       end>
     MenuIcon = imClear
     FabIcon = imClear
   end
-  object FRMaterialAppBar1: TFRMaterialAppBar
-    Left = 0
-    Height = 64
-    Top = 0
-    Width = 773
-    Align = alTop
-    TabOrder = 1
+  object FRMaterialTimePicker1: TFRMaterialTimePicker
+    Left = 480
+    Height = 72
+    Top = 440
+    Width = 220
+    TabOrder = 6
     TabStop = True
-    Title = 'Sistema de Componentes'
-    NavIcon = imMenu
-    Actions = <>
   end
-  object FRMaterialTabs1: TFRMaterialTabs
-    Left = 254
-    Height = 48
-    Top = 157
-    Width = 400
-    TabOrder = 2
+  object FRMaterialSegmentedButton1: TFRMaterialSegmentedButton
+    Left = 483
+    Height = 40
+    Top = 152
+    Width = 300
+    TabOrder = 7
     TabStop = True
-    Tabs = <>
+    Font.Height = -13
+  end
+  object FRMaterialTimePicker2: TFRMaterialTimePicker
+    Left = 512
+    Height = 72
+    Top = 232
+    Width = 220
+    TabOrder = 8
+    TabStop = True
   end
   object FRMaterialThemeManager1: TFRMaterialThemeManager
     Palette = mpCyan
     Left = 736
     Top = 8
   end
-  object FRMaterialDialog1: TFRMaterialDialog
-    Title = 'Título'
-    Content = 'Conteúdo da mensagem.'
-    Left = 362
-    Top = 327
+  object FRMaterialThemeManager2: TFRMaterialThemeManager
+    SeedColor = clOlive
+    UseSeed = True
+    Left = 184
+    Top = 112
   end
 end

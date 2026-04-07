@@ -179,8 +179,6 @@ end;
     - Texto > 3 digs → '999+' truncado }
 procedure DrawMD3Badge(ABmp: TBGRABitmap; ACanvas: TCanvas;
   AX, AY: Integer; const ABadge: string);
-const
-  BADGE_R = $002196F3;   { não — usa Error do MD3 }
 var
   BadgeText: string;
   tw, bw, bh, bx, by: Integer;
@@ -200,7 +198,7 @@ begin
 
   { Limita a 3 dígitos + '+' }
   if Length(ABadge) > 3 then
-    BadgeText := '9+'
+    BadgeText := '999+'
   else
     BadgeText := ABadge;
 

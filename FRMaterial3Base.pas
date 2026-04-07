@@ -148,12 +148,15 @@ type
   private
     FHovered: Boolean;
     FPressed: Boolean;
+    FDensity: TFRMDDensity;
+    FSyncWithTheme: TFRMDSyncOptions;
   protected
     procedure EraseBackground({%H-}DC: HDC); override;
     procedure MouseEnter; override;
     procedure MouseLeave; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure SetDensity(AValue: TFRMDDensity); virtual;
     function InteractionState: TFRMDInteractionState;
   public
     constructor Create(AOwner: TComponent); override;
@@ -169,12 +172,14 @@ type
     property ParentShowHint;
     property TabOrder;
     property TabStop;
+    property Density: TFRMDDensity read FDensity write SetDensity default ddNormal;
+    property SyncWithTheme: TFRMDSyncOptions read FSyncWithTheme write FSyncWithTheme default [toColor, toDensity, toVariant];
   end;
 
   { Base class for visual-only MD3 components (dividers, progress bars, etc.).
     Extends TGraphicControl (lightweight, no window handle). }
 
-  TFRMaterial3Graphic = class(TGraphicControl)
+  TFRMaterial3Graphic = class(TGraphicControl, IFRMaterialComponent)
   private
     FHovered: Boolean;
   protected
@@ -182,6 +187,8 @@ type
     procedure MouseLeave; override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
     property Hovered: Boolean read FHovered;
   published
     property Anchors;
@@ -195,13 +202,11 @@ type
   protected
     FAccentColor: TColor;
     FDisabledColor: TColor;
-    FDensity: TFRMDDensity;
     FValidationState: TFRValidationState;
     FHelperText: string;
     FErrorText: string;
     FRequired: Boolean;
 
-    procedure SetDensity(AValue: TFRMDDensity); virtual;
     procedure SetValidationState(AValue: TFRValidationState); virtual;
     procedure SetRequired(AValue: Boolean); virtual;
     procedure SetHelperText(const AValue: string); virtual;
@@ -211,7 +216,6 @@ type
   published
     property AccentColor: TColor read FAccentColor write FAccentColor;
     property DisabledColor: TColor read FDisabledColor write FDisabledColor;
-    property Density: TFRMDDensity read FDensity write SetDensity default ddNormal;
     property ValidationState: TFRValidationState read FValidationState write SetValidationState default vsNone;
     property HelperText: string read FHelperText write SetHelperText;
     property ErrorText: string read FErrorText write SetErrorText;
@@ -220,7 +224,7 @@ type
 
 implementation
 
-uses Math, FRMaterialThemeManager;
+uses Math;
 
 { ── HSL helpers for palette generation ── }
 
@@ -688,21 +692,23 @@ begin
   FPressed := False;
   ControlStyle := ControlStyle + [csClickEvents, csCaptureMouse];
   TabStop := True;
-  
-  if Assigned(FRMaterialDefaultThemeManager) and (FRMaterialDefaultThemeManager is TFRMaterialThemeManager) then
-    TFRMaterialThemeManager(FRMaterialDefaultThemeManager).RegisterComponent(Self);
+
+  FRMDRegisterComponent(Self);
 end;
 
 destructor TFRMaterial3Control.Destroy;
 begin
-  if Assigned(FRMaterialDefaultThemeManager) and (FRMaterialDefaultThemeManager is TFRMaterialThemeManager) then
-    TFRMaterialThemeManager(FRMaterialDefaultThemeManager).UnregisterComponent(Self);
+  FRMDUnregisterComponent(Self);
   inherited Destroy;
 end;
 
 procedure TFRMaterial3Control.ApplyTheme(const AThemeManager: TObject);
 begin
   if not Assigned(AThemeManager) then Exit;
+
+  if toDensity in FSyncWithTheme then
+    SetDensity(FRMDGetThemeDensity(AThemeManager));
+
   Invalidate;
 end;
 
@@ -776,6 +782,20 @@ constructor TFRMaterial3Graphic.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHovered := False;
+
+  FRMDRegisterComponent(Self);
+end;
+
+destructor TFRMaterial3Graphic.Destroy;
+begin
+  FRMDUnregisterComponent(Self);
+  inherited Destroy;
+end;
+
+procedure TFRMaterial3Graphic.ApplyTheme(const AThemeManager: TObject);
+begin
+  if not Assigned(AThemeManager) then Exit;
+  Invalidate;
 end;
 
 procedure TFRMaterial3Graphic.MouseEnter;
@@ -799,12 +819,11 @@ begin
   inherited Create(AOwner);
   FAccentColor := clHighlight;
   FDisabledColor := $00B8AFA8;
-  FDensity := ddNormal;
   FValidationState := vsNone;
   FRequired := False;
 end;
 
-procedure TFRMaterialCustomControl.SetDensity(AValue: TFRMDDensity);
+procedure TFRMaterial3Control.SetDensity(AValue: TFRMDDensity);
 begin
   if FDensity <> AValue then
   begin

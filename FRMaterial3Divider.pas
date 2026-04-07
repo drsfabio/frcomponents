@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, ExtCtrls,
   {$IFDEF FPC} LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base;
+  BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterial3Base;
 
 type
   TFRMDDividerOrientation = (doHorizontal, doVertical);
@@ -45,7 +45,7 @@ type
 
   { ── TFRMaterialGroupBox ── }
 
-  TFRMaterialGroupBox = class(TCustomPanel)
+  TFRMaterialGroupBox = class(TCustomPanel, IFRMaterialComponent)
   private
     FBorderRadius: Integer;
     FShowBorder: Boolean;
@@ -59,6 +59,8 @@ type
     procedure AdjustClientRect(var ARect: TRect); override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
     property CaptionHeight: Integer read GetCaptionHeight;
   published
     property BorderRadius: Integer read FBorderRadius write SetBorderRadius default 12;
@@ -69,10 +71,20 @@ type
     property Anchors;
     property BorderSpacing;
     property Caption;
+    property ChildSizing;
+    property ClientHeight;
+    property ClientWidth;
     property Color;
     property Constraints;
     property Enabled;
     property Font;
+    property ParentBackground;
+    property ParentColor;
+    property ParentFont;
+    property ParentShowHint;
+    property ShowHint;
+    property TabOrder;
+    property TabStop;
     property Visible;
     property OnClick;
     property OnResize;
@@ -166,9 +178,26 @@ begin
   Height := 150;
   BevelOuter := bvNone;
   BevelInner := bvNone;
+  
+  FRMDRegisterComponent(Self);
+    
   Color := MD3Colors.SurfaceContainerLow;
   Font.Size := 10;
   Font.Color := MD3Colors.OnSurface;
+end;
+
+destructor TFRMaterialGroupBox.Destroy;
+begin
+  FRMDUnregisterComponent(Self);
+  inherited Destroy;
+end;
+
+procedure TFRMaterialGroupBox.ApplyTheme(const AThemeManager: TObject);
+begin
+  if not Assigned(AThemeManager) then Exit;
+  Color := MD3Colors.SurfaceContainerLow;
+  Font.Color := MD3Colors.OnSurface;
+  Invalidate;
 end;
 
 procedure TFRMaterialGroupBox.SetBorderRadius(AValue: Integer);

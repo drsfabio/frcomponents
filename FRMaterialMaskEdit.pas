@@ -50,7 +50,7 @@ type
 
   { TFRMaterialMaskEdit }
 
-  TFRMaterialMaskEdit = class(TCustomPanel)
+  TFRMaterialMaskEdit = class(TCustomPanel, IFRMaterialComponent)
   private
     FAccentColor: TColor;
     FDisabledColor: TColor;
@@ -135,6 +135,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
     
   protected
     FLabelAnimator: TFRMDFloatingLabelAnimator;
@@ -709,6 +710,8 @@ begin
   Self.BorderStyle   := bsNone;
   Self.DisabledColor := $00B8AFA8;
   Self.ParentColor   := True;
+  
+  FRMDRegisterComponent(Self);
 
   FLabel.Align                := alNone;
   FLabel.Visible              := False;
@@ -766,7 +769,16 @@ end;
 destructor TFRMaterialMaskEdit.Destroy;
 begin
   if Assigned(FLabelAnimator) then FLabelAnimator.Free;
+  
+  FRMDUnregisterComponent(Self);
+    
   inherited Destroy;
+end;
+
+procedure TFRMaterialMaskEdit.ApplyTheme(const AThemeManager: TObject);
+begin
+  if not Assigned(AThemeManager) then Exit;
+  Invalidate;
 end;
 
 end.

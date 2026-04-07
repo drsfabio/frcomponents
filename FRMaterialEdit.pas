@@ -66,6 +66,11 @@ type
     { Novo campo — Locked (campo bloqueado após resultado de pesquisa) }
     FLocked: Boolean;
     FLockedColor: TColor;
+    FOriginalReadOnly: Boolean;
+
+    { Controle de diálogos de validação e font auto-sizing }
+    FShowValidationDialog: Boolean;
+    FAutoFontSize: Boolean;
 
     { Dimensões dos painéis (Mockup Universal Field) }
     FLeftPanelWidth: Integer;
@@ -87,6 +92,11 @@ type
     function GetSearchButtonPosition: TFRButtonPosition;
     procedure SetSearchButtonPosition(AValue: TFRButtonPosition);
     procedure AnchorButtons;
+
+    procedure SetVariant(AValue: TFRMaterialVariant);
+    procedure SetBorderRadius(AValue: Integer);
+    procedure SetValidColor(AValue: TColor);
+    procedure SetInvalidColor(AValue: TColor);
 
     { Novos setters }
     procedure SetShowCharCounter(AValue: Boolean);
@@ -247,15 +257,15 @@ type
     { Posição do botão de pesquisa: bpLeft (esquerda) ou bpRight (direita, padrão) }
     property SearchButtonPosition: TFRButtonPosition read GetSearchButtonPosition write SetSearchButtonPosition default bpRight;
     { Variante visual: sublinhado (mvStandard), preenchido (mvFilled) ou contornado (mvOutlined) }
-    property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;
+    property Variant: TFRMaterialVariant read FVariant write SetVariant default mvStandard;
     { Raio dos cantos arredondados em pixels; 0 = cantos retos }
-    property BorderRadius: Integer read FBorderRadius write FBorderRadius default 0;
+    property BorderRadius: Integer read FBorderRadius write SetBorderRadius default 0;
     { Espessura do traço dos ícones SVG (0 = usa padrão de cada ícone) }
     property IconStrokeWidth: Double read GetIconStrokeWidth write SetIconStrokeWidth;
     { Cor de destaque quando ValidationState = vsValid }
-    property ValidColor: TColor read FValidColor write FValidColor default $0000B300;
+    property ValidColor: TColor read FValidColor write SetValidColor default $0000B300;
     { Cor de destaque quando ValidationState = vsInvalid }
-    property InvalidColor: TColor read FInvalidColor write FInvalidColor default $000000FF;
+    property InvalidColor: TColor read FInvalidColor write SetInvalidColor default $000000FF;
     { Quando True, exibe um contador de caracteres "N/MaxLength" abaixo do campo }
     property ShowCharCounter: Boolean read FShowCharCounter write SetShowCharCounter default False;
     { Comprimento mínimo de texto; validado conforme ValidateMode }
@@ -284,6 +294,10 @@ type
     property Locked: Boolean read FLocked write SetLocked default False;
     { Cor de fundo quando Locked = True. Se clNone, usa MD3Colors.SurfaceContainerHigh }
     property LockedColor: TColor read FLockedColor write FLockedColor default clNone;
+    { Quando True, exibe MessageDlg ao sair do campo com validação inválida (padrão True) }
+    property ShowValidationDialog: Boolean read FShowValidationDialog write FShowValidationDialog default True;
+    { Quando True, ajusta Font.Size proporcionalmente à altura do componente (padrão True) }
+    property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
     property ShowHint: Boolean read GetEditShowHint write SetEditShowHint default False;
     property Tag: PtrInt read GetEditTag write SetEditTag default 0;
     property TabOrder;
@@ -337,6 +351,7 @@ type
     FAutoCompleteItems: TStringList;
     FAutoCompletePopup: TListBox;
     FAutoCompleteEnabled: Boolean;
+    FAutoCompleteHandlerAdded: Boolean;
     FOnAutoCompleteSelect: TNotifyEvent;
 
     function GetEditMask: string;
@@ -555,7 +570,7 @@ procedure TFRMaterialEditBase.UpdateClearButton;
 var
   ShouldShow: Boolean;
 begin
-  ShouldShow := FShowClearButton and (FEdit.Text <> '');
+  ShouldShow := FShowClearButton and (FEdit.Text <> '') and FEdit.Enabled;
   if ShouldShow = FClearButton.Visible then Exit;
 
   DisableAlign;
@@ -631,7 +646,7 @@ end;
 
 procedure TFRMaterialEditBase.AnchorButtons;
 var
-  LeftCursor, RightCursor: Integer;
+  LeftCursor, RightCursor, CenterY, FieldH: Integer;
 begin
   if csLoading in ComponentState then Exit;
 
@@ -654,13 +669,9 @@ begin
   { 1. LeadingIcon }
   if FShowLeadingIcon then
   begin
-    FLeadingIcon.Anchors := [akLeft, akTop, akBottom];
+    FLeadingIcon.Anchors := [akLeft];
     FLeadingIcon.AnchorSide[akLeft].Control := Self;
     FLeadingIcon.AnchorSide[akLeft].Side    := asrTop;
-    FLeadingIcon.AnchorSide[akTop].Control  := FEdit;
-    FLeadingIcon.AnchorSide[akTop].Side     := asrTop;
-    FLeadingIcon.AnchorSide[akBottom].Control := FEdit;
-    FLeadingIcon.AnchorSide[akBottom].Side    := asrBottom;
     FLeadingIcon.BorderSpacing.Left := LeftCursor;
     
     LeftCursor := FLeadingIcon.Width + 4;
@@ -670,13 +681,9 @@ begin
   { 2. Pesquisa (se na esquerda) }
   if FShowSearchButton and (FSearchButtonPosition = bpLeft) then
   begin
-    FSearchButton.Anchors := [akLeft, akTop, akBottom];
+    FSearchButton.Anchors := [akLeft];
     FSearchButton.AnchorSide[akLeft].Control := Self;
     FSearchButton.AnchorSide[akLeft].Side    := asrTop;
-    FSearchButton.AnchorSide[akTop].Control  := FEdit;
-    FSearchButton.AnchorSide[akTop].Side     := asrTop;
-    FSearchButton.AnchorSide[akBottom].Control := FEdit;
-    FSearchButton.AnchorSide[akBottom].Side    := asrBottom;
     FSearchButton.BorderSpacing.Left := LeftCursor;
     
     Inc(FLeftPanelWidth, FSearchButton.Width + 4);
@@ -687,61 +694,45 @@ begin
   { 1. Pesquisa (se na direita) }
   if FShowSearchButton and (FSearchButtonPosition = bpRight) then
   begin
-    FSearchButton.Anchors := [akRight, akTop, akBottom];
+    FSearchButton.Anchors := [akRight];
     FSearchButton.AnchorSide[akRight].Control := Self;
     FSearchButton.AnchorSide[akRight].Side    := asrBottom;
-    FSearchButton.AnchorSide[akTop].Control   := FEdit;
-    FSearchButton.AnchorSide[akTop].Side      := asrTop;
-    FSearchButton.AnchorSide[akBottom].Control := FEdit;
-    FSearchButton.AnchorSide[akBottom].Side    := asrBottom;
     FSearchButton.BorderSpacing.Right := RightCursor;
-    
-    RightCursor := FSearchButton.Width + 4;
+
+    Inc(RightCursor, FSearchButton.Width + 4);
     Inc(FRightPanelWidth, FSearchButton.Width + 4);
   end;
 
   { 2. EyeButton (Senha) }
   if FPasswordMode and FEyeButton.Visible then
   begin
-    FEyeButton.Anchors := [akRight, akTop, akBottom];
+    FEyeButton.Anchors := [akRight];
     FEyeButton.AnchorSide[akRight].Control := Self;
     FEyeButton.AnchorSide[akRight].Side    := asrBottom;
-    FEyeButton.AnchorSide[akTop].Control   := FEdit;
-    FEyeButton.AnchorSide[akTop].Side      := asrTop;
-    FEyeButton.AnchorSide[akBottom].Control := FEdit;
-    FEyeButton.AnchorSide[akBottom].Side    := asrBottom;
     FEyeButton.BorderSpacing.Right := RightCursor;
     
-    RightCursor := RightCursor + FEyeButton.Width + 2;
+    Inc(RightCursor, FEyeButton.Width + 2);
     Inc(FRightPanelWidth, FEyeButton.Width + 2);
   end;
 
   { 3. CopyButton }
   if FShowCopyButton then
   begin
-    FCopyButton.Anchors := [akRight, akTop, akBottom];
+    FCopyButton.Anchors := [akRight];
     FCopyButton.AnchorSide[akRight].Control := Self;
     FCopyButton.AnchorSide[akRight].Side    := asrBottom;
-    FCopyButton.AnchorSide[akTop].Control   := FEdit;
-    FCopyButton.AnchorSide[akTop].Side      := asrTop;
-    FCopyButton.AnchorSide[akBottom].Control := FEdit;
-    FCopyButton.AnchorSide[akBottom].Side    := asrBottom;
     FCopyButton.BorderSpacing.Right := RightCursor;
     
-    RightCursor := RightCursor + FCopyButton.Width + 2;
+    Inc(RightCursor, FCopyButton.Width + 2);
     Inc(FRightPanelWidth, FCopyButton.Width + 2);
   end;
 
   { 4. ClearButton }
   if FShowClearButton and FClearButton.Visible then
   begin
-    FClearButton.Anchors := [akRight, akTop, akBottom];
+    FClearButton.Anchors := [akRight];
     FClearButton.AnchorSide[akRight].Control := Self;
     FClearButton.AnchorSide[akRight].Side    := asrBottom;
-    FClearButton.AnchorSide[akTop].Control   := FEdit;
-    FClearButton.AnchorSide[akTop].Side      := asrTop;
-    FClearButton.AnchorSide[akBottom].Control := FEdit;
-    FClearButton.AnchorSide[akBottom].Side    := asrBottom;
     FClearButton.BorderSpacing.Right := RightCursor;
     
     Inc(FRightPanelWidth, FClearButton.Width + 4);
@@ -750,6 +741,41 @@ begin
   { Aplica as margens calculadas ao painel central (FEdit) }
   FEdit.BorderSpacing.Left  := FLeftPanelWidth;
   FEdit.BorderSpacing.Right := FRightPanelWidth;
+
+  { Centraliza todos os botões visíveis verticalmente no container (excl. BottomMargin) }
+  FieldH := Self.Height - GetBottomMargin;
+  if FieldH < 1 then FieldH := Self.Height;
+
+  if FLeadingIcon.Visible then
+  begin
+    CenterY := (FieldH - FLeadingIcon.Height) div 2;
+    if CenterY < 0 then CenterY := 0;
+    FLeadingIcon.Top := CenterY;
+  end;
+  if FSearchButton.Visible then
+  begin
+    CenterY := (FieldH - FSearchButton.Height) div 2;
+    if CenterY < 0 then CenterY := 0;
+    FSearchButton.Top := CenterY;
+  end;
+  if FEyeButton.Visible then
+  begin
+    CenterY := (FieldH - FEyeButton.Height) div 2;
+    if CenterY < 0 then CenterY := 0;
+    FEyeButton.Top := CenterY;
+  end;
+  if FCopyButton.Visible then
+  begin
+    CenterY := (FieldH - FCopyButton.Height) div 2;
+    if CenterY < 0 then CenterY := 0;
+    FCopyButton.Top := CenterY;
+  end;
+  if FClearButton.Visible then
+  begin
+    CenterY := (FieldH - FClearButton.Height) div 2;
+    if CenterY < 0 then CenterY := 0;
+    FClearButton.Top := CenterY;
+  end;
 end;
 
 procedure TFRMaterialEditBase.SetShowCharCounter(AValue: Boolean);
@@ -873,6 +899,7 @@ begin
   FLocked := AValue;
   if FLocked then
   begin
+    FOriginalReadOnly := FEdit.ReadOnly;
     FEdit.ReadOnly := True;
     FEdit.AutoSelect := False;
     if FLockedColor <> clNone then
@@ -882,7 +909,7 @@ begin
   end
   else
   begin
-    FEdit.ReadOnly := False;
+    FEdit.ReadOnly := FOriginalReadOnly;
     FEdit.AutoSelect := True;
     if Assigned(FRMaterialDefaultThemeManager) then
     begin
@@ -895,6 +922,36 @@ begin
       Self.Color := clWhite;
   end;
   UpdateClearButton;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.SetVariant(AValue: TFRMaterialVariant);
+begin
+  if FVariant = AValue then Exit;
+  FVariant := AValue;
+  if Assigned(FRMaterialDefaultThemeManager) then
+    ApplyTheme(FRMaterialDefaultThemeManager);
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.SetBorderRadius(AValue: Integer);
+begin
+  if FBorderRadius = AValue then Exit;
+  FBorderRadius := AValue;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.SetValidColor(AValue: TColor);
+begin
+  if FValidColor = AValue then Exit;
+  FValidColor := AValue;
+  Invalidate;
+end;
+
+procedure TFRMaterialEditBase.SetInvalidColor(AValue: TColor);
+begin
+  if FInvalidColor = AValue then Exit;
+  FInvalidColor := AValue;
   Invalidate;
 end;
 
@@ -912,7 +969,12 @@ function TFRMaterialEditBase.GetBottomMargin: Integer;
 begin
   Result := 0;
   if (FHelperText <> '') or (FErrorText <> '') or FShowCharCounter then
-    Result := Canvas.TextHeight('Hg') + 4;
+  begin
+    if HandleAllocated then
+      Result := Canvas.TextHeight('Hg') + 4
+    else
+      Result := 18; { fallback seguro antes do handle ser criado }
+  end;
 end;
 
 function TFRMaterialEditBase.GetDisplayHelperText: string;
@@ -1373,6 +1435,11 @@ begin
   inherited DoEnter;
   FFocused := True;
   if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
+  if FSearchButton.Visible then
+  begin
+    FSearchButton.NormalColor := AccentColor;
+    FSearchButton.InvalidateCache;
+  end;
   Invalidate;
 end;
 
@@ -1393,7 +1460,13 @@ begin
     else
       FLabelAnimator.InlineLabel;
   end;
-  
+
+  if FSearchButton.Visible then
+  begin
+    FSearchButton.NormalColor := DisabledColor;
+    FSearchButton.InvalidateCache;
+  end;
+
   Invalidate;
   inherited DoExit;
 end;
@@ -1411,7 +1484,7 @@ begin
   if IsNeededAdjustSize then
   begin
     { Aplica delta de densidade na altura do edit interno }
-    FEdit.Constraints.MinHeight := Max(24, FEdit.Height + MD3DensityDelta(FDensity));
+    FEdit.Constraints.MinHeight := Max(24, FEdit.Height + MD3DensityDelta(Density));
     AutoSizedHeight :=
       FLabel.Height +
       FLabel.BorderSpacing.Around +
@@ -1427,9 +1500,9 @@ begin
       Self.Height := AutoSizedHeight;
   end;
 
-  { Dimensiona os botões proporcionais ao Edit; âncoras cuidam do posicionamento }
-  BtnSize := FEdit.Height - 4;
-  if BtnSize < 16 then BtnSize := 16;
+  { Dimensiona os botões proporcionais ao campo visível (excl. BottomMargin) }
+  BtnSize := (Self.Height - BottomExtra) div 2;
+  if BtnSize < 20 then BtnSize := 20;
 
   if Assigned(FSearchButton) then
   begin
@@ -1462,7 +1535,8 @@ begin
 
   { Responsividade: adaptar Font.Size proporcionalmente à altura do componente.
     Referência MD3: Height 54 → Font.Size 12.  Mínimo 8, máximo 16. }
-  FEdit.Font.Size := EnsureRange(Self.Height * 12 div 54, 8, 16);
+  if FAutoFontSize then
+    FEdit.Font.Size := EnsureRange(Self.Height * 12 div 54, 8, 16);
 
   inherited DoOnResize;
 end;
@@ -1475,6 +1549,9 @@ var
   ActionRightPos: Integer;
 begin
   inherited Paint;
+
+  { Sync ClearButton visibility with Edit.Enabled state }
+  UpdateClearButton;
 
   { Sync internal edit color with container }
   if FEdit.Color <> Self.Color then
@@ -1553,12 +1630,6 @@ begin
     P.LabelProgress := 1.0;
 
   TFRMaterialFieldPainter.DrawField(P);
-
-  if FSearchButton.Visible and (FSearchButton.NormalColor <> DecoColor) then
-  begin
-    FSearchButton.NormalColor := DecoColor;
-    FSearchButton.InvalidateCache;
-  end;
 end;
 
 constructor TFRMaterialEditBase.Create(AOwner: TComponent);
@@ -1578,8 +1649,7 @@ begin
   Self.BorderStyle := bsNone;
   Self.ParentColor := True;
   
-  if Assigned(FRMaterialDefaultThemeManager) and (FRMaterialDefaultThemeManager is TFRMaterialThemeManager) then
-    TFRMaterialThemeManager(FRMaterialDefaultThemeManager).RegisterComponent(Self as IFRMaterialComponent);
+  FRMDRegisterComponent(Self as IFRMaterialComponent);
 
   FLabel.Align := alNone;
   FLabel.Visible := False; // Hide logic moved to field painter
@@ -1701,14 +1771,16 @@ begin
   FAutoFocusNext    := False;
   FLocked           := False;
   FLockedColor      := clNone;
+  FOriginalReadOnly := False;
+  FShowValidationDialog := True;
+  FAutoFontSize     := True;
 
   FEdit.Text := '';
 end;
 
 destructor TFRMaterialEditBase.Destroy;
 begin
-  if Assigned(FRMaterialDefaultThemeManager) and (FRMaterialDefaultThemeManager is TFRMaterialThemeManager) then
-    TFRMaterialThemeManager(FRMaterialDefaultThemeManager).UnregisterComponent(Self as IFRMaterialComponent);
+  FRMDUnregisterComponent(Self as IFRMaterialComponent);
     
   if Assigned(FLabelAnimator) then FLabelAnimator.Free;
   inherited Destroy;
@@ -1723,6 +1795,11 @@ end;
 
 procedure TFRMaterialEditBase.ApplyTheme(const AThemeManager: TObject);
 begin
+  inherited ApplyTheme(AThemeManager);
+
+  if toVariant in SyncWithTheme then
+    SetVariant(FRMDGetThemeVariant(AThemeManager));
+
   FAccentColor := MD3Colors.Primary;
   FDisabledColor := MD3Colors.OnSurfaceVariant;
 
@@ -1754,6 +1831,18 @@ begin
     FLeadingIcon.NormalColor := MD3Colors.OnSurfaceVariant;
     FLeadingIcon.HoverColor  := MD3Colors.Primary;
     FLeadingIcon.InvalidateCache;
+  end;
+  if Assigned(FEyeButton) then
+  begin
+    FEyeButton.NormalColor := MD3Colors.OnSurfaceVariant;
+    FEyeButton.HoverColor  := MD3Colors.Primary;
+    FEyeButton.InvalidateCache;
+  end;
+  if Assigned(FCopyButton) then
+  begin
+    FCopyButton.NormalColor := MD3Colors.OnSurfaceVariant;
+    FCopyButton.HoverColor  := MD3Colors.Primary;
+    FCopyButton.InvalidateCache;
   end;
   { Atualiza cor de fundo conforme estado locked }
   if FLocked then
@@ -1904,8 +1993,8 @@ end;
 procedure TFRMaterialEdit.SetUserOnChange(AValue: TNotifyEvent);
 begin
   FUserOnChange := AValue;
-  { Se a máscara não estiver ativa, configura diretamente no Edit }
-  if FTextMask = tmtNone then
+  { Só atribui diretamente se nenhum interceptor está ativo }
+  if (FTextMask = tmtNone) and (FNumericMask = nmtNone) then
     FEdit.OnChange := AValue;
 end;
 
@@ -1917,7 +2006,8 @@ end;
 procedure TFRMaterialEdit.SetUserOnKeyPress(AValue: TKeyPressEvent);
 begin
   FUserOnKeyPress := AValue;
-  if FTextMask = tmtNone then
+  { Só atribui diretamente se nenhum interceptor está ativo }
+  if (FTextMask = tmtNone) and (FNumericMask = nmtNone) and (FInputFilter = ifNone) then
     FEdit.OnKeyPress := AValue;
 end;
 
@@ -1982,11 +2072,17 @@ procedure TFRMaterialEdit.DoExit;
 var
   State: TFRValidationState;
   Digits: string;
+  CanTrap: Boolean;
 begin
   { Oculta auto-completar }
   HideAutoCompletePopup;
 
-  if FTextMask <> tmtNone then
+  { Não travar foco quando o formulário está fechando ou a aplicação encerrando }
+  CanTrap := not (csDestroying in ComponentState)
+         and not Application.Terminated
+         and ((GetParentForm(Self) = nil) or not (csDestroying in GetParentForm(Self).ComponentState));
+
+  if (FTextMask <> tmtNone) and CanTrap then
   begin
     State  := FRValidateMask(FTextMask, FEdit.Text);
     Digits := FRRemoveNonDigits(FEdit.Text);
@@ -1995,20 +2091,23 @@ begin
     begin
       ValidationState := vsInvalid;
 
-      case FTextMask of
-        tmtCpfCnpj:
-          if Length(Digits) <= 11 then
-            MessageDlg('Atenção', 'CPF inválido!', mtWarning, [mbOK], 0)
-          else
-            MessageDlg('Atenção', 'CNPJ inválido!', mtWarning, [mbOK], 0);
-        tmtCep:
-          MessageDlg('Atenção', 'CEP inválido!', mtWarning, [mbOK], 0);
-        tmtChaveNFe:
-          MessageDlg('Atenção', 'Chave NF-e inválida!', mtWarning, [mbOK], 0);
-        tmtBoleto:
-          MessageDlg('Atenção', 'Código de boleto inválido!', mtWarning, [mbOK], 0);
-        tmtTelefone:
-          MessageDlg('Atenção', 'Telefone inválido!', mtWarning, [mbOK], 0);
+      if FShowValidationDialog then
+      begin
+        case FTextMask of
+          tmtCpfCnpj:
+            if Length(Digits) <= 11 then
+              MessageDlg('Atenção', 'CPF inválido!', mtWarning, [mbOK], 0)
+            else
+              MessageDlg('Atenção', 'CNPJ inválido!', mtWarning, [mbOK], 0);
+          tmtCep:
+            MessageDlg('Atenção', 'CEP inválido!', mtWarning, [mbOK], 0);
+          tmtChaveNFe:
+            MessageDlg('Atenção', 'Chave NF-e inválida!', mtWarning, [mbOK], 0);
+          tmtBoleto:
+            MessageDlg('Atenção', 'Código de boleto inválido!', mtWarning, [mbOK], 0);
+          tmtTelefone:
+            MessageDlg('Atenção', 'Telefone inválido!', mtWarning, [mbOK], 0);
+        end;
       end;
 
       if FEdit.CanFocus then
@@ -2037,6 +2136,7 @@ begin
   FNumericValue     := 0;
   FApplyingNumeric  := False;
   FAutoCompleteEnabled := False;
+  FAutoCompleteHandlerAdded := False;
   FAutoCompleteItems := TStringList.Create;
   FAutoCompleteItems.Sorted := True;
   FAutoCompleteItems.Duplicates := dupIgnore;
@@ -2174,11 +2274,20 @@ begin
   FAutoCompleteEnabled := AValue;
   if FAutoCompleteEnabled then
   begin
-    FEdit.AddHandlerOnChange(@AutoCompleteChange);
+    if not FAutoCompleteHandlerAdded then
+    begin
+      FEdit.AddHandlerOnChange(@AutoCompleteChange);
+      FAutoCompleteHandlerAdded := True;
+    end;
     FEdit.OnKeyDown := @AutoCompleteKeyDown;
   end
   else
   begin
+    if FAutoCompleteHandlerAdded then
+    begin
+      FEdit.RemoveHandlerOnChange(@AutoCompleteChange);
+      FAutoCompleteHandlerAdded := False;
+    end;
     HideAutoCompletePopup;
   end;
 end;

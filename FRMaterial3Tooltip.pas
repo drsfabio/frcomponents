@@ -15,10 +15,10 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, Forms, ExtCtrls,
   {$IFDEF FPC} LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base;
+  BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterial3Base;
 
 type
-  TFRMaterialTooltip = class(TComponent)
+  TFRMaterialTooltip = class(TComponent, IFRMaterialComponent)
   private
     FText: string;
     FAttachTo: TControl;
@@ -38,6 +38,7 @@ type
     destructor Destroy; override;
     procedure ShowAt(X, Y: Integer);
     procedure Hide;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
   published
     property Text: string read FText write FText;
     property AttachTo: TControl read FAttachTo write SetAttachTo;
@@ -90,10 +91,11 @@ begin
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
   FTimer.OnTimer := @OnShowTimer;
-  FAutoHideTimer := TTimer.Create(Self);
   FAutoHideTimer.Enabled := False;
   FAutoHideTimer.Interval := 3000;
   FAutoHideTimer.OnTimer := @OnHideTimer;
+  
+  FRMDRegisterComponent(Self);
 end;
 
 destructor TFRMaterialTooltip.Destroy;
@@ -101,7 +103,17 @@ begin
   Hide;
   FTimer.Free;
   FAutoHideTimer.Free;
+  
+  FRMDUnregisterComponent(Self);
+    
   inherited Destroy;
+end;
+
+procedure TFRMaterialTooltip.ApplyTheme(const AThemeManager: TObject);
+begin
+  if not Assigned(AThemeManager) then Exit;
+  if Assigned(FPanel) then
+    FPanel.Invalidate;
 end;
 
 procedure TFRMaterialTooltip.SetAttachTo(AValue: TControl);

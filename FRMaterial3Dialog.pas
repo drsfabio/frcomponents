@@ -16,7 +16,7 @@ uses
   Classes, SysUtils, Controls, Graphics, Forms, StdCtrls, ExtCtrls,
   LCLIntf, LCLType,
   {$IFDEF FPC} LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterial3Button,
+  BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterial3Base, FRMaterial3Button,
   FRMaterialIcons;
 
 type
@@ -27,7 +27,7 @@ type
 
   { ── TFRMaterialDialog ── }
 
-  TFRMaterialDialog = class(TComponent)
+  TFRMaterialDialog = class(TComponent, IFRMaterialComponent)
   private
     FTitle: string;
     FContent: string;
@@ -37,7 +37,9 @@ type
     procedure SetContent(const AValue: string);
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     function Execute: TFRMDDialogResult;
+    procedure ApplyTheme(const AThemeManager: TObject); virtual;
   published
     property Title: string read FTitle write SetTitle;
     property Content: string read FContent write SetContent;
@@ -323,6 +325,26 @@ begin
   FContent := 'Conteúdo da mensagem.';
   FButtons := [dbOK, dbCancel];
   FDialogIcon := diNone;
+  
+  FRMDRegisterComponent(Self);
+end;
+
+destructor TFRMaterialDialog.Destroy;
+begin
+  FRMDUnregisterComponent(Self);
+    
+  inherited Destroy;
+end;
+
+procedure TFRMaterialDialog.ApplyTheme(const AThemeManager: TObject);
+var
+  i: Integer;
+begin
+  if not Assigned(AThemeManager) then Exit;
+  { If a dialog is currently showing (modal), we might find it in Screen.Forms }
+  for i := 0 to Screen.FormCount - 1 do
+    if Screen.Forms[i] is TFRDialogForm then
+      Screen.Forms[i].Invalidate;
 end;
 
 procedure TFRMaterialDialog.SetTitle(const AValue: string);

@@ -102,26 +102,10 @@ begin
   CR := P.BorderRadius * 2;
   DecoBottom := P.Rect.Bottom - P.BottomMargin;
 
-  { Extensão horizontal do sublinhado/borda conforme arquitetura de painéis }
-  if P.Variant = mvOutlined then
-  begin
-    LeftPos  := P.Rect.Left;
-    RightPos := P.Rect.Right;
-  end
-  else
-  begin
-    { No modo Standard/Filled, o sublinhado cobre do início do LeftPanel até o fim do RightPanel }
-    LeftPos  := P.Rect.Left;
-    RightPos := P.Rect.Right;
-    
-    { Se não estiver preenchendo o componente todo (ParentBgColor=BgColor), 
-      podemos querer limitar ao conteúdo, mas no MD3 o container geralmente é o componente todo. }
-    if (P.ParentBgColor = P.BgColor) and (P.Variant = mvStandard) then
-    begin
-        LeftPos := P.Rect.Left + P.LeftPanelWidth;
-        RightPos := P.Rect.Right - P.RightPanelWidth;
-    end;
-  end;
+  { Extensão horizontal do sublinhado/borda — sempre cobre o container inteiro,
+    incluindo painéis de ícones (esquerdo e direito), conforme MD3 spec }
+  LeftPos  := P.Rect.Left;
+  RightPos := P.Rect.Right;
 
   FieldTop := P.EditTop - 2;
   if FieldTop < 0 then FieldTop := 0;
