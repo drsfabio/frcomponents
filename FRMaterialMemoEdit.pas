@@ -201,6 +201,9 @@ begin
   FMemo.TabStop := True;
   FMemo.SetSubComponent(True);
 
+  { Container não participa do tab order — o foco vai direto para FMemo }
+  inherited TabStop := False;
+
   FMemo.OnChange := @InternalMemoChange;
 
   FVariant         := mvStandard;
@@ -242,6 +245,9 @@ begin
   FFocused := True;
   if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
+  { Redireciona o foco para o memo interno }
+  if FMemo.CanFocus then
+    FMemo.SetFocus;
 end;
 
 procedure TFRMaterialMemoEdit.DoExit;

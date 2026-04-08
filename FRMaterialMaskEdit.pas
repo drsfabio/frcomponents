@@ -593,6 +593,9 @@ begin
   FFocused := True;
   if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
+  { Redireciona o foco para o edit interno }
+  if FMaskEdit.CanFocus then
+    FMaskEdit.SetFocus;
 end;
 
 procedure TFRMaterialMaskEdit.DoExit;
@@ -756,6 +759,9 @@ begin
   FMaskEdit.ParentBiDiMode       := True;
   FMaskEdit.TabStop              := True;
   FMaskEdit.SetSubComponent(True);
+
+  { Container não participa do tab order — o foco vai direto para FMaskEdit }
+  inherited TabStop := False;
 
   { AddHandlerOnChange é usado para não sobrescrever o OnChange do usuário.
     O controle de visibilidade do botão de limpeza é feito internamente. }

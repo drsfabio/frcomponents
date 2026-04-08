@@ -960,6 +960,9 @@ begin
   FFocused := True;
   if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
+  { Redireciona o foco para o edit interno }
+  if FEdit.CanFocus then
+    FEdit.SetFocus;
 end;
 
 procedure TFRMaterialDateEdit.DoExit;
@@ -1156,6 +1159,9 @@ begin
   FEdit.OnKeyDown  := @InternalKeyDown;
   FEdit.OnKeyPress := @InternalKeyPress;
   FEdit.AddHandlerOnChange(@InternalEditChange);
+
+  { Container não participa do tab order — o foco vai direto para FEdit }
+  inherited TabStop := False;
   FEdit.Text := '';
 
   { Botão calendário — ícone SVG }

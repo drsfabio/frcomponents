@@ -701,6 +701,9 @@ begin
   FFocused := True;
   if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
+  { Redireciona o foco para o combo interno }
+  if FCombo.CanFocus then
+    FCombo.SetFocus;
 end;
 
 procedure TFRMaterialComboEdit.DoExit;
@@ -843,6 +846,9 @@ begin
   FCombo.Style                := csDropDown;
   FCombo.TabStop              := True;
   FCombo.SetSubComponent(True);
+
+  { Container não participa do tab order — o foco vai direto para FCombo }
+  inherited TabStop := False;
 
   { Intercepta OnChange para não sobrescrever o handler do usuário }
   FCombo.OnChange := @InternalComboChange;

@@ -176,6 +176,9 @@ begin
   FEdit.AddHandlerOnChange(@InternalEditChange);
   FEdit.OnKeyDown := @InternalEditKeyDown;
 
+  { Container não participa do tab order — o foco vai direto para FEdit }
+  inherited TabStop := False;
+
   { Ícone de lupa à esquerda }
   FSearchButton := TFRMaterialIconButton.Create(Self);
   FSearchButton.IconMode    := imSearch;
@@ -269,6 +272,9 @@ begin
   FFocused := True;
   if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
+  { Redireciona o foco para o edit interno }
+  if FEdit.CanFocus then
+    FEdit.SetFocus;
 end;
 
 procedure TFRMaterialSearchEdit.DoExit;

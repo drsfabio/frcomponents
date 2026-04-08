@@ -175,6 +175,9 @@ begin
   FEdit.OnKeyPress := @EditKeyPress;
   FEdit.AddHandlerOnChange(@EditChange);
 
+  { Container não participa do tab order — o foco vai direto para FEdit }
+  inherited TabStop := False;
+
   { Botão Minus (-) à esquerda }
   FMinusButton := TFRMaterialIconButton.Create(Self);
   FMinusButton.IconMode    := imMinus;
@@ -255,6 +258,9 @@ begin
   FFocused := True;
   if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
+  { Redireciona o foco para o edit interno }
+  if FEdit.CanFocus then
+    FEdit.SetFocus;
 end;
 
 procedure TFRMaterialSpinEdit.DoExit;

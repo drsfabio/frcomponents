@@ -1441,6 +1441,9 @@ begin
     FSearchButton.InvalidateCache;
   end;
   Invalidate;
+  { Redireciona o foco para o edit interno }
+  if FEdit.CanFocus then
+    FEdit.SetFocus;
 end;
 
 procedure TFRMaterialEditBase.DoExit;
@@ -1694,6 +1697,9 @@ begin
   FEdit.ParentBiDiMode := True;
   FEdit.TabStop := True;
   FEdit.SetSubComponent(True);
+
+  { Container não participa do tab order — o foco vai direto para FEdit }
+  inherited TabStop := False;
 
   { Monitora mudanças de texto para mostrar/ocultar o botão de limpeza.
     AddHandlerOnChange é usado para não sobrescrever o OnChange do usuário. }

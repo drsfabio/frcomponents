@@ -624,6 +624,9 @@ begin
   FFocused := True;
   if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
+  { Redireciona o foco para o edit interno }
+  if FDisplayEdit.CanFocus then
+    FDisplayEdit.SetFocus;
 end;
 
 procedure TFRMaterialCheckComboEdit.DoExit;
@@ -795,6 +798,9 @@ begin
   FDisplayEdit.ParentFont           := True;
   FDisplayEdit.ParentBiDiMode       := True;
   FDisplayEdit.SetSubComponent(True);
+
+  { Container não participa do tab order — o foco vai direto para FDisplayEdit }
+  inherited TabStop := False;
 
   FDropButton := TButton.Create(Self);
   FDropButton.Caption    := '▾';      { ▾ triângulo para baixo U+25BE }

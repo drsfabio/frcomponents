@@ -680,6 +680,9 @@ begin
   FFocused := True;
   if Assigned(FLabelAnimator) then FLabelAnimator.FloatLabel;
   Invalidate;
+  { Redireciona o foco para o edit interno }
+  if FEdit.CanFocus then
+    FEdit.SetFocus;
 end;
 
 procedure TFRMaterialCurrencyEdit.DoExit;
@@ -842,6 +845,9 @@ begin
   FEdit.ReadOnly             := False;
   FEdit.TabStop              := True;
   FEdit.SetSubComponent(True);
+
+  { Container não participa do tab order — o foco vai direto para FEdit }
+  inherited TabStop := False;
 
   { Intercepta KeyPress para filtrar entrada; não usa AddHandlerOnKeyPress
     para garantir que Key := #0 chegue à frente de outros handlers }
