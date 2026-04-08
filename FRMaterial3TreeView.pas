@@ -226,9 +226,20 @@ var
   iconBmp: TBGRABitmap;
   chevMode: TFRIconMode;
   nodeIcon: TFRIconMode;
+  chevSz, nodeSz, padX, chevW, nodeW: Integer;
 begin
   RebuildFlatList;
   ih := GetEffectiveItemHeight;
+
+  { Proportional metrics based on ih (reference = 40) }
+  chevSz := ih * 18 div 40;
+  if chevSz < 12 then chevSz := 12;
+  nodeSz := ih * 20 div 40;
+  if nodeSz < 14 then nodeSz := 14;
+  padX := ih * 16 div 40;
+  if padX < 4 then padX := 4;
+  chevW := ih * 22 div 40;
+  nodeW := ih * 28 div 40;
 
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
@@ -238,11 +249,11 @@ begin
       yPos := I * ih - FScrollOffset;
       if (yPos + ih < 0) or (yPos > Height) then Continue;
 
-      xOff := 16 + Node.FLevel * FIndent;
+      xOff := padX + Node.FLevel * FIndent;
 
       { Selection highlight }
       if Node = FSelectedNode then
-        bmp.FillRoundRectAntialias(8, yPos + 2, Width - 8, yPos + ih - 2,
+        bmp.FillRoundRectAntialias(padX div 2, yPos + 2, Width - padX div 2, yPos + ih - 2,
           14, 14, ColorToBGRA(MD3Colors.SecondaryContainer));
 
       { Expand/collapse chevron for parent nodes }
@@ -254,15 +265,15 @@ begin
           chevMode := imExpandLess;
 
         icoClr := MD3Colors.OnSurfaceVariant;
-        iconBmp := FRGetCachedIcon(chevMode, FRColorToSVGHex(icoClr), 2.0, 18, 18);
+        iconBmp := FRGetCachedIcon(chevMode, FRColorToSVGHex(icoClr), 2.0, chevSz, chevSz);
         
         if iconBmp <> nil then
-          bmp.PutImage(xOff, yPos + (ih - 18) div 2, iconBmp, dmDrawWithTransparency);
+          bmp.PutImage(xOff, yPos + (ih - chevSz) div 2, iconBmp, dmDrawWithTransparency);
 
-        xOff := xOff + 22;
+        xOff := xOff + chevW;
       end
       else
-        xOff := xOff + 22; { align leaf items with parent content }
+        xOff := xOff + chevW; { align leaf items with parent content }
 
       { Node icon }
       if FShowIcons and (Node.FIconMode <> imClear) then
@@ -273,17 +284,17 @@ begin
           icoClr := MD3Colors.OnSurfaceVariant;
           
         nodeIcon := Node.FIconMode;
-        iconBmp := FRGetCachedIcon(nodeIcon, FRColorToSVGHex(icoClr), 2.0, 20, 20);
+        iconBmp := FRGetCachedIcon(nodeIcon, FRColorToSVGHex(icoClr), 2.0, nodeSz, nodeSz);
         
         if iconBmp <> nil then
-          bmp.PutImage(xOff, yPos + (ih - 20) div 2, iconBmp, dmDrawWithTransparency);
+          bmp.PutImage(xOff, yPos + (ih - nodeSz) div 2, iconBmp, dmDrawWithTransparency);
           
-        xOff := xOff + 28;
+        xOff := xOff + nodeW;
       end;
 
       { Divider }
       if FShowDividers and (I < FFlatList.Count - 1) then
-        bmp.DrawLineAntialias(16, yPos + ih - 1, Width - 1, yPos + ih - 1,
+        bmp.DrawLineAntialias(padX, yPos + ih - 1, Width - 1, yPos + ih - 1,
           ColorToBGRA(MD3Colors.OutlineVariant), 1);
     end;
 
@@ -300,18 +311,19 @@ begin
     yPos := I * ih - FScrollOffset;
     if (yPos + ih < 0) or (yPos > Height) then Continue;
 
-    xOff := 16 + Node.FLevel * FIndent + 22; { past chevron area }
+    xOff := padX + Node.FLevel * FIndent + chevW; { past chevron area }
 
     if FShowIcons and (Node.FIconMode <> imClear) then
-      xOff := xOff + 28;
+      xOff := xOff + nodeW;
 
     if Node = FSelectedNode then
       clr := MD3Colors.OnSecondaryContainer
     else
       clr := MD3Colors.OnSurface;
 
-    aRect := Rect(xOff, yPos, Width - 16, yPos + ih);
-    Canvas.Font.Size := 10;
+    aRect := Rect(xOff, yPos, Width - padX, yPos + ih);
+    Canvas.Font.Size := ih * 10 div 40;
+    if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
     if Node.HasChildren then
       Canvas.Font.Style := [fsBold]
     else
@@ -323,7 +335,7 @@ end;
 
 procedure TFRMaterialTreeView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  idx, xOff, chevEnd, ih: Integer;
+  idx, xOff, chevEnd, ih, padX, chevW: Integer;
   Node: TFRMaterialTreeNode;
 begin
   inherited;
@@ -331,12 +343,16 @@ begin
 
   RebuildFlatList;
   ih := GetEffectiveItemHeight;
+  padX := ih * 16 div 40;
+  if padX < 4 then padX := 4;
+  chevW := ih * 22 div 40;
+
   idx := (Y + FScrollOffset) div ih;
   if (idx < 0) or (idx >= FFlatList.Count) then Exit;
 
   Node := TFRMaterialTreeNode(FFlatList[idx]);
-  xOff := 16 + Node.FLevel * FIndent;
-  chevEnd := xOff + 22;
+  xOff := padX + Node.FLevel * FIndent;
+  chevEnd := xOff + chevW;
 
   { If clicked on chevron area and node has children → toggle expand }
   if Node.HasChildren and (X >= xOff) and (X < chevEnd) then

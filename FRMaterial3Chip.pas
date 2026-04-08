@@ -196,7 +196,8 @@ var
 begin
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
-    r := 8;
+    r := Height div 4;
+    if r < 4 then r := 4;
 
     if FSelected and (FChipStyle = csFilter) then
     begin
@@ -231,27 +232,30 @@ begin
 
   { Content layout }
   Canvas.Font := Self.Font;
-  textX := 16;
-  icoSz := 18;
+  Canvas.Font.Size := Height * 9 div 32;
+  if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
+  textX := Height div 2;
+  icoSz := Height * 18 div 32;
+  if icoSz < 12 then icoSz := 12;
 
   { Leading icon or check (for filter chips when selected) }
   if FSelected and (FChipStyle = csFilter) then
   begin
     iconBmp := FRGetCachedIcon(imSearch, FRColorToSVGHex(textColor), 2.0, icoSz, icoSz);
-    iconBmp.Draw(Canvas, 8, (Height - icoSz) div 2, False);
-    textX := 8 + icoSz + 8;
+    iconBmp.Draw(Canvas, Height div 4, (Height - icoSz) div 2, False);
+    textX := Height div 4 + icoSz + Height div 4;
   end
   else if FShowIcon then
   begin
     iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(textColor), 2.0, icoSz, icoSz);
-    iconBmp.Draw(Canvas, 8, (Height - icoSz) div 2, False);
-    textX := 8 + icoSz + 8;
+    iconBmp.Draw(Canvas, Height div 4, (Height - icoSz) div 2, False);
+    textX := Height div 4 + icoSz + Height div 4;
   end;
 
   { Caption }
   delX := Width;
   if FDeletable then
-    delX := Width - 28;
+    delX := Width - Height * 28 div 32;
   aRect := Rect(textX, 0, delX, Height);
   MD3DrawText(Canvas, Caption, aRect, textColor, taLeftJustify, True);
 
@@ -259,7 +263,7 @@ begin
   if FDeletable then
   begin
     iconBmp := FRGetCachedIcon(imClear, FRColorToSVGHex(textColor), 2.0, icoSz, icoSz);
-    iconBmp.Draw(Canvas, Width - 8 - icoSz, (Height - icoSz) div 2, False);
+    iconBmp.Draw(Canvas, Width - Height div 4 - icoSz, (Height - icoSz) div 2, False);
   end;
 end;
 

@@ -199,13 +199,8 @@ end;
 
 function TFRMaterialFAB.GetRadius: Integer;
 begin
-  case FFABSize of
-    fsSmall:   Result := 12;
-    fsRegular: Result := 16;
-    fsLarge:   Result := 28;
-  else
-    Result := 16;
-  end;
+  { Proportional: roughly 28% of dimension }
+  Result := GetFABDimension * 28 div 100;
 end;
 
 procedure TFRMaterialFAB.Paint;
@@ -301,7 +296,8 @@ var
 begin
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
-    r := 16;
+    r := Height * 16 div 56;
+    if r < 8 then r := 8;
     bgColor := MD3Colors.PrimaryContainer;
     contentColor := MD3Colors.OnPrimaryContainer;
 
@@ -323,8 +319,11 @@ begin
 
   { Icon + Text layout }
   Canvas.Font := Self.Font;
+  Canvas.Font.Size := Height * 10 div 56;
+  if Canvas.Font.Size < 8 then Canvas.Font.Size := 8;
   tw := Canvas.TextWidth(Caption);
-  icoSz := 24;
+  icoSz := Height * 24 div 56;
+  if icoSz < 16 then icoSz := 16;
 
   if FShowIcon then
   begin
@@ -442,6 +441,7 @@ begin
     contentColor := MD3Colors.OnPrimaryContainer;
     itemBg := MD3Colors.SurfaceContainerHigh;
     itemContent := MD3Colors.OnSurface;
+    icoSz := 24;
 
     { Draw expanded items above main FAB }
     if FExpanded then
@@ -469,7 +469,6 @@ begin
   end;
 
   { Main FAB icon }
-  icoSz := 24;
   fabY := Height - 56;
   iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(contentColor), 2.5, icoSz, icoSz);
   iconBmp.Draw(Canvas, (56 - icoSz) div 2, fabY + (56 - icoSz) div 2, False);

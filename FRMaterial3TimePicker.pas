@@ -147,8 +147,15 @@ var
   bmp: TBGRABitmap;
   hBg, mBg: TColor;
   aRect: TRect;
-  ampmX: Integer;
+  ampmX, padY, fW, colW, r: Integer;
 begin
+  { Proportional metrics based on Width (reference = 220) and Height (reference = 72) }
+  padY := Height * 8 div 72;
+  fW := Width * 80 div 220;       { hour/minute field width }
+  colW := Width * 16 div 220;     { colon width }
+  r := Height * 8 div 72;
+  if r < 4 then r := 4;
+
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     { hour field }
@@ -163,30 +170,30 @@ begin
     else
       mBg := MD3Colors.SurfaceContainerHighest;
 
-    MD3FillRoundRect(bmp, 0, 8, 80, Height - 8, 8, hBg);
-    MD3FillRoundRect(bmp, 96, 8, 176, Height - 8, 8, mBg);
+    MD3FillRoundRect(bmp, 0, padY, fW, Height - padY, r, hBg);
+    MD3FillRoundRect(bmp, fW + colW, padY, fW + colW + fW, Height - padY, r, mBg);
 
-    { colon }
     bmp.Draw(Canvas, 0, 0, False);
   finally
     bmp.Free;
   end;
 
   { colon text }
-  Canvas.Font.Size := 20;
+  Canvas.Font.Size := Height * 20 div 72;
+  if Canvas.Font.Size < 10 then Canvas.Font.Size := 10;
   Canvas.Font.Style := [];
-  aRect := Rect(80, 0, 96, Height);
+  aRect := Rect(fW, 0, fW + colW, Height);
   MD3DrawText(Canvas, ':', aRect, MD3Colors.OnSurface, taCenter, True);
 
   { hour text }
-  aRect := Rect(0, 8, 80, Height - 8);
+  aRect := Rect(0, padY, fW, Height - padY);
   if FActiveField = 0 then
     MD3DrawText(Canvas, Format('%.2d', [FHour]), aRect, MD3Colors.OnPrimaryContainer, taCenter, True)
   else
     MD3DrawText(Canvas, Format('%.2d', [FHour]), aRect, MD3Colors.OnSurface, taCenter, True);
 
   { minute text }
-  aRect := Rect(96, 8, 176, Height - 8);
+  aRect := Rect(fW + colW, padY, fW + colW + fW, Height - padY);
   if FActiveField = 1 then
     MD3DrawText(Canvas, Format('%.2d', [FMinute]), aRect, MD3Colors.OnPrimaryContainer, taCenter, True)
   else
@@ -195,8 +202,9 @@ begin
   { AM/PM toggle }
   if FTimeFormat = tfHour12 then
   begin
-    ampmX := 184;
-    Canvas.Font.Size := 10;
+    ampmX := fW + colW + fW + Width * 8 div 220;
+    Canvas.Font.Size := Height * 10 div 72;
+    if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
 
     { AM }
     if FIsAM then
@@ -209,7 +217,7 @@ begin
       Canvas.Brush.Color := MD3Colors.SurfaceContainerHighest;
       Canvas.Font.Color := MD3Colors.OnSurface;
     end;
-    aRect := Rect(ampmX, 8, ampmX + 36, 36);
+    aRect := Rect(ampmX, padY, Width, Height div 2);
     Canvas.FillRect(aRect);
     MD3DrawText(Canvas, 'AM', aRect, Canvas.Font.Color, taCenter, True);
 
@@ -224,7 +232,7 @@ begin
       Canvas.Brush.Color := MD3Colors.SurfaceContainerHighest;
       Canvas.Font.Color := MD3Colors.OnSurface;
     end;
-    aRect := Rect(ampmX, 36, ampmX + 36, Height - 8);
+    aRect := Rect(ampmX, Height div 2, Width, Height - padY);
     Canvas.FillRect(aRect);
     MD3DrawText(Canvas, 'PM', aRect, Canvas.Font.Color, taCenter, True);
   end;
@@ -233,14 +241,19 @@ begin
 end;
 
 procedure TFRMaterialTimePicker.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  fW, colW: Integer;
 begin
   inherited;
   if Button <> mbLeft then Exit;
   SetFocus;
 
-  if X < 88 then
+  fW := Width * 80 div 220;
+  colW := Width * 16 div 220;
+
+  if X < fW + colW div 2 then
     FActiveField := 0
-  else if X < 180 then
+  else if X < fW + colW + fW + colW div 2 then
     FActiveField := 1
   else if (FTimeFormat = tfHour12) then
   begin

@@ -206,7 +206,15 @@ var
   iconBmp: TBGRABitmap;
   textY: Integer;
   clipText: string;
+  icoSz, indH: Integer;
 begin
+  { Proportional metrics based on Height (reference = 48) }
+  icoSz := Height * 20 div 48;
+  if icoSz < 12 then icoSz := 12;
+  if icoSz > 28 then icoSz := 28;
+  indH := Height * 3 div 48;
+  if indH < 2 then indH := 2;
+
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
     { Background image }
@@ -231,7 +239,7 @@ begin
       if i = FTabIndex then
       begin
         { indicator }
-        bmp.FillRect(xPos + tw div 4, Height - 3, xPos + tw - tw div 4, Height,
+        bmp.FillRect(xPos + tw div 4, Height - indH, xPos + tw - tw div 4, Height,
           ColorToBGRA(MD3Colors.Primary), dmDrawWithTransparency);
       end;
 
@@ -242,8 +250,8 @@ begin
           textColor := MD3Colors.Primary
         else
           textColor := MD3Colors.OnSurfaceVariant;
-        iconBmp := FRGetCachedIcon(tab.FIconMode, FRColorToSVGHex(textColor), 2.0, 20, 20);
-        bmp.PutImage(xPos + (tw - 20) div 2, 8, iconBmp, dmDrawWithTransparency);
+        iconBmp := FRGetCachedIcon(tab.FIconMode, FRColorToSVGHex(textColor), 2.0, icoSz, icoSz);
+        bmp.PutImage(xPos + (tw - icoSz) div 2, Height * 8 div 48, iconBmp, dmDrawWithTransparency);
       end;
     end;
 
@@ -269,14 +277,15 @@ begin
       textColor := MD3Colors.OnSurfaceVariant;
 
     if tab.FIconMode <> imClear then
-      textY := 30
+      textY := Height * 30 div 48
     else
       textY := 0;
 
     aRect := Rect(xPos + 4, textY, xPos + tw - 4, Height - 4);
 
     { Clipping: truncar texto com ellipsis se não couber }
-    Canvas.Font.Size := 10;
+    Canvas.Font.Size := Height * 10 div 48;
+    if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
     clipText := tab.FCaption;
     if Canvas.TextWidth(clipText) > (aRect.Right - aRect.Left) then
     begin

@@ -152,7 +152,7 @@ function TFRMaterialSlider.ValueToX(AVal: Double): Integer;
 var
   pad: Integer;
 begin
-  pad := 20;
+  pad := Height div 2;
   if FMax <= FMin then
     Result := pad
   else
@@ -163,7 +163,7 @@ function TFRMaterialSlider.XToValue(AX: Integer): Double;
 var
   pad: Integer;
 begin
-  pad := 20;
+  pad := Height div 2;
   if Width <= 2 * pad then
     Result := FMin
   else
@@ -201,10 +201,20 @@ var
   activeColor, inactiveColor, thumbColor: TColor;
   labelRect: TRect;
   labelText: string;
+  thumbR, trackH, stateR, dotR: Integer;
 begin
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
-    pad := 20;
+    { Proportional metrics based on Height (reference = 40) }
+    pad := Height div 2;
+    thumbR := Height * 10 div 40;
+    if thumbR < 6 then thumbR := 6;
+    trackH := Height * 2 div 40;
+    if trackH < 1 then trackH := 1;
+    stateR := Height div 2;
+    dotR := Height * 2 div 40;
+    if dotR < 1 then dotR := 1;
+
     trackY := Height div 2;
     thumbX := ValueToX(FValue);
     activeColor := MD3Colors.Primary;
@@ -212,13 +222,13 @@ begin
     thumbColor := MD3Colors.Primary;
 
     { Inactive track }
-    bmp.FillRoundRectAntialias(pad, trackY - 2, Width - pad, trackY + 2,
-      2, 2, ColorToBGRA(ColorToRGB(inactiveColor)));
+    bmp.FillRoundRectAntialias(pad, trackY - trackH, Width - pad, trackY + trackH,
+      trackH, trackH, ColorToBGRA(ColorToRGB(inactiveColor)));
 
     { Active track }
     if thumbX > pad then
-      bmp.FillRoundRectAntialias(pad, trackY - 2, thumbX, trackY + 2,
-        2, 2, ColorToBGRA(ColorToRGB(activeColor)));
+      bmp.FillRoundRectAntialias(pad, trackY - trackH, thumbX, trackY + trackH,
+        trackH, trackH, ColorToBGRA(ColorToRGB(activeColor)));
 
     { Discrete step dots }
     if FDiscrete and (FSteps > 0) then
@@ -227,21 +237,21 @@ begin
       begin
         stepX := pad + Round(i / FSteps * (Width - 2 * pad));
         if stepX <= thumbX then
-          bmp.FillEllipseAntialias(stepX, trackY, 2, 2,
+          bmp.FillEllipseAntialias(stepX, trackY, dotR, dotR,
             ColorToBGRA(ColorToRGB(MD3Colors.OnPrimary)))
         else
-          bmp.FillEllipseAntialias(stepX, trackY, 2, 2,
+          bmp.FillEllipseAntialias(stepX, trackY, dotR, dotR,
             ColorToBGRA(ColorToRGB(activeColor)));
       end;
     end;
 
     { State layer on thumb }
     if Enabled then
-      MD3StateLayer(bmp, thumbX - 20, trackY - 20, thumbX + 20, trackY + 20,
-        20, activeColor, InteractionState);
+      MD3StateLayer(bmp, thumbX - stateR, trackY - stateR, thumbX + stateR, trackY + stateR,
+        stateR, activeColor, InteractionState);
 
     { Thumb }
-    bmp.FillEllipseAntialias(thumbX, trackY, 10, 10,
+    bmp.FillEllipseAntialias(thumbX, trackY, thumbR, thumbR,
       ColorToBGRA(ColorToRGB(thumbColor)));
 
     PaintRipple(bmp, thumbColor);
@@ -254,9 +264,10 @@ begin
   if FShowValueLabel and (FDragging or Hovered) then
   begin
     labelText := FormatFloat('0.#', FValue);
-    Canvas.Font.Size := 8;
+    Canvas.Font.Size := Height * 8 div 40;
+    if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
     Canvas.Font.Color := MD3Colors.OnPrimary;
-    labelRect := Rect(thumbX - 20, 2, thumbX + 20, 18);
+    labelRect := Rect(thumbX - stateR, 2, thumbX + stateR, Height * 18 div 40);
     Canvas.Brush.Color := MD3Colors.Primary;
     Canvas.RoundRect(labelRect, 4, 4);
     MD3DrawText(Canvas, labelText, labelRect, MD3Colors.OnPrimary, taCenter, True);

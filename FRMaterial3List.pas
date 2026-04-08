@@ -174,10 +174,18 @@ var
   iconBmp: TBGRABitmap;
   svg: string;
   textLeft: Integer;
+  icoSz, padX, trailW: Integer;
 begin
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
     ih := GetItemHeight;
+    { proportional metrics }
+    icoSz := ih * 24 div 56;
+    if icoSz < 16 then icoSz := 16;
+    padX := Width * 16 div 360;
+    if padX < 4 then padX := 4;
+    trailW := Width * 60 div 360;
+
     for i := 0 to FItems.Count - 1 do
     begin
       yPos := i * ih - FScrollOffset;
@@ -193,14 +201,14 @@ begin
       { leading icon }
       if item.FLeadingIcon <> imClear then
       begin
-        iconBmp := FRGetCachedIcon(item.FLeadingIcon, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 24, 24);
+        iconBmp := FRGetCachedIcon(item.FLeadingIcon, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, icoSz, icoSz);
         if iconBmp <> nil then
-          bmp.PutImage(16, yPos + (ih - 24) div 2, iconBmp, dmDrawWithTransparency);
+          bmp.PutImage(padX, yPos + (ih - icoSz) div 2, iconBmp, dmDrawWithTransparency);
       end;
 
       { divider }
       if FShowDividers and (i < FItems.Count - 1) then
-        bmp.DrawLineAntialias(16, yPos + ih - 1, Width - 1, yPos + ih - 1,
+        bmp.DrawLineAntialias(padX, yPos + ih - 1, Width - 1, yPos + ih - 1,
           ColorToBGRA(MD3Colors.OutlineVariant), 1);
     end;
 
@@ -212,6 +220,12 @@ begin
 
   { text labels — second pass on Canvas after bmp.Draw }
   ih := GetItemHeight;
+  icoSz := ih * 24 div 56;
+  if icoSz < 16 then icoSz := 16;
+  padX := Width * 16 div 360;
+  if padX < 4 then padX := 4;
+  trailW := Width * 60 div 360;
+
   for i := 0 to FItems.Count - 1 do
   begin
     yPos := i * ih - FScrollOffset;
@@ -220,19 +234,20 @@ begin
     item := FItems[i];
 
     if item.FLeadingIcon <> imClear then
-      textLeft := 56
+      textLeft := padX + icoSz + padX
     else
-      textLeft := 16;
+      textLeft := padX;
 
     { headline }
-    aRect := Rect(textLeft, yPos + 8, Width - 60, yPos + 8 + 20);
+    aRect := Rect(textLeft, yPos + ih * 8 div 56, Width - trailW, yPos + ih * 28 div 56);
     MD3DrawText(Canvas, item.FHeadline, aRect, MD3Colors.OnSurface, taLeftJustify, True);
 
     { support text }
     if (FItemType >= litTwoLine) and (item.FSupportText <> '') then
     begin
-      aRect := Rect(textLeft, yPos + 28, Width - 60, yPos + ih - 8);
-      Canvas.Font.Size := 8;
+      aRect := Rect(textLeft, yPos + ih * 28 div 56, Width - trailW, yPos + ih - ih * 8 div 56);
+      Canvas.Font.Size := ih * 8 div 56;
+      if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
       MD3DrawText(Canvas, item.FSupportText, aRect, MD3Colors.OnSurfaceVariant, taLeftJustify, True);
       Canvas.Font.Size := 10;
     end;
@@ -240,8 +255,9 @@ begin
     { trailing text }
     if item.FTrailingText <> '' then
     begin
-      aRect := Rect(Width - 56, yPos + 8, Width - 16, yPos + 8 + 20);
-      Canvas.Font.Size := 8;
+      aRect := Rect(Width - trailW, yPos + ih * 8 div 56, Width - padX, yPos + ih * 28 div 56);
+      Canvas.Font.Size := ih * 8 div 56;
+      if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
       MD3DrawText(Canvas, item.FTrailingText, aRect, MD3Colors.OnSurfaceVariant, taRightJustify, True);
       Canvas.Font.Size := 10;
     end;

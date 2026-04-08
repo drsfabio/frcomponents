@@ -189,26 +189,35 @@ var
   iconBmp: TBGRABitmap;
   i, xAct: Integer;
   titleLeft: Integer;
+  baseH, padX, icoY, icoSz: Integer;
 begin
+  baseH := GetBarHeight;
+  padX := Width * 16 div 400;
+  if padX < 8 then padX := 8;
+  icoY := Height * 20 div baseH;
+  icoSz := Height * 24 div baseH;
+  if icoSz < 16 then icoSz := 16;
+  if icoSz > 36 then icoSz := 36;
+
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
     { nav icon — Primary tint for theme integration }
-    titleLeft := 16;
+    titleLeft := padX;
     if FNavIcon <> imClear then
     begin
-      iconBmp := FRGetCachedIcon(FNavIcon, FRColorToSVGHex(MD3Colors.Primary), 2.0, 24, 24);
-      bmp.PutImage(16, 20, iconBmp, dmDrawWithTransparency);
-      titleLeft := 56;
+      iconBmp := FRGetCachedIcon(FNavIcon, FRColorToSVGHex(MD3Colors.Primary), 2.0, icoSz, icoSz);
+      bmp.PutImage(padX, icoY, iconBmp, dmDrawWithTransparency);
+      titleLeft := padX + icoSz + padX;
     end;
 
     { actions from right — Primary tint }
-    xAct := Width - 16;
+    xAct := Width - padX;
     for i := FActions.Count - 1 downto 0 do
     begin
-      iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.Primary), 2.0, 24, 24);
-      Dec(xAct, 24);
-      bmp.PutImage(xAct, 20, iconBmp, dmDrawWithTransparency);
-      Dec(xAct, 16);
+      iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.Primary), 2.0, icoSz, icoSz);
+      Dec(xAct, icoSz);
+      bmp.PutImage(xAct, icoY, iconBmp, dmDrawWithTransparency);
+      Dec(xAct, padX);
     end;
 
     { bottom accent line }
@@ -222,24 +231,24 @@ begin
   end;
 
   { title text }
+  Canvas.Font.Style := [fsBold];
   case FBarSize of
     absSmall:
     begin
-      aRect := Rect(titleLeft, 0, xAct, 64);
-      Canvas.Font.Size := 12;
+      aRect := Rect(titleLeft, 0, xAct, Height - 1);
+      Canvas.Font.Size := Height * 12 div baseH;
     end;
     absMedium:
     begin
-      aRect := Rect(16, 64, Width - 16, 112);
-      Canvas.Font.Size := 14;
+      aRect := Rect(padX, Height * 64 div baseH, Width - padX, Height);
+      Canvas.Font.Size := Height * 14 div baseH;
     end;
     absLarge:
     begin
-      aRect := Rect(16, 104, Width - 16, 152);
-      Canvas.Font.Size := 16;
+      aRect := Rect(padX, Height * 104 div baseH, Width - padX, Height);
+      Canvas.Font.Size := Height * 16 div baseH;
     end;
   end;
-  Canvas.Font.Style := [fsBold];
   MD3DrawText(Canvas, FTitle, aRect, MD3Colors.OnSurface, taLeftJustify, True);
   Canvas.Font.Style := [];
   Canvas.Font.Size := 10;
@@ -255,12 +264,22 @@ end;
 procedure TFRMaterialAppBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   i, xAct: Integer;
+  baseH, padX, icoSz, icoY, hitH: Integer;
 begin
   inherited;
   if Button <> mbLeft then Exit;
 
+  baseH := GetBarHeight;
+  padX := Width * 16 div 400;
+  if padX < 8 then padX := 8;
+  icoSz := Height * 24 div baseH;
+  if icoSz < 16 then icoSz := 16;
+  if icoSz > 36 then icoSz := 36;
+  icoY := Height * 20 div baseH;
+  hitH := icoY + icoSz;
+
   { check nav icon click }
-  if (FNavIcon <> imClear) and (X < 48) and (Y >= 12) and (Y <= 52) then
+  if (FNavIcon <> imClear) and (X < padX + icoSz + 8) and (Y >= icoY - 4) and (Y <= hitH + 4) then
   begin
     if Assigned(FOnNavClick) then
       FOnNavClick(Self);
@@ -268,17 +287,17 @@ begin
   end;
 
   { check action clicks }
-  xAct := Width - 16;
+  xAct := Width - padX;
   for i := FActions.Count - 1 downto 0 do
   begin
-    Dec(xAct, 24);
-    if (X >= xAct) and (X <= xAct + 24) and (Y >= 12) and (Y <= 52) then
+    Dec(xAct, icoSz);
+    if (X >= xAct) and (X <= xAct + icoSz) and (Y >= icoY - 4) and (Y <= hitH + 4) then
     begin
       if Assigned(FActions[i].FOnClick) then
         FActions[i].FOnClick(FActions[i]);
       Exit;
     end;
-    Dec(xAct, 16);
+    Dec(xAct, padX);
   end;
 end;
 
@@ -308,15 +327,21 @@ var
   bmp: TBGRABitmap;
   i, xPos: Integer;
   iconBmp: TBGRABitmap;
+  icoSz, icoY, cellW: Integer;
 begin
+  icoSz := Height * 24 div 64;
+  if icoSz < 16 then icoSz := 16;
+  icoY := (Height - icoSz) div 2;
+  cellW := Height * 48 div 64;
+
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.SurfaceContainer));
   try
-    xPos := (Width - FActions.Count * 48) div 2;
+    xPos := (Width - FActions.Count * cellW) div 2;
     for i := 0 to FActions.Count - 1 do
     begin
-      iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.OnSurface), 2.0, 24, 24);
-      bmp.PutImage(xPos + 12, 20, iconBmp, dmDrawWithTransparency);
-      Inc(xPos, 48);
+      iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.OnSurface), 2.0, icoSz, icoSz);
+      bmp.PutImage(xPos + (cellW - icoSz) div 2, icoY, iconBmp, dmDrawWithTransparency);
+      Inc(xPos, cellW);
     end;
     PaintRipple(bmp, MD3Colors.OnSurface);
     bmp.Draw(Canvas, 0, 0, False);
@@ -334,15 +359,16 @@ end;
 
 procedure TFRMaterialToolbar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  i, xStart, xPos: Integer;
+  i, xStart, xPos, cellW: Integer;
 begin
   inherited;
   if Button <> mbLeft then Exit;
-  xStart := (Width - FActions.Count * 48) div 2;
+  cellW := Height * 48 div 64;
+  xStart := (Width - FActions.Count * cellW) div 2;
   for i := 0 to FActions.Count - 1 do
   begin
-    xPos := xStart + i * 48;
-    if (X >= xPos) and (X < xPos + 48) then
+    xPos := xStart + i * cellW;
+    if (X >= xPos) and (X < xPos + cellW) then
     begin
       if Assigned(FActions[i].FOnClick) then
         FActions[i].FOnClick(FActions[i]);
