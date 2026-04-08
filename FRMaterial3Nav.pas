@@ -16,7 +16,8 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics,
   {$IFDEF FPC} LResources, {$ENDIF}
-  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons;
+  BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons,
+  FRMaterial3PageControl;
 
 type
   TFRMaterialNavItem = class(TCollectionItem)
@@ -49,18 +50,22 @@ type
   private
     FItems: TFRMaterialNavItems;
     FItemIndex: Integer;
+    FPageControl: TFRMaterialPageControl;
     FOnChange: TNotifyEvent;
     procedure SetItemIndex(AValue: Integer);
     procedure SetItems(AValue: TFRMaterialNavItems);
+    procedure SetPageControl(AValue: TFRMaterialPageControl);
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
     property Items: TFRMaterialNavItems read FItems write SetItems;
     property ItemIndex: Integer read FItemIndex write SetItemIndex default 0;
+    property PageControl: TFRMaterialPageControl read FPageControl write SetPageControl;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property Align;
     property Anchors;
@@ -74,12 +79,15 @@ type
     FItems: TFRMaterialNavItems;
     FItemIndex: Integer;
     FHeaderTitle: string;
+    FPageControl: TFRMaterialPageControl;
     FOnChange: TNotifyEvent;
     procedure SetItemIndex(AValue: Integer);
     procedure SetItems(AValue: TFRMaterialNavItems);
+    procedure SetPageControl(AValue: TFRMaterialPageControl);
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -87,6 +95,7 @@ type
     property Items: TFRMaterialNavItems read FItems write SetItems;
     property ItemIndex: Integer read FItemIndex write SetItemIndex default 0;
     property HeaderTitle: string read FHeaderTitle write FHeaderTitle;
+    property PageControl: TFRMaterialPageControl read FPageControl write SetPageControl;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property Align;
     property Anchors;
@@ -99,6 +108,7 @@ type
   private
     FItems: TFRMaterialNavItems;
     FItemIndex: Integer;
+    FPageControl: TFRMaterialPageControl;
     FOnChange: TNotifyEvent;
     FMenuIcon: TFRIconMode;
     FFabIcon: TFRIconMode;
@@ -106,9 +116,11 @@ type
     FOnFabClick: TNotifyEvent;
     procedure SetItemIndex(AValue: Integer);
     procedure SetItems(AValue: TFRMaterialNavItems);
+    procedure SetPageControl(AValue: TFRMaterialPageControl);
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -117,6 +129,7 @@ type
     property ItemIndex: Integer read FItemIndex write SetItemIndex default 0;
     property MenuIcon: TFRIconMode read FMenuIcon write FMenuIcon;
     property FabIcon: TFRIconMode read FFabIcon write FFabIcon;
+    property PageControl: TFRMaterialPageControl read FPageControl write SetPageControl;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnMenuClick: TNotifyEvent read FOnMenuClick write FOnMenuClick;
     property OnFabClick: TNotifyEvent read FOnFabClick write FOnFabClick;
@@ -247,6 +260,8 @@ begin
   begin
     FItemIndex := AValue;
     Invalidate;
+    if Assigned(FPageControl) then
+      FPageControl.ActivePageIndex := FItemIndex;
     if Assigned(FOnChange) then
       FOnChange(Self);
   end;
@@ -255,6 +270,25 @@ end;
 procedure TFRMaterialNavBar.SetItems(AValue: TFRMaterialNavItems);
 begin
   FItems.Assign(AValue);
+end;
+
+procedure TFRMaterialNavBar.SetPageControl(AValue: TFRMaterialPageControl);
+begin
+  if FPageControl <> AValue then
+  begin
+    if Assigned(FPageControl) then
+      FPageControl.RemoveFreeNotification(Self);
+    FPageControl := AValue;
+    if Assigned(FPageControl) then
+      FPageControl.FreeNotification(Self);
+  end;
+end;
+
+procedure TFRMaterialNavBar.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent = FPageControl) then
+    FPageControl := nil;
 end;
 
 procedure TFRMaterialNavBar.Paint;
@@ -366,6 +400,8 @@ begin
   begin
     FItemIndex := AValue;
     Invalidate;
+    if Assigned(FPageControl) then
+      FPageControl.ActivePageIndex := FItemIndex;
     if Assigned(FOnChange) then
       FOnChange(Self);
   end;
@@ -374,6 +410,25 @@ end;
 procedure TFRMaterialNavDrawer.SetItems(AValue: TFRMaterialNavItems);
 begin
   FItems.Assign(AValue);
+end;
+
+procedure TFRMaterialNavDrawer.SetPageControl(AValue: TFRMaterialPageControl);
+begin
+  if FPageControl <> AValue then
+  begin
+    if Assigned(FPageControl) then
+      FPageControl.RemoveFreeNotification(Self);
+    FPageControl := AValue;
+    if Assigned(FPageControl) then
+      FPageControl.FreeNotification(Self);
+  end;
+end;
+
+procedure TFRMaterialNavDrawer.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent = FPageControl) then
+    FPageControl := nil;
 end;
 
 procedure TFRMaterialNavDrawer.Paint;
@@ -494,6 +549,8 @@ begin
   begin
     FItemIndex := AValue;
     Invalidate;
+    if Assigned(FPageControl) then
+      FPageControl.ActivePageIndex := FItemIndex;
     if Assigned(FOnChange) then
       FOnChange(Self);
   end;
@@ -502,6 +559,25 @@ end;
 procedure TFRMaterialNavRail.SetItems(AValue: TFRMaterialNavItems);
 begin
   FItems.Assign(AValue);
+end;
+
+procedure TFRMaterialNavRail.SetPageControl(AValue: TFRMaterialPageControl);
+begin
+  if FPageControl <> AValue then
+  begin
+    if Assigned(FPageControl) then
+      FPageControl.RemoveFreeNotification(Self);
+    FPageControl := AValue;
+    if Assigned(FPageControl) then
+      FPageControl.FreeNotification(Self);
+  end;
+end;
+
+procedure TFRMaterialNavRail.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent = FPageControl) then
+    FPageControl := nil;
 end;
 
 procedure TFRMaterialNavRail.Paint;
