@@ -49,6 +49,8 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function GetParentComponent: TComponent; override;
+    function HasParent: Boolean; override;
   published
     property PageControl: TFRMaterialPageControl read FPageControl write SetPageControl;
     property Caption: TCaption read FTabCaption write SetTabCaption;
@@ -95,6 +97,7 @@ type
     procedure MouseLeave; override;
     procedure ApplyTheme(const AThemeManager: TObject); virtual;
     procedure Resize; override;
+    procedure GetChildren(Proc: TGetChildProc; Root: TComponent); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -214,6 +217,22 @@ procedure TFRMaterialTabPage.Paint;
 begin
   Canvas.Brush.Color := MD3Colors.Surface;
   Canvas.FillRect(ClientRect);
+end;
+
+function TFRMaterialTabPage.GetParentComponent: TComponent;
+begin
+  if Assigned(FPageControl) then
+    Result := FPageControl
+  else
+    Result := inherited GetParentComponent;
+end;
+
+function TFRMaterialTabPage.HasParent: Boolean;
+begin
+  if Assigned(FPageControl) then
+    Result := True
+  else
+    Result := inherited HasParent;
 end;
 
 { ── TFRMaterialPageControl ── }
@@ -646,6 +665,14 @@ begin
   UpdatePageLayout;
 end;
 
+procedure TFRMaterialPageControl.GetChildren(Proc: TGetChildProc; Root: TComponent);
+var
+  i: Integer;
+begin
+  for i := 0 to FPages.Count - 1 do
+    Proc(TComponent(FPages[i]));
+end;
+
 { ── TFRMaterialPageControlEditor ── }
 
 function TFRMaterialPageControlEditor.GetVerbCount: Integer;
@@ -719,6 +746,8 @@ end;
 procedure Register;
 begin
   RegisterComponents('Material Design 3', [TFRMaterialPageControl]);
+  RegisterNoIcon([TFRMaterialTabPage]);
+  RegisterClass(TFRMaterialTabPage);
   RegisterComponentEditor(TFRMaterialPageControl, TFRMaterialPageControlEditor);
 end;
 
