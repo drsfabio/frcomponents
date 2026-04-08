@@ -183,6 +183,10 @@ function FRGetIconSVG(AMode: TFRIconMode; const AHex: string; AStroke: Double): 
   Não dê .Free no Bitmap retornado! }
 function FRGetCachedIcon(AMode: TFRIconMode; const AHex: string; AStroke: Double; AW, AH: Integer): TBGRABitmap;
 
+{ Limpa todo o cache global de ícones SVG. Deve ser chamado ao trocar o tema
+  para que ícones com cores antigas não permaneçam em memória. }
+procedure FRClearIconCache;
+
 implementation
 
 uses
@@ -1487,6 +1491,12 @@ begin
   if FRGlobalIconCache = nil then
     FRGlobalIconCache := TFRMDGlobalIconCache.Create;
   Result := FRGlobalIconCache.GetIcon(AMode, AHex, AStroke, AW, AH);
+end;
+
+procedure FRClearIconCache;
+begin
+  if Assigned(FRGlobalIconCache) then
+    FreeAndNil(FRGlobalIconCache);
 end;
 
 { ══════════════════════════════════════════════════════════════════════════ }

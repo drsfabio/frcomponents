@@ -2171,8 +2171,8 @@ procedure TFmDemo.OnProgressTimer(Sender: TObject);
 var
   V: Double;
 begin
-  V := FLinearProgress.Value + 1;
-  if V > 100 then V := 0;
+  V := FLinearProgress.Value + 0.01;
+  if V > 1.0 then V := 0;
   FLinearProgress.Value := V;
   FCircularProgress.Value := V;
 end;

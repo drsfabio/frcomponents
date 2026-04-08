@@ -309,6 +309,9 @@ end;
 
 procedure TFRMDFloatingLabelAnimator.TimerTick(Sender: TObject);
 begin
+  { Não desperdiça CPU se o controle está invisível }
+  if Assigned(FControl) and (not FControl.IsVisible) then Exit;
+
   if FState = lsAnimatingToFloated then
   begin
     FProgress := FProgress + 0.15;

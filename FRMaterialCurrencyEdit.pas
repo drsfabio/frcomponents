@@ -367,9 +367,15 @@ begin
 end;
 
 procedure TFRMaterialCurrencyEdit.SetValue(AValue: Currency);
+var
+  Scaled: Extended;
 begin
   FNegative := AValue < 0;
-  FCents    := Abs(Round(Extended(AValue) * Pow10(FDecimalPlaces)));
+  Scaled := Abs(Extended(AValue)) * Pow10(FDecimalPlaces);
+  { Guard contra overflow de Int64 (máximo ~9.2×10¹⁸) }
+  if Scaled > High(Int64) then
+    Scaled := High(Int64);
+  FCents := Round(Scaled);
   RefreshDisplay;
   UpdateClearButton;
 end;

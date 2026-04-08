@@ -20,7 +20,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Forms, Graphics, TypInfo,
-  FRMaterial3Base, FRMaterialTheme;
+  FRMaterial3Base, FRMaterialTheme, FRMaterialIcons;
 
 type
   TFRMaterialThemeManager = class(TComponent, IFRMaterialThemeManager)
@@ -116,6 +116,9 @@ begin
     MD3GenerateScheme(FSeedColor, FDarkMode)
   else
     MD3LoadPalette(FPalette, FDarkMode);
+
+  { Limpa o cache de ícones para que sejam re-renderizados com as novas cores }
+  FRClearIconCache;
 
   { Propaga invalidação para todos os observers }
   if Assigned(FListeners) then
