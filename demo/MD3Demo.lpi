@@ -59,13 +59,6 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="uFmView.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="FmView"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-      </Unit>
-      <Unit>
         <Filename Value="../FRMaterial3AppBar.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

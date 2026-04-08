@@ -5,8 +5,9 @@ unit uFmDemo;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, LCLType, ComCtrls, StdCtrls, ExtCtrls,
-  Menus, StrUtils, Grids,
+  Classes, SysUtils, Forms, Controls, Graphics, LCLType, ComCtrls, StdCtrls,
+  ExtCtrls, Menus, StrUtils, Math, Grids,
+  laz.VirtualTrees,
   FRMaterial3Base,
   FRMaterial3Button,
   FRMaterial3FAB,
@@ -27,6 +28,8 @@ uses
   FRMaterial3Sheet,
   FRMaterial3TreeView,
   FRMaterial3DataGrid,
+  FRMaterial3PageControl,
+  FRMaterial3VirtualDataGrid,
   FRMaterialEdit,
   FRMaterialComboEdit,
   FRMaterialCheckComboEdit,
@@ -39,7 +42,7 @@ uses
   FRMaterialTheme,
   FRMaterialThemeManager,
   FRMaterialMasks,
-  FRMaterialIcons, uFmView;
+  FRMaterialIcons;
 
 type
 
@@ -47,12 +50,13 @@ type
 
   TFmDemo = class(TForm)
     procedure FormCreate(Sender: TObject);
-    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure FormDestroy(Sender: TObject);
+    procedure FormResize(Sender: TObject);
   private
     FMainAppBar: TFRMaterialAppBar;
     FMainTabs: TFRMaterialTabs;
     FMainNavBar: TFRMaterialNavBar;
-    FContentPanels: array[0..10] of TScrollBox;
+    FContentPanels: array[0..12] of TScrollBox;
     FDarkMode: Boolean;
     FDarkAction: TFRMaterialAppBarAction;
     FPaletteMenu: TPopupMenu;
@@ -77,6 +81,8 @@ type
     FTreeEdit: TFRMaterialEdit;
     FTreeSelLabel: TLabel;
     FDataGrid: TFRMaterialDataGrid;
+    FPageControl: TFRMaterialPageControl;
+    FVirtualGrid: TFRMaterialVirtualDataGrid;
 
     procedure CreatePageButtons(APage: TWinControl);
     procedure CreatePageFABs(APage: TWinControl);
@@ -86,14 +92,17 @@ type
     procedure CreatePageInputs(APage: TWinControl);
     procedure CreatePageProgress(APage: TWinControl);
     procedure CreatePageListTabs(APage: TWinControl);
+    procedure CreatePageTreeData(APage: TWinControl);
     procedure CreatePageNavigation(APage: TWinControl);
     procedure CreatePageSurfaces(APage: TWinControl);
-    procedure CreatePageDocs(APage: TWinControl);
+    procedure CreatePagePageControl(APage: TWinControl);
+    procedure CreatePageVirtualGrid(APage: TWinControl);
 
     function AddLabel(AParent: TWinControl; X, Y: Integer; const AText: string;
       ABold: Boolean = False): TLabel;
     function AddSection(AParent: TWinControl; Y: Integer;
       const ATitle: string): Integer;
+    function ContentW(AParent: TWinControl): Integer;
 
     { Navigation helpers }
     procedure UpdateMainTabs;
@@ -142,6 +151,9 @@ type
     procedure OnTreeExpandAll(Sender: TObject);
     procedure OnTreeCollapseAll(Sender: TObject);
     procedure OnTreeSelChange(Sender: TObject);
+    procedure OnPageControlChange(Sender: TObject);
+    procedure OnVGridSortColumn(Sender: TObject; ACol: Integer;
+      var ADirection: TFRMDSortDirection);
   public
   end;
 
@@ -152,7 +164,21 @@ implementation
 
 {$R *.lfm}
 
+const
+  PAGE_COUNT = 13;
+  PAD = 16;
+  GAP_Y = 12;
+  ROW_H = 56;
+  BTN_W = 130;
+  BTN_H = 40;
+
 { ----- Helpers ----- }
+
+function TFmDemo.ContentW(AParent: TWinControl): Integer;
+begin
+  Result := AParent.ClientWidth - PAD * 2;
+  if Result < 200 then Result := 200;
+end;
 
 function TFmDemo.AddLabel(AParent: TWinControl; X, Y: Integer;
   const AText: string; ABold: Boolean): TLabel;
@@ -162,6 +188,7 @@ begin
   Result.Left := X;
   Result.Top := Y;
   Result.Caption := AText;
+  Result.Transparent := True;
   Result.Font.Color := MD3Colors.OnSurface;
   if ABold then
     Result.Font.Style := [fsBold];
@@ -173,34 +200,35 @@ var
   Lbl: TLabel;
   Div1: TFRMaterialDivider;
 begin
-  if Y > 16 then
+  if Y > PAD then
   begin
     Div1 := TFRMaterialDivider.Create(Self);
     Div1.Parent := AParent;
-    Div1.SetBounds(16, Y, AParent.ClientWidth - 32, 1);
+    Div1.SetBounds(PAD, Y, ContentW(AParent), 1);
     Div1.Anchors := [akLeft, akTop, akRight];
-    Y := Y + 12;
+    Y := Y + GAP_Y;
   end;
 
   Lbl := TLabel.Create(Self);
   Lbl.Parent := AParent;
-  Lbl.Left := 16;
+  Lbl.Left := PAD;
   Lbl.Top := Y;
   Lbl.Caption := ATitle;
   Lbl.Font.Size := 12;
   Lbl.Font.Style := [fsBold];
   Lbl.Font.Color := MD3Colors.Primary;
-  Result := Y + Lbl.Height + 12;
+  Lbl.Transparent := True;
+  Result := Y + Lbl.Height + GAP_Y;
 end;
 
 { ----- Main ----- }
 
 procedure TFmDemo.FormCreate(Sender: TObject);
 const
-  CPageNames: array[0..10] of string = (
+  CPageNames: array[0..PAGE_COUNT-1] of string = (
     'Buttons', 'FABs', 'Toggles', 'Chips', 'Edits',
-    'Inputs', 'Progress', 'Listas & Tabs', 'Navegação',
-    'Superfícies', 'Documentação');
+    'Inputs', 'Progress', 'Listas & Tabs', 'Tree & DataGrid',
+    'Navegação', 'Superfícies', 'PageControl', 'VirtualDataGrid');
 var
   I: Integer;
   NI: TFRMaterialNavItem;
@@ -210,7 +238,7 @@ begin
   Color := MD3Colors.Surface;
   FDarkMode := False;
   FCurrentPalette := mpBaseline;
-  
+
   FThemeManager := TFRMaterialThemeManager.Create(Self);
   FThemeManager.Palette := mpBaseline;
   FThemeManager.DarkMode := False;
@@ -289,7 +317,7 @@ begin
   FMainNavBar.ItemIndex := 0;
 
   { === Content panels === }
-  for I := 10 downto 0 do
+  for I := PAGE_COUNT - 1 downto 0 do
   begin
     FContentPanels[I] := TScrollBox.Create(Self);
     FContentPanels[I].Parent := Self;
@@ -298,6 +326,8 @@ begin
     FContentPanels[I].Color := MD3Colors.Surface;
     FContentPanels[I].Visible := (I = 0);
     FContentPanels[I].Hint := CPageNames[I];
+    FContentPanels[I].HorzScrollBar.Visible := False;
+    FContentPanels[I].AutoScroll := True;
   end;
 
   { Create pages }
@@ -309,9 +339,11 @@ begin
   CreatePageInputs(FContentPanels[5]);
   CreatePageProgress(FContentPanels[6]);
   CreatePageListTabs(FContentPanels[7]);
-  CreatePageNavigation(FContentPanels[8]);
-  CreatePageSurfaces(FContentPanels[9]);
-  CreatePageDocs(FContentPanels[10]);
+  CreatePageTreeData(FContentPanels[8]);
+  CreatePageNavigation(FContentPanels[9]);
+  CreatePageSurfaces(FContentPanels[10]);
+  CreatePagePageControl(FContentPanels[11]);
+  CreatePageVirtualGrid(FContentPanels[12]);
 
   { Initialize tabs for first nav group }
   UpdateMainTabs;
@@ -326,56 +358,15 @@ begin
   FDialog.Buttons := [dbYes, dbNo, dbCancel];
 
   FMenu := TFRMaterialMenu.Create(Self);
-  with TFRMaterialMenuItem(FMenu.Items.Add) do
-  begin
-    Caption := 'Copiar';
-    IconMode := imCopy;
-    OnClick := @OnMenuItemClick;
-  end;
-  with TFRMaterialMenuItem(FMenu.Items.Add) do
-  begin
-    Caption := 'Editar';
-    IconMode := imEdit;
-    OnClick := @OnMenuItemClick;
-  end;
-  with TFRMaterialMenuItem(FMenu.Items.Add) do
-  begin
-    Caption := 'Compartilhar';
-    IconMode := imShare;
-    OnClick := @OnMenuItemClick;
-  end;
-  with TFRMaterialMenuItem(FMenu.Items.Add) do
-  begin
-    Caption := 'Favoritar';
-    IconMode := imStar;
-    OnClick := @OnMenuItemClick;
-  end;
-  with TFRMaterialMenuItem(FMenu.Items.Add) do
-  begin
-    IsSeparator := True;
-  end;
-  with TFRMaterialMenuItem(FMenu.Items.Add) do
-  begin
-    Caption := 'Baixar PDF';
-    IconMode := imDownload;
-    OnClick := @OnMenuItemClick;
-  end;
-  with TFRMaterialMenuItem(FMenu.Items.Add) do
-  begin
-    Caption := 'Anexar arquivo';
-    IconMode := imAttach;
-    OnClick := @OnMenuItemClick;
-  end;
-  with TFRMaterialMenuItem(FMenu.Items.Add) do
-  begin
-    IsSeparator := True;
-  end;
-  with TFRMaterialMenuItem(FMenu.Items.Add) do
-  begin
-    Caption := 'Excluir';
-    IconMode := imDelete;
-    OnClick := @OnMenuItemClick;
-  end;
+  with TFRMaterialMenuItem(FMenu.Items.Add) do begin Caption := 'Copiar'; IconMode := imCopy; OnClick := @OnMenuItemClick; end;
+  with TFRMaterialMenuItem(FMenu.Items.Add) do begin Caption := 'Editar'; IconMode := imEdit; OnClick := @OnMenuItemClick; end;
+  with TFRMaterialMenuItem(FMenu.Items.Add) do begin Caption := 'Compartilhar'; IconMode := imShare; OnClick := @OnMenuItemClick; end;
+  with TFRMaterialMenuItem(FMenu.Items.Add) do begin Caption := 'Favoritar'; IconMode := imStar; OnClick := @OnMenuItemClick; end;
+  with TFRMaterialMenuItem(FMenu.Items.Add) do begin IsSeparator := True; end;
+  with TFRMaterialMenuItem(FMenu.Items.Add) do begin Caption := 'Baixar PDF'; IconMode := imDownload; OnClick := @OnMenuItemClick; end;
+  with TFRMaterialMenuItem(FMenu.Items.Add) do begin Caption := 'Anexar arquivo'; IconMode := imAttach; OnClick := @OnMenuItemClick; end;
+  with TFRMaterialMenuItem(FMenu.Items.Add) do begin IsSeparator := True; end;
+  with TFRMaterialMenuItem(FMenu.Items.Add) do begin Caption := 'Excluir'; IconMode := imDelete; OnClick := @OnMenuItemClick; end;
 
   FTooltip := TFRMaterialTooltip.Create(Self);
   FTooltip.Text := 'Tooltip de demonstração';
@@ -385,21 +376,31 @@ begin
  end;
 end;
 
-procedure TFmDemo.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-var
-  view: TFmView;
+procedure TFmDemo.FormDestroy(Sender: TObject);
 begin
-  if key <> VK_F12 then Exit;
+  if Assigned(FProgressTimer) then
+    FProgressTimer.Enabled := False;
+end;
 
-  view := TFmView.Create(self);
-  view.ShowModal;
+procedure TFmDemo.FormResize(Sender: TObject);
+begin
+  if Assigned(FBottomSheet) and (not FBottomSheet.Visible) then
+  begin
+    FBottomSheet.Width := ClientWidth;
+    FBottomSheet.Top := ClientHeight;
+  end;
+  if Assigned(FSideSheet) and (not FSideSheet.Visible) then
+  begin
+    FSideSheet.Height := ClientHeight;
+    FSideSheet.Left := ClientWidth;
+  end;
 end;
 
 { ===== Page: Buttons ===== }
 
 procedure TFmDemo.CreatePageButtons(APage: TWinControl);
 var
-  Y: Integer;
+  Y, X: Integer;
   Btn: TFRMaterialButton;
   BtnI: TFRMaterialButtonIcon;
   Split: TFRMaterialSplitButton;
@@ -407,40 +408,39 @@ var
   IStyle: TFRMDIconButtonStyle;
   StyleNames: array[TFRMDButtonStyle] of string = ('Filled', 'Outlined', 'Text', 'Elevated', 'Tonal');
   IStyleNames: array[TFRMDIconButtonStyle] of string = ('Standard', 'Filled', 'FilledTonal', 'Outlined');
-  X: Integer;
 begin
-  Y := AddSection(APage, 16, 'TFRMaterialButton (5 styles)');
-  X := 24;
+  Y := AddSection(APage, PAD, 'TFRMaterialButton (5 styles)');
+  X := PAD;
   for Style := Low(TFRMDButtonStyle) to High(TFRMDButtonStyle) do
   begin
     Btn := TFRMaterialButton.Create(Self);
     Btn.Parent := APage;
-    Btn.SetBounds(X, Y, 120, 40);
+    Btn.SetBounds(X, Y, BTN_W, BTN_H);
     Btn.Caption := StyleNames[Style];
     Btn.ButtonStyle := Style;
     Btn.OnClick := @OnButtonClick;
-    X := X + 132;
+    X := X + BTN_W + GAP_Y;
   end;
 
-  Y := Y + 56;
+  Y := Y + ROW_H;
   Y := AddSection(APage, Y, 'TFRMaterialButton with Icon');
-  X := 24;
+  X := PAD;
   for Style := Low(TFRMDButtonStyle) to High(TFRMDButtonStyle) do
   begin
     Btn := TFRMaterialButton.Create(Self);
     Btn.Parent := APage;
-    Btn.SetBounds(X, Y, 140, 40);
+    Btn.SetBounds(X, Y, 145, BTN_H);
     Btn.Caption := StyleNames[Style];
     Btn.ButtonStyle := Style;
     Btn.ShowIcon := True;
     Btn.IconMode := imStar;
     Btn.OnClick := @OnButtonClick;
-    X := X + 152;
+    X := X + 157;
   end;
 
-  Y := Y + 56;
+  Y := Y + ROW_H;
   Y := AddSection(APage, Y, 'TFRMaterialButtonIcon (4 styles)');
-  X := 24;
+  X := PAD;
   for IStyle := Low(TFRMDIconButtonStyle) to High(TFRMDIconButtonStyle) do
   begin
     AddLabel(APage, X, Y, IStyleNames[IStyle]);
@@ -455,7 +455,7 @@ begin
 
   Y := Y + 82;
   Y := AddSection(APage, Y, 'TFRMaterialButtonIcon — Toggle');
-  X := 24;
+  X := PAD;
   for IStyle := Low(TFRMDIconButtonStyle) to High(TFRMDIconButtonStyle) do
   begin
     BtnI := TFRMaterialButtonIcon.Create(Self);
@@ -472,29 +472,29 @@ begin
   Y := AddSection(APage, Y, 'TFRMaterialSplitButton');
   Split := TFRMaterialSplitButton.Create(Self);
   Split.Parent := APage;
-  Split.SetBounds(24, Y, 180, 40);
+  Split.SetBounds(PAD, Y, 180, BTN_H);
   Split.Caption := 'Ações';
   Split.ButtonStyle := mbsFilled;
   Split.OnClick := @OnSplitClick;
 
   Split := TFRMaterialSplitButton.Create(Self);
   Split.Parent := APage;
-  Split.SetBounds(220, Y, 180, 40);
+  Split.SetBounds(PAD + 196, Y, 180, BTN_H);
   Split.Caption := 'Opções';
   Split.ButtonStyle := mbsOutlined;
   Split.OnClick := @OnSplitClick;
 
-  Y := Y + 56;
+  Y := Y + ROW_H;
   Y := AddSection(APage, Y, 'Disabled');
   Btn := TFRMaterialButton.Create(Self);
   Btn.Parent := APage;
-  Btn.SetBounds(24, Y, 120, 40);
+  Btn.SetBounds(PAD, Y, BTN_W, BTN_H);
   Btn.Caption := 'Disabled';
   Btn.Enabled := False;
 
   BtnI := TFRMaterialButtonIcon.Create(Self);
   BtnI.Parent := APage;
-  BtnI.SetBounds(160, Y, 48, 48);
+  BtnI.SetBounds(PAD + BTN_W + GAP_Y, Y, 48, 48);
   BtnI.IconMode := imSettings;
   BtnI.Enabled := False;
 end;
@@ -510,8 +510,8 @@ var
   SzNames: array[TFRMDFABSize] of string = ('Small', 'Regular', 'Large');
   SzWidths: array[TFRMDFABSize] of Integer = (40, 56, 96);
 begin
-  Y := AddSection(APage, 16, 'TFRMaterialFAB (3 sizes)');
-  X := 24;
+  Y := AddSection(APage, PAD, 'TFRMaterialFAB (3 sizes)');
+  X := PAD;
   for Sz := Low(TFRMDFABSize) to High(TFRMDFABSize) do
   begin
     AddLabel(APage, X, Y, SzNames[Sz]);
@@ -526,7 +526,7 @@ begin
 
   Y := Y + 130;
   Y := AddSection(APage, Y, 'TFRMaterialFAB — Different Icons');
-  X := 24;
+  X := PAD;
   FAB := TFRMaterialFAB.Create(Self);
   FAB.Parent := APage;
   FAB.SetBounds(X, Y, 56, 56);
@@ -549,7 +549,7 @@ begin
   Y := AddSection(APage, Y, 'TFRMaterialExtendedFAB');
   EFAB := TFRMaterialExtendedFAB.Create(Self);
   EFAB.Parent := APage;
-  EFAB.SetBounds(24, Y, 180, 56);
+  EFAB.SetBounds(PAD, Y, 180, 56);
   EFAB.Caption := 'Novo item';
   EFAB.IconMode := imPlus;
   EFAB.ShowIcon := True;
@@ -557,7 +557,7 @@ begin
 
   EFAB := TFRMaterialExtendedFAB.Create(Self);
   EFAB.Parent := APage;
-  EFAB.SetBounds(220, Y, 180, 56);
+  EFAB.SetBounds(PAD + 196, Y, 180, 56);
   EFAB.Caption := 'Compor';
   EFAB.IconMode := imEdit;
   EFAB.ShowIcon := True;
@@ -565,7 +565,7 @@ begin
 
   EFAB := TFRMaterialExtendedFAB.Create(Self);
   EFAB.Parent := APage;
-  EFAB.SetBounds(416, Y, 160, 56);
+  EFAB.SetBounds(PAD + 392, Y, 160, 56);
   EFAB.Caption := 'Sem ícone';
   EFAB.ShowIcon := False;
   EFAB.OnClick := @OnExtFABClick;
@@ -575,23 +575,11 @@ begin
   with TFRMaterialFABMenu.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(24, Y, 56, 250);
+    SetBounds(PAD, Y, 56, 250);
     IconMode := imPlus;
-    with TFRMaterialFABMenuItem(Items.Add) do
-    begin
-      Caption := 'Novo pedido';
-      IconMode := imEdit;
-    end;
-    with TFRMaterialFABMenuItem(Items.Add) do
-    begin
-      Caption := 'Novo cliente';
-      IconMode := imPerson;
-    end;
-    with TFRMaterialFABMenuItem(Items.Add) do
-    begin
-      Caption := 'Importar';
-      IconMode := imUpload;
-    end;
+    with TFRMaterialFABMenuItem(Items.Add) do begin Caption := 'Novo pedido'; IconMode := imEdit; end;
+    with TFRMaterialFABMenuItem(Items.Add) do begin Caption := 'Novo cliente'; IconMode := imPerson; end;
+    with TFRMaterialFABMenuItem(Items.Add) do begin Caption := 'Importar'; IconMode := imUpload; end;
   end;
 end;
 
@@ -604,31 +592,31 @@ var
   CB: TFRMaterialCheckBox;
   RB: TFRMaterialRadioButton;
 begin
-  Y := AddSection(APage, 16, 'TFRMaterialSwitch');
+  Y := AddSection(APage, PAD, 'TFRMaterialSwitch');
 
   SW := TFRMaterialSwitch.Create(Self);
   SW.Parent := APage;
-  SW.SetBounds(24, Y, 52, 32);
+  SW.SetBounds(PAD, Y, 52, 32);
   SW.OnChange := @OnSwitchChange;
   AddLabel(APage, 84, Y + 6, 'Notificações por e-mail');
 
   SW := TFRMaterialSwitch.Create(Self);
   SW.Parent := APage;
-  SW.SetBounds(24, Y + 42, 52, 32);
+  SW.SetBounds(PAD, Y + 42, 52, 32);
   SW.Checked := True;
   SW.OnChange := @OnSwitchChange;
   AddLabel(APage, 84, Y + 48, 'Atualização automática de estoque');
 
   SW := TFRMaterialSwitch.Create(Self);
   SW.Parent := APage;
-  SW.SetBounds(24, Y + 84, 52, 32);
+  SW.SetBounds(PAD, Y + 84, 52, 32);
   SW.Checked := True;
   SW.OnChange := @OnSwitchChange;
   AddLabel(APage, 84, Y + 90, 'Backup diário às 03:00');
 
   SW := TFRMaterialSwitch.Create(Self);
   SW.Parent := APage;
-  SW.SetBounds(24, Y + 126, 52, 32);
+  SW.SetBounds(PAD, Y + 126, 52, 32);
   SW.Enabled := False;
   AddLabel(APage, 84, Y + 132, 'Modo manutenção (bloqueado)');
 
@@ -637,27 +625,27 @@ begin
 
   CB := TFRMaterialCheckBox.Create(Self);
   CB.Parent := APage;
-  CB.SetBounds(24, Y, 200, 24);
+  CB.SetBounds(PAD, Y, 280, 24);
   CB.Caption := 'Emitir NF-e automaticamente';
   CB.OnChange := @OnCheckChange;
 
   CB := TFRMaterialCheckBox.Create(Self);
   CB.Parent := APage;
-  CB.SetBounds(24, Y + 30, 280, 24);
+  CB.SetBounds(PAD, Y + 30, 280, 24);
   CB.Caption := 'Incluir impostos no preço final';
   CB.Checked := True;
   CB.OnChange := @OnCheckChange;
 
   CB := TFRMaterialCheckBox.Create(Self);
   CB.Parent := APage;
-  CB.SetBounds(24, Y + 60, 280, 24);
+  CB.SetBounds(PAD, Y + 60, 280, 24);
   CB.Caption := 'Enviar comprovante por e-mail';
   CB.Checked := True;
   CB.OnChange := @OnCheckChange;
 
   CB := TFRMaterialCheckBox.Create(Self);
   CB.Parent := APage;
-  CB.SetBounds(24, Y + 90, 280, 24);
+  CB.SetBounds(PAD, Y + 90, 280, 24);
   CB.Caption := 'Permissões parciais (tri-state)';
   CB.AllowGrayed := True;
   CB.State := cbGrayed;
@@ -665,7 +653,7 @@ begin
 
   CB := TFRMaterialCheckBox.Create(Self);
   CB.Parent := APage;
-  CB.SetBounds(24, Y + 120, 280, 24);
+  CB.SetBounds(PAD, Y + 120, 280, 24);
   CB.Caption := 'Integração legada (indisponível)';
   CB.Enabled := False;
 
@@ -674,7 +662,7 @@ begin
 
   RB := TFRMaterialRadioButton.Create(Self);
   RB.Parent := APage;
-  RB.SetBounds(24, Y, 200, 24);
+  RB.SetBounds(PAD, Y, 280, 24);
   RB.Caption := 'À vista (5% desconto)';
   RB.GroupIndex := 1;
   RB.Checked := True;
@@ -682,21 +670,21 @@ begin
 
   RB := TFRMaterialRadioButton.Create(Self);
   RB.Parent := APage;
-  RB.SetBounds(24, Y + 30, 280, 24);
+  RB.SetBounds(PAD, Y + 30, 280, 24);
   RB.Caption := '30/60/90 dias — Boleto';
   RB.GroupIndex := 1;
   RB.OnChange := @OnRadioChange;
 
   RB := TFRMaterialRadioButton.Create(Self);
   RB.Parent := APage;
-  RB.SetBounds(24, Y + 60, 280, 24);
+  RB.SetBounds(PAD, Y + 60, 280, 24);
   RB.Caption := 'Cartão de crédito — até 12x';
   RB.GroupIndex := 1;
   RB.OnChange := @OnRadioChange;
 
   RB := TFRMaterialRadioButton.Create(Self);
   RB.Parent := APage;
-  RB.SetBounds(24, Y + 90, 280, 24);
+  RB.SetBounds(PAD, Y + 90, 280, 24);
   RB.Caption := 'PIX — Pagamento instantâneo';
   RB.GroupIndex := 1;
   RB.OnChange := @OnRadioChange;
@@ -712,8 +700,8 @@ var
   Style: TFRMDChipStyle;
   StyleNames: array[TFRMDChipStyle] of string = ('Assist', 'Filter', 'Input', 'Suggestion');
 begin
-  Y := AddSection(APage, 16, 'TFRMaterialChip (4 styles)');
-  X := 24;
+  Y := AddSection(APage, PAD, 'TFRMaterialChip (4 styles)');
+  X := PAD;
   for Style := Low(TFRMDChipStyle) to High(TFRMDChipStyle) do
   begin
     Ch := TFRMaterialChip.Create(Self);
@@ -727,7 +715,7 @@ begin
 
   Y := Y + 48;
   Y := AddSection(APage, Y, 'Chips with icon');
-  X := 24;
+  X := PAD;
   Ch := TFRMaterialChip.Create(Self);
   Ch.Parent := APage;
   Ch.SetBounds(X, Y, 130, 32);
@@ -769,7 +757,7 @@ begin
   Y := AddSection(APage, Y, 'Input Chips (deletáveis)');
   Ch := TFRMaterialChip.Create(Self);
   Ch.Parent := APage;
-  Ch.SetBounds(24, Y, 130, 32);
+  Ch.SetBounds(PAD, Y, 130, 32);
   Ch.Caption := 'São Paulo';
   Ch.ChipStyle := csInput;
   Ch.Deletable := True;
@@ -780,7 +768,7 @@ begin
 
   Ch := TFRMaterialChip.Create(Self);
   Ch.Parent := APage;
-  Ch.SetBounds(166, Y, 150, 32);
+  Ch.SetBounds(PAD + 142, Y, 150, 32);
   Ch.Caption := 'Rio de Janeiro';
   Ch.ChipStyle := csInput;
   Ch.Deletable := True;
@@ -791,7 +779,7 @@ begin
 
   Ch := TFRMaterialChip.Create(Self);
   Ch.Parent := APage;
-  Ch.SetBounds(328, Y, 120, 32);
+  Ch.SetBounds(PAD + 304, Y, 120, 32);
   Ch.Caption := 'Curitiba';
   Ch.ChipStyle := csInput;
   Ch.Deletable := True;
@@ -804,7 +792,7 @@ begin
   Y := AddSection(APage, Y, 'Filter Chips (selecionáveis)');
   Ch := TFRMaterialChip.Create(Self);
   Ch.Parent := APage;
-  Ch.SetBounds(24, Y, 100, 32);
+  Ch.SetBounds(PAD, Y, 100, 32);
   Ch.Caption := 'Aberto';
   Ch.ChipStyle := csFilter;
   Ch.Selected := True;
@@ -812,43 +800,41 @@ begin
 
   Ch := TFRMaterialChip.Create(Self);
   Ch.Parent := APage;
-  Ch.SetBounds(136, Y, 120, 32);
+  Ch.SetBounds(PAD + 112, Y, 120, 32);
   Ch.Caption := 'Em análise';
   Ch.ChipStyle := csFilter;
-  Ch.Selected := False;
   Ch.OnClick := @OnChipClick;
 
   Ch := TFRMaterialChip.Create(Self);
   Ch.Parent := APage;
-  Ch.SetBounds(268, Y, 110, 32);
+  Ch.SetBounds(PAD + 244, Y, 110, 32);
   Ch.Caption := 'Fechado';
   Ch.ChipStyle := csFilter;
-  Ch.Selected := False;
   Ch.OnClick := @OnChipClick;
 
   Ch := TFRMaterialChip.Create(Self);
   Ch.Parent := APage;
-  Ch.SetBounds(390, Y, 120, 32);
+  Ch.SetBounds(PAD + 366, Y, 120, 32);
   Ch.Caption := 'Cancelado';
   Ch.ChipStyle := csFilter;
-  Ch.Selected := False;
   Ch.OnClick := @OnChipClick;
 
   Y := Y + 48;
   Y := AddSection(APage, Y, 'TFRMaterialSegmentedButton');
   Seg := TFRMaterialSegmentedButton.Create(Self);
   Seg.Parent := APage;
-  Seg.SetBounds(24, Y, 360, 40);
+  Seg.SetBounds(PAD, Y, 360, BTN_H);
   Seg.Items.Add('Dia');
   Seg.Items.Add('Semana');
   Seg.Items.Add('Mês');
   Seg.ItemIndex := 0;
   Seg.OnChange := @OnSegmentChange;
 
-  Y := Y + 56;
+  Y := Y + ROW_H;
   Seg := TFRMaterialSegmentedButton.Create(Self);
   Seg.Parent := APage;
-  Seg.SetBounds(24, Y, 600, 40);
+  Seg.SetBounds(PAD, Y, Min(ContentW(APage), 600), BTN_H);
+  Seg.Anchors := [akLeft, akTop, akRight];
   Seg.Items.Add('Matriz');
   Seg.Items.Add('Filial SP');
   Seg.Items.Add('Filial RJ');
@@ -862,14 +848,16 @@ end;
 
 procedure TFmDemo.CreatePageEdits(APage: TWinControl);
 var
-  Y: Integer;
+  Y, ColW: Integer;
 begin
-  { --- TFRMaterialEdit --- }
-  Y := AddSection(APage, 16, 'TFRMaterialEdit — Standard / Filled / Outlined');
+  ColW := (ContentW(APage) - GAP_Y * 2) div 3;
+  if ColW < 180 then ColW := 180;
+
+  Y := AddSection(APage, PAD, 'TFRMaterialEdit — Standard / Filled / Outlined');
   with TFRMaterialEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(24, Y, 260, 56);
+    SetBounds(PAD, Y, ColW, ROW_H);
     Caption := 'Nome do cliente';
     TextHint := 'Digite o nome completo';
     Variant := mvStandard;
@@ -879,7 +867,7 @@ begin
   with TFRMaterialEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(300, Y, 260, 56);
+    SetBounds(PAD + ColW + GAP_Y, Y, ColW, ROW_H);
     Caption := 'E-mail';
     TextHint := 'usuario@dominio.com';
     Variant := mvFilled;
@@ -890,7 +878,7 @@ begin
   with TFRMaterialEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(576, Y, 260, 56);
+    SetBounds(PAD + (ColW + GAP_Y) * 2, Y, ColW, ROW_H);
     Caption := 'CPF/CNPJ';
     TextHint := '00.000.000/0000-00';
     Variant := mvOutlined;
@@ -902,7 +890,7 @@ begin
   with TFRMaterialEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(24, Y, 260, 70);
+    SetBounds(PAD, Y, ColW, 70);
     Caption := 'Campo obrigatório';
     Required := True;
     HelperText := 'Preencha este campo';
@@ -914,7 +902,7 @@ begin
   with TFRMaterialEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(300, Y, 260, 70);
+    SetBounds(PAD + ColW + GAP_Y, Y, ColW, 70);
     Caption := 'Campo validado';
     Text := 'Dados corretos';
     ValidationState := vsValid;
@@ -924,7 +912,7 @@ begin
   with TFRMaterialEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(576, Y, 260, 70);
+    SetBounds(PAD + (ColW + GAP_Y) * 2, Y, ColW, 70);
     Caption := 'Senha';
     PasswordMode := True;
     TextHint := '********';
@@ -932,21 +920,20 @@ begin
   end;
 
   { --- TFRMaterialComboEdit --- }
+  ColW := (ContentW(APage) - GAP_Y) div 2;
+  if ColW < 200 then ColW := 200;
+
   Y := Y + 86;
   Y := AddSection(APage, Y, 'TFRMaterialComboEdit');
   with TFRMaterialComboEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(24, Y, 260, 56);
+    SetBounds(PAD, Y, ColW, ROW_H);
     Caption := 'Estado (UF)';
     Variant := mvOutlined;
-    Items.Add('Acre');
-    Items.Add('Bahia');
-    Items.Add('Ceará');
-    Items.Add('Minas Gerais');
-    Items.Add('Paraná');
-    Items.Add('Rio de Janeiro');
-    Items.Add('São Paulo');
+    Items.Add('Acre'); Items.Add('Bahia'); Items.Add('Ceará');
+    Items.Add('Minas Gerais'); Items.Add('Paraná');
+    Items.Add('Rio de Janeiro'); Items.Add('São Paulo');
     Items.Add('Santa Catarina');
     Sorted := True;
   end;
@@ -954,14 +941,12 @@ begin
   with TFRMaterialComboEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(300, Y, 260, 56);
+    SetBounds(PAD + ColW + GAP_Y, Y, ColW, ROW_H);
     Caption := 'Forma de pagamento';
     Variant := mvFilled;
     Style := csDropDownList;
-    Items.Add('À vista');
-    Items.Add('Boleto 30/60/90');
-    Items.Add('Cartão de crédito');
-    Items.Add('PIX');
+    Items.Add('À vista'); Items.Add('Boleto 30/60/90');
+    Items.Add('Cartão de crédito'); Items.Add('PIX');
     ItemIndex := 0;
   end;
 
@@ -971,15 +956,13 @@ begin
   with TFRMaterialCheckComboEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(24, Y, 300, 56);
+    SetBounds(PAD, Y, ContentW(APage), ROW_H);
+    Anchors := [akLeft, akTop, akRight];
     Caption := 'Categorias do produto';
     Variant := mvOutlined;
-    Items.Add('Eletrônicos');
-    Items.Add('Ferramentas');
-    Items.Add('Material elétrico');
-    Items.Add('Hidráulica');
-    Items.Add('Pintura');
-    Items.Add('Iluminação');
+    Items.Add('Eletrônicos'); Items.Add('Ferramentas');
+    Items.Add('Material elétrico'); Items.Add('Hidráulica');
+    Items.Add('Pintura'); Items.Add('Iluminação');
     EmptyText := 'Selecione as categorias';
   end;
 
@@ -989,7 +972,7 @@ begin
   with TFRMaterialCurrencyEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(24, Y, 220, 56);
+    SetBounds(PAD, Y, ColW, ROW_H);
     Caption := 'Valor do pedido';
     Variant := mvOutlined;
     Value := 3487.50;
@@ -998,7 +981,7 @@ begin
   with TFRMaterialCurrencyEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(260, Y, 220, 56);
+    SetBounds(PAD + ColW + GAP_Y, Y, ColW, ROW_H);
     Caption := 'Desconto';
     Variant := mvFilled;
     Value := 0;
@@ -1006,12 +989,15 @@ begin
   end;
 
   { --- TFRMaterialDateEdit --- }
+  ColW := (ContentW(APage) - GAP_Y * 2) div 3;
+  if ColW < 180 then ColW := 180;
+
   Y := Y + 72;
   Y := AddSection(APage, Y, 'TFRMaterialDateEdit');
   with TFRMaterialDateEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(24, Y, 220, 56);
+    SetBounds(PAD, Y, ColW, ROW_H);
     Caption := 'Data de emissão';
     Variant := mvOutlined;
     Date := Now;
@@ -1020,7 +1006,7 @@ begin
   with TFRMaterialDateEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(260, Y, 220, 56);
+    SetBounds(PAD + ColW + GAP_Y, Y, ColW, ROW_H);
     Caption := 'Data de vencimento';
     Variant := mvFilled;
     ShowClearButton := True;
@@ -1029,7 +1015,7 @@ begin
   with TFRMaterialDateEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(496, Y, 180, 56);
+    SetBounds(PAD + (ColW + GAP_Y) * 2, Y, ColW, ROW_H);
     Caption := 'Competência';
     Variant := mvOutlined;
     DateFormat := dfMMYYYY;
@@ -1037,12 +1023,14 @@ begin
   end;
 
   { --- TFRMaterialMaskEdit --- }
+  ColW := (ContentW(APage) - GAP_Y) div 2;
+
   Y := Y + 72;
   Y := AddSection(APage, Y, 'TFRMaterialMaskEdit');
   with TFRMaterialMaskEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(24, Y, 220, 56);
+    SetBounds(PAD, Y, ColW, ROW_H);
     Caption := 'Telefone';
     EditMask := '(99) 99999-9999;1;_';
     Variant := mvOutlined;
@@ -1051,7 +1039,7 @@ begin
   with TFRMaterialMaskEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(260, Y, 220, 56);
+    SetBounds(PAD + ColW + GAP_Y, Y, ColW, ROW_H);
     Caption := 'CEP';
     EditMask := '99999-999;1;_';
     Variant := mvFilled;
@@ -1063,7 +1051,8 @@ begin
   with TFRMaterialSearchEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(24, Y, 400, 56);
+    SetBounds(PAD, Y, ContentW(APage), ROW_H);
+    Anchors := [akLeft, akTop, akRight];
     Caption := 'Buscar produto';
     TextHint := 'Nome, código ou descrição...';
     Variant := mvOutlined;
@@ -1076,25 +1065,19 @@ begin
   with TFRMaterialSpinEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(24, Y, 180, 56);
+    SetBounds(PAD, Y, 200, ROW_H);
     Caption := 'Quantidade';
     Variant := mvOutlined;
-    MinValue := 1;
-    MaxValue := 999;
-    Value := 10;
-    Increment := 1;
+    MinValue := 1; MaxValue := 999; Value := 10; Increment := 1;
   end;
 
   with TFRMaterialSpinEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(220, Y, 180, 56);
+    SetBounds(PAD + 216, Y, 200, ROW_H);
     Caption := 'Parcelas';
     Variant := mvFilled;
-    MinValue := 1;
-    MaxValue := 12;
-    Value := 3;
-    Increment := 1;
+    MinValue := 1; MaxValue := 12; Value := 3; Increment := 1;
   end;
 
   { --- TFRMaterialMemoEdit --- }
@@ -1103,7 +1086,8 @@ begin
   with TFRMaterialMemoEdit.Create(Self) do
   begin
     Parent := APage;
-    SetBounds(24, Y, 500, 160);
+    SetBounds(PAD, Y, ContentW(APage), 160);
+    Anchors := [akLeft, akTop, akRight];
     Caption := 'Observações do pedido';
     TextHint := 'Informações adicionais para entrega, faturamento etc.';
     Variant := mvOutlined;
@@ -1120,60 +1104,53 @@ procedure TFmDemo.CreatePageInputs(APage: TWinControl);
 var
   Y: Integer;
   Sl: TFRMaterialSlider;
-  TP: TFRMaterialTimePicker;
 begin
-  Y := AddSection(APage, 16, 'TFRMaterialSlider — Continuous');
+  Y := AddSection(APage, PAD, 'TFRMaterialSlider — Continuous');
   Sl := TFRMaterialSlider.Create(Self);
   Sl.Parent := APage;
-  Sl.SetBounds(24, Y, 400, 40);
-  Sl.Min := 0;
-  Sl.Max := 100;
-  Sl.Value := 35;
+  Sl.SetBounds(PAD, Y, ContentW(APage) - 120, 40);
+  Sl.Anchors := [akLeft, akTop, akRight];
+  Sl.Min := 0; Sl.Max := 100; Sl.Value := 35;
   Sl.OnChange := @OnSliderChange;
+  FSliderValueLbl := AddLabel(APage, ContentW(APage) - 80, Y + 10, 'Valor: 35');
 
-  FSliderValueLbl := AddLabel(APage, 440, Y + 10, 'Valor: 35');
-
-  Y := Y + 56;
+  Y := Y + ROW_H;
   Y := AddSection(APage, Y, 'TFRMaterialSlider — Discrete (steps=5)');
   Sl := TFRMaterialSlider.Create(Self);
   Sl.Parent := APage;
-  Sl.SetBounds(24, Y, 400, 40);
-  Sl.Min := 0;
-  Sl.Max := 100;
-  Sl.Discrete := True;
-  Sl.Steps := 5;
-  Sl.ShowValueLabel := True;
-  Sl.Value := 40;
+  Sl.SetBounds(PAD, Y, ContentW(APage), 40);
+  Sl.Anchors := [akLeft, akTop, akRight];
+  Sl.Min := 0; Sl.Max := 100;
+  Sl.Discrete := True; Sl.Steps := 5;
+  Sl.ShowValueLabel := True; Sl.Value := 40;
 
-  Y := Y + 56;
+  Y := Y + ROW_H;
   Y := AddSection(APage, Y, 'TFRMaterialSlider — Disabled');
   Sl := TFRMaterialSlider.Create(Self);
   Sl.Parent := APage;
-  Sl.SetBounds(24, Y, 400, 40);
-  Sl.Value := 60;
-  Sl.Enabled := False;
+  Sl.SetBounds(PAD, Y, ContentW(APage), 40);
+  Sl.Anchors := [akLeft, akTop, akRight];
+  Sl.Value := 60; Sl.Enabled := False;
 
-  Y := Y + 56;
+  Y := Y + ROW_H;
   Y := AddSection(APage, Y, 'TFRMaterialTimePicker — 24h');
-  TP := TFRMaterialTimePicker.Create(Self);
-  TP.Parent := APage;
-  TP.SetBounds(24, Y, 220, 72);
-  TP.TimeFormat := tfHour24;
-  TP.Hour := 14;
-  TP.Minute := 30;
-  TP.OnChange := @OnTimePickerChange;
-  FTimePicker := TP;
-  FTimePickerLbl := AddLabel(APage, 260, Y + 26, 'Hora: 14:30');
+  FTimePicker := TFRMaterialTimePicker.Create(Self);
+  FTimePicker.Parent := APage;
+  FTimePicker.SetBounds(PAD, Y, 220, 72);
+  FTimePicker.TimeFormat := tfHour24;
+  FTimePicker.Hour := 14; FTimePicker.Minute := 30;
+  FTimePicker.OnChange := @OnTimePickerChange;
+  FTimePickerLbl := AddLabel(APage, PAD + 240, Y + 26, 'Hora: 14:30');
 
   Y := Y + 90;
   Y := AddSection(APage, Y, 'TFRMaterialTimePicker — 12h');
-  TP := TFRMaterialTimePicker.Create(Self);
-  TP.Parent := APage;
-  TP.SetBounds(24, Y, 220, 72);
-  TP.TimeFormat := tfHour12;
-  TP.Hour := 3;
-  TP.Minute := 45;
-  TP.IsAM := False;
+  with TFRMaterialTimePicker.Create(Self) do
+  begin
+    Parent := APage;
+    SetBounds(PAD, Y, 220, 72);
+    TimeFormat := tfHour12;
+    Hour := 3; Minute := 45; IsAM := False;
+  end;
 end;
 
 { ===== Page: Progress ===== }
@@ -1185,39 +1162,40 @@ var
   CP: TFRMaterialCircularProgress;
   LI: TFRMaterialLoadingIndicator;
 begin
-  Y := AddSection(APage, 16, 'TFRMaterialLinearProgress — Determinate');
+  Y := AddSection(APage, PAD, 'TFRMaterialLinearProgress — Determinate');
   FLinearProgress := TFRMaterialLinearProgress.Create(Self);
   FLinearProgress.Parent := APage;
-  FLinearProgress.SetBounds(24, Y, 500, 4);
+  FLinearProgress.SetBounds(PAD, Y, ContentW(APage), 4);
+  FLinearProgress.Anchors := [akLeft, akTop, akRight];
   FLinearProgress.Value := 0;
 
   Y := Y + 24;
   Y := AddSection(APage, Y, 'TFRMaterialLinearProgress — Indeterminate');
   LP := TFRMaterialLinearProgress.Create(Self);
   LP.Parent := APage;
-  LP.SetBounds(24, Y, 500, 4);
+  LP.SetBounds(PAD, Y, ContentW(APage), 4);
+  LP.Anchors := [akLeft, akTop, akRight];
   LP.Indeterminate := True;
 
   Y := Y + 24;
   Y := AddSection(APage, Y, 'TFRMaterialCircularProgress — Determinate');
   FCircularProgress := TFRMaterialCircularProgress.Create(Self);
   FCircularProgress.Parent := APage;
-  FCircularProgress.SetBounds(24, Y, 48, 48);
+  FCircularProgress.SetBounds(PAD, Y, 48, 48);
   FCircularProgress.Indeterminate := False;
   FCircularProgress.Value := 0;
-
-  AddLabel(APage, 84, Y + 14, 'Progresso animado');
+  AddLabel(APage, PAD + 60, Y + 14, 'Progresso animado');
 
   Y := Y + 64;
   Y := AddSection(APage, Y, 'TFRMaterialCircularProgress — Indeterminate');
   CP := TFRMaterialCircularProgress.Create(Self);
   CP.Parent := APage;
-  CP.SetBounds(24, Y, 48, 48);
+  CP.SetBounds(PAD, Y, 48, 48);
   CP.Indeterminate := True;
 
   CP := TFRMaterialCircularProgress.Create(Self);
   CP.Parent := APage;
-  CP.SetBounds(88, Y, 64, 64);
+  CP.SetBounds(PAD + 64, Y, 64, 64);
   CP.Indeterminate := True;
   CP.StrokeWidth := 6;
 
@@ -1225,14 +1203,13 @@ begin
   Y := AddSection(APage, Y, 'TFRMaterialLoadingIndicator');
   LI := TFRMaterialLoadingIndicator.Create(Self);
   LI.Parent := APage;
-  LI.SetBounds(24, Y, 60, 20);
+  LI.SetBounds(PAD, Y, 60, 20);
 
   LI := TFRMaterialLoadingIndicator.Create(Self);
   LI.Parent := APage;
-  LI.SetBounds(100, Y, 80, 20);
+  LI.SetBounds(PAD + 80, Y, 80, 20);
   LI.DotCount := 5;
 
-  { Timer for animating determinate progress }
   FProgressTimer := TTimer.Create(Self);
   FProgressTimer.Interval := 80;
   FProgressTimer.OnTimer := @OnProgressTimer;
@@ -1249,23 +1226,20 @@ var
   Item: TFRMaterialListItem;
   TabItem: TFRMaterialTabItem;
 begin
-  Y := AddSection(APage, 16, 'TFRMaterialTabs — Fixed');
+  Y := AddSection(APage, PAD, 'TFRMaterialTabs — Fixed');
   Tabs := TFRMaterialTabs.Create(Self);
   Tabs.Parent := APage;
-  Tabs.SetBounds(24, Y, 600, 48);
+  Tabs.SetBounds(PAD, Y, ContentW(APage), 48);
+  Tabs.Anchors := [akLeft, akTop, akRight];
   Tabs.TabStyle := tsFixed;
   TabItem := TFRMaterialTabItem(Tabs.Tabs.Add);
-  TabItem.Caption := 'Recentes';
-  TabItem.IconMode := imHome;
+  TabItem.Caption := 'Recentes'; TabItem.IconMode := imHome;
   TabItem := TFRMaterialTabItem(Tabs.Tabs.Add);
-  TabItem.Caption := 'Favoritos';
-  TabItem.IconMode := imFavorite;
+  TabItem.Caption := 'Favoritos'; TabItem.IconMode := imFavorite;
   TabItem := TFRMaterialTabItem(Tabs.Tabs.Add);
-  TabItem.Caption := 'Compartilhados';
-  TabItem.IconMode := imShare;
+  TabItem.Caption := 'Compartilhados'; TabItem.IconMode := imShare;
   TabItem := TFRMaterialTabItem(Tabs.Tabs.Add);
-  TabItem.Caption := 'Configurações';
-  TabItem.IconMode := imSettings;
+  TabItem.Caption := 'Configurações'; TabItem.IconMode := imSettings;
   Tabs.TabIndex := 0;
   Tabs.OnChange := @OnTabChange;
 
@@ -1273,241 +1247,112 @@ begin
   Y := AddSection(APage, Y, 'TFRMaterialListView — TwoLine');
   LV := TFRMaterialListView.Create(Self);
   LV.Parent := APage;
-  LV.SetBounds(24, Y, 520, 420);
+  LV.SetBounds(PAD, Y, ContentW(APage), 420);
+  LV.Anchors := [akLeft, akTop, akRight];
   LV.ItemType := litTwoLine;
   LV.ShowDividers := True;
   LV.OnSelectionChange := @OnListSelect;
 
   Item := TFRMaterialListItem(LV.Items.Add);
-  Item.Headline := 'João Silva';
-  Item.SupportText := 'Pedido #1042 — Aguardando aprovação';
-  Item.LeadingIcon := imPerson;
-  Item.TrailingText := '10:32';
-
+  Item.Headline := 'João Silva'; Item.SupportText := 'Pedido #1042 — Aguardando aprovação'; Item.LeadingIcon := imPerson; Item.TrailingText := '10:32';
   Item := TFRMaterialListItem(LV.Items.Add);
-  Item.Headline := 'Maria Oliveira';
-  Item.SupportText := 'NF-e 000.142.857 emitida com sucesso';
-  Item.LeadingIcon := imMail;
-  Item.TrailingText := '09:15';
-
+  Item.Headline := 'Maria Oliveira'; Item.SupportText := 'NF-e 000.142.857 emitida com sucesso'; Item.LeadingIcon := imMail; Item.TrailingText := '09:15';
   Item := TFRMaterialListItem(LV.Items.Add);
-  Item.Headline := 'Estoque Baixo';
-  Item.SupportText := 'Produto "Parafuso M6x20" abaixo do mínimo (23 un.)';
-  Item.LeadingIcon := imNotification;
-  Item.TrailingText := 'Ontem';
-
+  Item.Headline := 'Estoque Baixo'; Item.SupportText := 'Produto "Parafuso M6x20" abaixo do mínimo (23 un.)'; Item.LeadingIcon := imNotification; Item.TrailingText := 'Ontem';
   Item := TFRMaterialListItem(LV.Items.Add);
-  Item.Headline := 'Relatório Mensal';
-  Item.SupportText := 'Faturamento de março disponível para download';
-  Item.LeadingIcon := imDownload;
-  Item.TrailingText := '28/03';
-
+  Item.Headline := 'Relatório Mensal'; Item.SupportText := 'Faturamento de março disponível para download'; Item.LeadingIcon := imDownload; Item.TrailingText := '28/03';
   Item := TFRMaterialListItem(LV.Items.Add);
-  Item.Headline := 'Carlos Ferreira';
-  Item.SupportText := 'Orçamento #387 — Revisão solicitada pelo cliente';
-  Item.LeadingIcon := imEdit;
-  Item.TrailingText := '27/03';
-
+  Item.Headline := 'Carlos Ferreira'; Item.SupportText := 'Orçamento #387 — Revisão solicitada'; Item.LeadingIcon := imEdit; Item.TrailingText := '27/03';
   Item := TFRMaterialListItem(LV.Items.Add);
-  Item.Headline := 'Backup Concluído';
-  Item.SupportText := 'Backup automático realizado às 03:00 — 2.4 GB';
-  Item.LeadingIcon := imCheck;
-  Item.TrailingText := '27/03';
-
+  Item.Headline := 'Backup Concluído'; Item.SupportText := 'Backup automático realizado às 03:00 — 2.4 GB'; Item.LeadingIcon := imCheck; Item.TrailingText := '27/03';
   Item := TFRMaterialListItem(LV.Items.Add);
-  Item.Headline := 'Ana Costa';
-  Item.SupportText := 'Devolução #089 — Produto com defeito de fábrica';
-  Item.LeadingIcon := imRefresh;
-  Item.TrailingText := '26/03';
-
+  Item.Headline := 'Ana Costa'; Item.SupportText := 'Devolução #089 — Produto com defeito'; Item.LeadingIcon := imRefresh; Item.TrailingText := '26/03';
   Item := TFRMaterialListItem(LV.Items.Add);
-  Item.Headline := 'Promoção Ativa';
-  Item.SupportText := '15% de desconto em toda a linha de ferramentas';
-  Item.LeadingIcon := imStar;
-  Item.TrailingText := '25/03';
-
+  Item.Headline := 'Promoção Ativa'; Item.SupportText := '15% desconto em ferramentas'; Item.LeadingIcon := imStar; Item.TrailingText := '25/03';
   Item := TFRMaterialListItem(LV.Items.Add);
-  Item.Headline := 'Licença Expirando';
-  Item.SupportText := 'Certificado digital A1 vence em 12 dias';
-  Item.LeadingIcon := imSettings;
-  Item.TrailingText := '24/03';
-
+  Item.Headline := 'Licença Expirando'; Item.SupportText := 'Certificado A1 vence em 12 dias'; Item.LeadingIcon := imSettings; Item.TrailingText := '24/03';
   Item := TFRMaterialListItem(LV.Items.Add);
-  Item.Headline := 'Pedro Santos';
-  Item.SupportText := 'Transferência bancária de R$ 4.750,00 confirmada';
-  Item.LeadingIcon := imFavorite;
-  Item.TrailingText := '23/03';
+  Item.Headline := 'Pedro Santos'; Item.SupportText := 'Transferência R$ 4.750,00 confirmada'; Item.LeadingIcon := imFavorite; Item.TrailingText := '23/03';
+end;
 
-  Y := Y + 440;
-  Y := AddSection(APage, Y, 'TFRMaterialTreeView');
+{ ===== Page: Tree & DataGrid ===== }
 
-  { Edit field for node name }
+procedure TFmDemo.CreatePageTreeData(APage: TWinControl);
+var
+  Y: Integer;
+begin
+  Y := AddSection(APage, PAD, 'TFRMaterialTreeView');
+
   FTreeEdit := TFRMaterialEdit.Create(Self);
   FTreeEdit.Parent := APage;
-  FTreeEdit.SetBounds(24, Y, 260, 56);
+  FTreeEdit.SetBounds(PAD, Y, 260, ROW_H);
   FTreeEdit.Caption := 'Nome do nó';
   FTreeEdit.TextHint := 'Digite o texto do nó';
   FTreeEdit.Variant := mvOutlined;
   FTreeEdit.ShowClearButton := True;
 
-  { Action buttons row 1 }
-  with TFRMaterialButton.Create(Self) do
-  begin
-    Parent := APage;
-    SetBounds(300, Y, 130, 40);
-    Caption := 'Adicionar raiz';
-    ButtonStyle := mbsFilled;
-    OnClick := @OnTreeAddRoot;
-  end;
+  with TFRMaterialButton.Create(Self) do begin Parent := APage; SetBounds(PAD + 276, Y, BTN_W, BTN_H); Caption := 'Adicionar raiz'; ButtonStyle := mbsFilled; OnClick := @OnTreeAddRoot; end;
+  with TFRMaterialButton.Create(Self) do begin Parent := APage; SetBounds(PAD + 276 + BTN_W + GAP_Y, Y, BTN_W, BTN_H); Caption := 'Adicionar filho'; ButtonStyle := mbsOutlined; OnClick := @OnTreeAddChild; end;
+  with TFRMaterialButton.Create(Self) do begin Parent := APage; SetBounds(PAD + 276, Y + 48, BTN_W, BTN_H); Caption := 'Renomear'; ButtonStyle := mbsOutlined; OnClick := @OnTreeRename; end;
+  with TFRMaterialButton.Create(Self) do begin Parent := APage; SetBounds(PAD + 276 + BTN_W + GAP_Y, Y + 48, BTN_W, BTN_H); Caption := 'Excluir'; ButtonStyle := mbsText; OnClick := @OnTreeDelete; end;
+  with TFRMaterialButton.Create(Self) do begin Parent := APage; SetBounds(PAD + 276, Y + 96, BTN_W, BTN_H); Caption := 'Expandir tudo'; ButtonStyle := mbsText; OnClick := @OnTreeExpandAll; end;
+  with TFRMaterialButton.Create(Self) do begin Parent := APage; SetBounds(PAD + 276 + BTN_W + GAP_Y, Y + 96, BTN_W, BTN_H); Caption := 'Recolher tudo'; ButtonStyle := mbsText; OnClick := @OnTreeCollapseAll; end;
 
-  with TFRMaterialButton.Create(Self) do
-  begin
-    Parent := APage;
-    SetBounds(440, Y, 130, 40);
-    Caption := 'Adicionar filho';
-    ButtonStyle := mbsOutlined;
-    OnClick := @OnTreeAddChild;
-  end;
-
-  { Action buttons row 2 }
-  with TFRMaterialButton.Create(Self) do
-  begin
-    Parent := APage;
-    SetBounds(300, Y + 48, 130, 40);
-    Caption := 'Renomear';
-    ButtonStyle := mbsOutlined;
-    OnClick := @OnTreeRename;
-  end;
-
-  with TFRMaterialButton.Create(Self) do
-  begin
-    Parent := APage;
-    SetBounds(440, Y + 48, 130, 40);
-    Caption := 'Excluir';
-    ButtonStyle := mbsText;
-    OnClick := @OnTreeDelete;
-  end;
-
-  { Expand/Collapse all }
-  with TFRMaterialButton.Create(Self) do
-  begin
-    Parent := APage;
-    SetBounds(300, Y + 96, 130, 40);
-    Caption := 'Expandir tudo';
-    ButtonStyle := mbsText;
-    OnClick := @OnTreeExpandAll;
-  end;
-
-  with TFRMaterialButton.Create(Self) do
-  begin
-    Parent := APage;
-    SetBounds(440, Y + 96, 130, 40);
-    Caption := 'Recolher tudo';
-    ButtonStyle := mbsText;
-    OnClick := @OnTreeCollapseAll;
-  end;
-
-  { Selection label }
   FTreeSelLabel := TLabel.Create(Self);
   FTreeSelLabel.Parent := APage;
-  FTreeSelLabel.SetBounds(300, Y + 144, 270, 20);
+  FTreeSelLabel.SetBounds(PAD + 276, Y + 144, 280, 20);
   FTreeSelLabel.Font.Size := 9;
   FTreeSelLabel.Font.Color := MD3Colors.OnSurfaceVariant;
   FTreeSelLabel.Caption := 'Nenhum nó selecionado';
   FTreeSelLabel.Transparent := True;
 
   Y := Y + 170;
-
-  { TreeView }
   FTreeView := TFRMaterialTreeView.Create(Self);
   with FTreeView do
   begin
     Parent := APage;
-    SetBounds(24, Y, 550, 320);
+    SetBounds(PAD, Y, ContentW(APage), 320);
+    Anchors := [akLeft, akTop, akRight];
     ShowIcons := True;
     ShowDividers := True;
     OnSelectionChange := @OnTreeSelChange;
     with TFRMaterialTreeNode(Nodes.Add) do
     begin
-      Caption := 'Cadastros';
-      IconMode := imFolder;
-      with TFRMaterialTreeNode(Children.Add) do
-      begin
-        Caption := 'Clientes';
-        IconMode := imPerson;
-      end;
-      with TFRMaterialTreeNode(Children.Add) do
-      begin
-        Caption := 'Fornecedores';
-        IconMode := imPerson;
-      end;
-      with TFRMaterialTreeNode(Children.Add) do
-      begin
-        Caption := 'Produtos';
-        IconMode := imList;
-      end;
+      Caption := 'Cadastros'; IconMode := imFolder;
+      with TFRMaterialTreeNode(Children.Add) do begin Caption := 'Clientes'; IconMode := imPerson; end;
+      with TFRMaterialTreeNode(Children.Add) do begin Caption := 'Fornecedores'; IconMode := imPerson; end;
+      with TFRMaterialTreeNode(Children.Add) do begin Caption := 'Produtos'; IconMode := imList; end;
       Expanded := True;
     end;
     with TFRMaterialTreeNode(Nodes.Add) do
     begin
-      Caption := 'Financeiro';
-      IconMode := imFolder;
-      with TFRMaterialTreeNode(Children.Add) do
-      begin
-        Caption := 'Contas a Pagar';
-        IconMode := imDownload;
-      end;
-      with TFRMaterialTreeNode(Children.Add) do
-      begin
-        Caption := 'Contas a Receber';
-        IconMode := imUpload;
-      end;
+      Caption := 'Financeiro'; IconMode := imFolder;
+      with TFRMaterialTreeNode(Children.Add) do begin Caption := 'Contas a Pagar'; IconMode := imDownload; end;
+      with TFRMaterialTreeNode(Children.Add) do begin Caption := 'Contas a Receber'; IconMode := imUpload; end;
     end;
     with TFRMaterialTreeNode(Nodes.Add) do
     begin
-      Caption := 'Relatórios';
-      IconMode := imFolder;
-      with TFRMaterialTreeNode(Children.Add) do
-      begin
-        Caption := 'Vendas';
-        IconMode := imStar;
-      end;
-      with TFRMaterialTreeNode(Children.Add) do
-      begin
-        Caption := 'Estoque';
-        IconMode := imDashboard;
-      end;
+      Caption := 'Relatórios'; IconMode := imFolder;
+      with TFRMaterialTreeNode(Children.Add) do begin Caption := 'Vendas'; IconMode := imStar; end;
+      with TFRMaterialTreeNode(Children.Add) do begin Caption := 'Estoque'; IconMode := imDashboard; end;
     end;
   end;
 
   Y := Y + 340;
   Y := AddSection(APage, Y, 'TFRMaterialDataGrid');
-
   FDataGrid := TFRMaterialDataGrid.Create(Self);
   with FDataGrid do
   begin
     Parent := APage;
-    SetBounds(24, Y, 550, 240);
-    ColCount := 4;
-    RowCount := 5;
-    DefaultColWidth := 130;
-    
-    // Header
-    Cells[0, 0] := 'Código';
-    Cells[1, 0] := 'Descrição';
-    Cells[2, 0] := 'Estoque';
-    Cells[3, 0] := 'Preço Unitário';
-    
-    // Dados
+    SetBounds(PAD, Y, ContentW(APage), 240);
+    Anchors := [akLeft, akTop, akRight];
+    ColCount := 4; RowCount := 5; DefaultColWidth := 130;
+    Cells[0, 0] := 'Código'; Cells[1, 0] := 'Descrição'; Cells[2, 0] := 'Estoque'; Cells[3, 0] := 'Preço Unitário';
     Cells[0, 1] := '001'; Cells[1, 1] := 'Monitor LCD 24"'; Cells[2, 1] := '12 un'; Cells[3, 1] := 'R$ 850,00';
     Cells[0, 2] := '002'; Cells[1, 2] := 'Teclado Mecânico'; Cells[2, 2] := '45 un'; Cells[3, 2] := 'R$ 250,00';
     Cells[0, 3] := '003'; Cells[1, 3] := 'Mouse Óptico'; Cells[2, 3] := '89 un'; Cells[3, 3] := 'R$ 85,00';
     Cells[0, 4] := '004'; Cells[1, 4] := 'Cabo HDMI 2m'; Cells[2, 4] := '120 un'; Cells[3, 4] := 'R$ 25,00';
-    
-    Density := ddNormal;
-    ZebraStripes := True;
-    
-    // Habilitar a edição e remover seleção de linha inteira
+    Density := ddNormal; ZebraStripes := True;
     Options := Options + [goEditing] - [goRowSelect];
   end;
 end;
@@ -1524,142 +1369,76 @@ var
   Act: TFRMaterialAppBarAction;
   GBox: TFRMaterialGroupBox;
 begin
-  Y := AddSection(APage, 16, 'TFRMaterialAppBar — Small');
+  Y := AddSection(APage, PAD, 'TFRMaterialAppBar — Small');
   GBox := TFRMaterialGroupBox.Create(Self);
   GBox.Parent := APage;
-  GBox.SetBounds(24, Y, 700, 68);
-  GBox.Caption := '';
-  GBox.ShowBorder := True;
-
+  GBox.SetBounds(PAD, Y, ContentW(APage), 68);
+  GBox.Anchors := [akLeft, akTop, akRight];
+  GBox.Caption := ''; GBox.ShowBorder := True;
   AppBar := TFRMaterialAppBar.Create(Self);
-  AppBar.Parent := GBox;
-  AppBar.Align := alClient;
-  AppBar.Title := 'Meu Aplicativo';
-  AppBar.NavIcon := imMenu;
-  AppBar.BarSize := absSmall;
+  AppBar.Parent := GBox; AppBar.Align := alClient;
+  AppBar.Title := 'Meu Aplicativo'; AppBar.NavIcon := imMenu; AppBar.BarSize := absSmall;
   AppBar.OnNavClick := @OnAppBarNav;
-  Act := TFRMaterialAppBarAction(AppBar.Actions.Add);
-  Act.IconMode := imSearch;
-  Act.Hint := 'Buscar';
-  Act.OnClick := @OnAppBarAction;
-  Act := TFRMaterialAppBarAction(AppBar.Actions.Add);
-  Act.IconMode := imMoreVert;
-  Act.Hint := 'Mais opções';
-  Act.OnClick := @OnAppBarAction;
+  Act := TFRMaterialAppBarAction(AppBar.Actions.Add); Act.IconMode := imSearch; Act.Hint := 'Buscar'; Act.OnClick := @OnAppBarAction;
+  Act := TFRMaterialAppBarAction(AppBar.Actions.Add); Act.IconMode := imMoreVert; Act.Hint := 'Mais opções'; Act.OnClick := @OnAppBarAction;
 
   Y := Y + 84;
   Y := AddSection(APage, Y, 'TFRMaterialAppBar — Medium');
   GBox := TFRMaterialGroupBox.Create(Self);
   GBox.Parent := APage;
-  GBox.SetBounds(24, Y, 700, 112);
-  GBox.Caption := '';
-  GBox.ShowBorder := True;
-
+  GBox.SetBounds(PAD, Y, ContentW(APage), 112);
+  GBox.Anchors := [akLeft, akTop, akRight];
+  GBox.Caption := ''; GBox.ShowBorder := True;
   AppBar := TFRMaterialAppBar.Create(Self);
-  AppBar.Parent := GBox;
-  AppBar.Align := alClient;
-  AppBar.Title := 'Página de Detalhes';
-  AppBar.NavIcon := imArrowBack;
-  AppBar.BarSize := absMedium;
+  AppBar.Parent := GBox; AppBar.Align := alClient;
+  AppBar.Title := 'Página de Detalhes'; AppBar.NavIcon := imArrowBack; AppBar.BarSize := absMedium;
   AppBar.OnNavClick := @OnAppBarNav;
-  Act := TFRMaterialAppBarAction(AppBar.Actions.Add);
-  Act.IconMode := imShare;
-  Act.OnClick := @OnAppBarAction;
+  Act := TFRMaterialAppBarAction(AppBar.Actions.Add); Act.IconMode := imShare; Act.OnClick := @OnAppBarAction;
 
   Y := Y + 128;
   Y := AddSection(APage, Y, 'TFRMaterialToolbar');
   GBox := TFRMaterialGroupBox.Create(Self);
   GBox.Parent := APage;
-  GBox.SetBounds(24, Y, 700, 64);
-  GBox.Caption := '';
-  GBox.ShowBorder := True;
-
+  GBox.SetBounds(PAD, Y, ContentW(APage), 64);
+  GBox.Anchors := [akLeft, akTop, akRight];
+  GBox.Caption := ''; GBox.ShowBorder := True;
   Toolbar := TFRMaterialToolbar.Create(Self);
-  Toolbar.Parent := GBox;
-  Toolbar.Align := alClient;
-  Act := TFRMaterialAppBarAction(Toolbar.Actions.Add);
-  Act.IconMode := imCopy;
-  Act.Hint := 'Copiar';
-  Act.OnClick := @OnToolbarAction;
-  Act := TFRMaterialAppBarAction(Toolbar.Actions.Add);
-  Act.IconMode := imEdit;
-  Act.Hint := 'Editar';
-  Act.OnClick := @OnToolbarAction;
-  Act := TFRMaterialAppBarAction(Toolbar.Actions.Add);
-  Act.IconMode := imDelete;
-  Act.Hint := 'Excluir';
-  Act.OnClick := @OnToolbarAction;
-  Act := TFRMaterialAppBarAction(Toolbar.Actions.Add);
-  Act.IconMode := imShare;
-  Act.Hint := 'Compartilhar';
-  Act.OnClick := @OnToolbarAction;
+  Toolbar.Parent := GBox; Toolbar.Align := alClient;
+  Act := TFRMaterialAppBarAction(Toolbar.Actions.Add); Act.IconMode := imCopy; Act.Hint := 'Copiar'; Act.OnClick := @OnToolbarAction;
+  Act := TFRMaterialAppBarAction(Toolbar.Actions.Add); Act.IconMode := imEdit; Act.Hint := 'Editar'; Act.OnClick := @OnToolbarAction;
+  Act := TFRMaterialAppBarAction(Toolbar.Actions.Add); Act.IconMode := imDelete; Act.Hint := 'Excluir'; Act.OnClick := @OnToolbarAction;
+  Act := TFRMaterialAppBarAction(Toolbar.Actions.Add); Act.IconMode := imShare; Act.Hint := 'Compartilhar'; Act.OnClick := @OnToolbarAction;
 
   Y := Y + 80;
   Y := AddSection(APage, Y, 'TFRMaterialNavBar');
   GBox := TFRMaterialGroupBox.Create(Self);
   GBox.Parent := APage;
-  GBox.SetBounds(24, Y, 500, 80);
-  GBox.Caption := '';
-  GBox.ShowBorder := True;
-
+  GBox.SetBounds(PAD, Y, Min(ContentW(APage), 500), 80);
+  GBox.Anchors := [akLeft, akTop, akRight];
+  GBox.Caption := ''; GBox.ShowBorder := True;
   NavBar := TFRMaterialNavBar.Create(Self);
-  NavBar.Parent := GBox;
-  NavBar.Align := alClient;
-  NavItem := TFRMaterialNavItem(NavBar.Items.Add);
-  NavItem.Caption := 'Início';
-  NavItem.IconMode := imHome;
-  NavItem := TFRMaterialNavItem(NavBar.Items.Add);
-  NavItem.Caption := 'Buscar';
-  NavItem.IconMode := imSearch;
-  NavItem := TFRMaterialNavItem(NavBar.Items.Add);
-  NavItem.Caption := 'Favoritos';
-  NavItem.IconMode := imFavorite;
-  NavItem.Badge := '3';
-  NavItem := TFRMaterialNavItem(NavBar.Items.Add);
-  NavItem.Caption := 'Perfil';
-  NavItem.IconMode := imPerson;
-  NavBar.ItemIndex := 0;
-  NavBar.OnChange := @OnNavBarChange;
+  NavBar.Parent := GBox; NavBar.Align := alClient;
+  NavItem := TFRMaterialNavItem(NavBar.Items.Add); NavItem.Caption := 'Início'; NavItem.IconMode := imHome;
+  NavItem := TFRMaterialNavItem(NavBar.Items.Add); NavItem.Caption := 'Buscar'; NavItem.IconMode := imSearch;
+  NavItem := TFRMaterialNavItem(NavBar.Items.Add); NavItem.Caption := 'Favoritos'; NavItem.IconMode := imFavorite; NavItem.Badge := '3';
+  NavItem := TFRMaterialNavItem(NavBar.Items.Add); NavItem.Caption := 'Perfil'; NavItem.IconMode := imPerson;
+  NavBar.ItemIndex := 0; NavBar.OnChange := @OnNavBarChange;
 
   Y := Y + 96;
   Y := AddSection(APage, Y, 'TFRMaterialNavDrawer');
   GBox := TFRMaterialGroupBox.Create(Self);
   GBox.Parent := APage;
-  GBox.SetBounds(24, Y, 360, 280);
-  GBox.Caption := '';
-  GBox.ShowBorder := True;
-
+  GBox.SetBounds(PAD, Y, Min(ContentW(APage), 360), 280);
+  GBox.Caption := ''; GBox.ShowBorder := True;
   with TFRMaterialNavDrawer.Create(Self) do
   begin
-    Parent := GBox;
-    Align := alClient;
+    Parent := GBox; Align := alClient;
     HeaderTitle := 'ERP System';
-    with TFRMaterialNavItem(Items.Add) do
-    begin
-      Caption := 'Dashboard';
-      IconMode := imDashboard;
-    end;
-    with TFRMaterialNavItem(Items.Add) do
-    begin
-      Caption := 'Pedidos';
-      IconMode := imEdit;
-      Badge := '12';
-    end;
-    with TFRMaterialNavItem(Items.Add) do
-    begin
-      Caption := 'Clientes';
-      IconMode := imPerson;
-    end;
-    with TFRMaterialNavItem(Items.Add) do
-    begin
-      Caption := 'Estoque';
-      IconMode := imList;
-    end;
-    with TFRMaterialNavItem(Items.Add) do
-    begin
-      Caption := 'Configurações';
-      IconMode := imSettings;
-    end;
+    with TFRMaterialNavItem(Items.Add) do begin Caption := 'Dashboard'; IconMode := imDashboard; end;
+    with TFRMaterialNavItem(Items.Add) do begin Caption := 'Pedidos'; IconMode := imEdit; Badge := '12'; end;
+    with TFRMaterialNavItem(Items.Add) do begin Caption := 'Clientes'; IconMode := imPerson; end;
+    with TFRMaterialNavItem(Items.Add) do begin Caption := 'Estoque'; IconMode := imList; end;
+    with TFRMaterialNavItem(Items.Add) do begin Caption := 'Configurações'; IconMode := imSettings; end;
     ItemIndex := 0;
   end;
 
@@ -1667,37 +1446,16 @@ begin
   Y := AddSection(APage, Y, 'TFRMaterialNavRail');
   GBox := TFRMaterialGroupBox.Create(Self);
   GBox.Parent := APage;
-  GBox.SetBounds(24, Y, 80, 360);
-  GBox.Caption := '';
-  GBox.ShowBorder := True;
-
+  GBox.SetBounds(PAD, Y, 80, 360);
+  GBox.Caption := ''; GBox.ShowBorder := True;
   with TFRMaterialNavRail.Create(Self) do
   begin
-    Parent := GBox;
-    Align := alClient;
-    MenuIcon := imMenu;
-    FabIcon := imPlus;
-    with TFRMaterialNavItem(Items.Add) do
-    begin
-      Caption := 'Início';
-      IconMode := imHome;
-    end;
-    with TFRMaterialNavItem(Items.Add) do
-    begin
-      Caption := 'Buscar';
-      IconMode := imSearch;
-    end;
-    with TFRMaterialNavItem(Items.Add) do
-    begin
-      Caption := 'Alertas';
-      IconMode := imNotification;
-      Badge := '5';
-    end;
-    with TFRMaterialNavItem(Items.Add) do
-    begin
-      Caption := 'Perfil';
-      IconMode := imPerson;
-    end;
+    Parent := GBox; Align := alClient;
+    MenuIcon := imMenu; FabIcon := imPlus;
+    with TFRMaterialNavItem(Items.Add) do begin Caption := 'Início'; IconMode := imHome; end;
+    with TFRMaterialNavItem(Items.Add) do begin Caption := 'Buscar'; IconMode := imSearch; end;
+    with TFRMaterialNavItem(Items.Add) do begin Caption := 'Alertas'; IconMode := imNotification; Badge := '5'; end;
+    with TFRMaterialNavItem(Items.Add) do begin Caption := 'Perfil'; IconMode := imPerson; end;
     ItemIndex := 0;
   end;
 end;
@@ -1711,287 +1469,253 @@ var
   GBox: TFRMaterialGroupBox;
   Div1: TFRMaterialDivider;
 begin
-  Y := AddSection(APage, 16, 'TFRMaterialDialog');
+  Y := AddSection(APage, PAD, 'TFRMaterialDialog');
   Btn := TFRMaterialButton.Create(Self);
   Btn.Parent := APage;
-  Btn.SetBounds(24, Y, 180, 40);
+  Btn.SetBounds(PAD, Y, 180, BTN_H);
   Btn.Caption := 'Abrir Dialog';
   Btn.ButtonStyle := mbsFilled;
-  Btn.ShowIcon := True;
-  Btn.IconMode := imSettings;
+  Btn.ShowIcon := True; Btn.IconMode := imSettings;
   Btn.OnClick := @OnDialogClick;
 
-  Y := Y + 56;
+  Y := Y + ROW_H;
   Y := AddSection(APage, Y, 'TFRMaterialSnackbar');
   Btn := TFRMaterialButton.Create(Self);
   Btn.Parent := APage;
-  Btn.SetBounds(24, Y, 200, 40);
+  Btn.SetBounds(PAD, Y, 200, BTN_H);
   Btn.Caption := 'Mostrar Snackbar';
   Btn.ButtonStyle := mbsTonal;
   Btn.OnClick := @OnSnackbarClick;
 
-  Y := Y + 56;
+  Y := Y + ROW_H;
   Y := AddSection(APage, Y, 'TFRMaterialMenu');
   Btn := TFRMaterialButton.Create(Self);
   Btn.Parent := APage;
-  Btn.SetBounds(24, Y, 180, 40);
+  Btn.SetBounds(PAD, Y, 180, BTN_H);
   Btn.Caption := 'Abrir Menu';
   Btn.ButtonStyle := mbsOutlined;
-  Btn.ShowIcon := True;
-  Btn.IconMode := imMoreVert;
+  Btn.ShowIcon := True; Btn.IconMode := imMoreVert;
   Btn.OnClick := @OnMenuClick;
 
-  Y := Y + 56;
-  Y := AddSection(APage, Y, 'TFRMaterialGroupBox');
+  Y := Y + ROW_H;
+  Y := AddSection(APage, Y, 'TFRMaterialTooltip');
+  Btn := TFRMaterialButton.Create(Self);
+  Btn.Parent := APage;
+  Btn.SetBounds(PAD, Y, 200, BTN_H);
+  Btn.Caption := 'Passe o mouse aqui';
+  Btn.ButtonStyle := mbsText;
+  Btn.Hint := 'Tooltip de demonstração';
+  Btn.ShowHint := True;
+
+  Y := Y + ROW_H;
+  Y := AddSection(APage, Y, 'TFRMaterialGroupBox + Divider');
   GBox := TFRMaterialGroupBox.Create(Self);
   GBox.Parent := APage;
-  GBox.SetBounds(24, Y, 400, 100);
-  GBox.Caption := 'Configurações';
-  GBox.BorderRadius := 12;
-  GBox.ShowBorder := True;
-
-  AddLabel(GBox, 16, 28, 'Conteúdo dentro do GroupBox');
-
+  GBox.SetBounds(PAD, Y, Min(ContentW(APage), 400), 100);
+  GBox.Anchors := [akLeft, akTop, akRight];
+  GBox.Caption := 'Configurações'; GBox.BorderRadius := 12; GBox.ShowBorder := True;
+  AddLabel(GBox, PAD, 28, 'Conteúdo dentro do GroupBox');
   Div1 := TFRMaterialDivider.Create(Self);
   Div1.Parent := GBox;
-  Div1.SetBounds(16, 52, 368, 1);
-
-  AddLabel(GBox, 16, 64, 'Separado por um TFRMaterialDivider');
+  Div1.SetBounds(PAD, 52, 368, 1);
+  Div1.Anchors := [akLeft, akTop, akRight];
+  AddLabel(GBox, PAD, 64, 'Separado por um TFRMaterialDivider');
 
   Y := Y + 116;
   Y := AddSection(APage, Y, 'TFRMaterialBottomSheet / SideSheet');
   Btn := TFRMaterialButton.Create(Self);
   Btn.Parent := APage;
-  Btn.SetBounds(24, Y, 200, 40);
+  Btn.SetBounds(PAD, Y, 200, BTN_H);
   Btn.Caption := 'Bottom Sheet';
   Btn.ButtonStyle := mbsElevated;
   Btn.OnClick := @OnBottomSheetClick;
 
   Btn := TFRMaterialButton.Create(Self);
   Btn.Parent := APage;
-  Btn.SetBounds(240, Y, 200, 40);
+  Btn.SetBounds(PAD + 216, Y, 200, BTN_H);
   Btn.Caption := 'Side Sheet';
   Btn.ButtonStyle := mbsElevated;
   Btn.OnClick := @OnSideSheetClick;
 
-  { Create sheets (initially collapsed / hidden) }
   FBottomSheet := TFRMaterialBottomSheet.Create(Self);
   FBottomSheet.Parent := Self;
-  FBottomSheet.SheetHeight := 200;
-  FBottomSheet.Height := 200;
-  FBottomSheet.Left := 0;
-  FBottomSheet.Width := ClientWidth;
-  FBottomSheet.Top := ClientHeight; { start off-screen }
+  FBottomSheet.SheetHeight := 200; FBottomSheet.Height := 200;
+  FBottomSheet.Left := 0; FBottomSheet.Width := ClientWidth;
+  FBottomSheet.Top := ClientHeight;
   FBottomSheet.DragHandle := True;
   FBottomSheet.Visible := False;
   FBottomSheet.BringToFront;
-
-  AddLabel(FBottomSheet, 24, 28, 'Detalhes do Pedido #1042', True);
-  AddLabel(FBottomSheet, 24, 56, 'Cliente: João Silva — CNPJ 12.345.678/0001-90');
-  AddLabel(FBottomSheet, 24, 78, 'Valor total: R$ 3.487,50 — 12 itens');
-  AddLabel(FBottomSheet, 24, 100, 'Status: Aguardando aprovação do financeiro');
-  AddLabel(FBottomSheet, 24, 130, 'Prazo de entrega: 05/04/2026 — Transportadora XYZ');
-  AddLabel(FBottomSheet, 24, 160, 'Arraste o handle ou clique para fechar.');
+  AddLabel(FBottomSheet, PAD, 28, 'Detalhes do Pedido #1042', True);
+  AddLabel(FBottomSheet, PAD, 56, 'Cliente: João Silva — CNPJ 12.345.678/0001-90');
+  AddLabel(FBottomSheet, PAD, 78, 'Valor total: R$ 3.487,50 — 12 itens');
+  AddLabel(FBottomSheet, PAD, 100, 'Status: Aguardando aprovação do financeiro');
+  AddLabel(FBottomSheet, PAD, 130, 'Prazo de entrega: 05/04/2026 — Transportadora XYZ');
+  AddLabel(FBottomSheet, PAD, 160, 'Arraste o handle ou clique para fechar.');
 
   FSideSheet := TFRMaterialSideSheet.Create(Self);
   FSideSheet.Parent := Self;
-  FSideSheet.SheetWidth := 300;
-  FSideSheet.Width := 300;
-  FSideSheet.Top := 0;
-  FSideSheet.Height := ClientHeight;
-  FSideSheet.Left := ClientWidth; { start off-screen }
+  FSideSheet.SheetWidth := 300; FSideSheet.Width := 300;
+  FSideSheet.Top := 0; FSideSheet.Height := ClientHeight;
+  FSideSheet.Left := ClientWidth;
   FSideSheet.Visible := False;
   FSideSheet.BringToFront;
-
-  AddLabel(FSideSheet, 24, 24, 'Filtros Avançados', True);
-  AddLabel(FSideSheet, 24, 56, 'Período:');
-  AddLabel(FSideSheet, 24, 76, '  01/03/2026 a 31/03/2026');
-  AddLabel(FSideSheet, 24, 108, 'Vendedor:');
-  AddLabel(FSideSheet, 24, 128, '  Carlos Ferreira');
-  AddLabel(FSideSheet, 24, 160, 'Situação:');
-  AddLabel(FSideSheet, 24, 180, '  Pendentes e Em análise');
-  AddLabel(FSideSheet, 24, 212, 'Valor mínimo:');
-  AddLabel(FSideSheet, 24, 232, '  R$ 500,00');
-  AddLabel(FSideSheet, 24, 264, 'Forma de pagamento:');
-  AddLabel(FSideSheet, 24, 284, '  Boleto, PIX');
-  AddLabel(FSideSheet, 24, 320, 'Clique "Side Sheet" para fechar.');
+  AddLabel(FSideSheet, PAD, 24, 'Filtros Avançados', True);
+  AddLabel(FSideSheet, PAD, 56, 'Período:');
+  AddLabel(FSideSheet, PAD, 76, '  01/03/2026 a 31/03/2026');
+  AddLabel(FSideSheet, PAD, 108, 'Vendedor:');
+  AddLabel(FSideSheet, PAD, 128, '  Carlos Ferreira');
+  AddLabel(FSideSheet, PAD, 160, 'Situação:');
+  AddLabel(FSideSheet, PAD, 180, '  Pendentes e Em análise');
+  AddLabel(FSideSheet, PAD, 212, 'Valor mínimo:');
+  AddLabel(FSideSheet, PAD, 232, '  R$ 500,00');
+  AddLabel(FSideSheet, PAD, 264, 'Forma de pagamento:');
+  AddLabel(FSideSheet, PAD, 284, '  Boleto, PIX');
+  AddLabel(FSideSheet, PAD, 320, 'Clique "Side Sheet" para fechar.');
 end;
 
-{ ===== Page: Documentação ===== }
+{ ===== Page: PageControl ===== }
 
-procedure TFmDemo.CreatePageDocs(APage: TWinControl);
+procedure TFmDemo.CreatePagePageControl(APage: TWinControl);
 var
   Y: Integer;
-  Memo: TFRMaterialMemoEdit;
+  Page: TFRMaterialTabPage;
+  Lbl: TLabel;
 begin
-  Y := AddSection(APage, 16, 'Documentação — Material Design 3 Components');
-  Memo := TFRMaterialMemoEdit.Create(Self);
-  Memo.Parent := APage;
-  Memo.SetBounds(24, Y, APage.ClientWidth - 48, 800);
-  Memo.Anchors := [akLeft, akTop, akRight];
-  Memo.Caption := 'README';
-  Memo.Variant := mvOutlined;
-  Memo.ReadOnly := True;
-  Memo.WordWrap := True;
-  Memo.ScrollBars := ssAutoVertical;
-  Memo.Memo.Lines.Clear;
-  Memo.Memo.Lines.Add('=== Material Design 3 Component Library for Lazarus ===');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('Pacote: materialdesign.lpk | Licença: LGPL v3');
-  Memo.Memo.Lines.Add('Dependências: BGRABitmap, LCL');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('--- BOTÕES ---');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialButton — Botão MD3 com 5 estilos: Filled, Outlined, Text, Elevated, Tonal.');
-  Memo.Memo.Lines.Add('  Propriedades: ButtonStyle, Caption, ShowIcon, IconMode, Enabled.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialButtonIcon — Botão de ícone MD3: Standard, Filled, FilledTonal, Outlined.');
-  Memo.Memo.Lines.Add('  Propriedades: IconStyle, IconMode, Toggle, Toggled.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialSplitButton — Botão dividido com ação principal e menu secundário.');
-  Memo.Memo.Lines.Add('  Propriedades: ButtonStyle (mbsFilled, mbsOutlined), Caption.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialFAB — Floating Action Button: Small (40px), Regular (56px), Large (96px).');
-  Memo.Memo.Lines.Add('  Propriedades: FABSize, IconMode.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialExtendedFAB — FAB estendido com texto.');
-  Memo.Memo.Lines.Add('  Propriedades: Caption, IconMode, ShowIcon.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialFABMenu — Speed Dial: FAB expansível com sub-itens.');
-  Memo.Memo.Lines.Add('  Propriedades: IconMode, Expanded, Items (Caption, IconMode, OnClick).');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('--- CONTROLES ---');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialSwitch — Toggle switch on/off com estado tátil.');
-  Memo.Memo.Lines.Add('  Propriedades: Checked, Enabled.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialCheckBox — CheckBox MD3 com suporte a tri-state.');
-  Memo.Memo.Lines.Add('  Propriedades: Checked, State, AllowGrayed, Caption.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialRadioButton — RadioButton MD3 com GroupIndex.');
-  Memo.Memo.Lines.Add('  Propriedades: Checked, GroupIndex, Caption.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialChip — Chip MD3: Assist, Filter, Input, Suggestion.');
-  Memo.Memo.Lines.Add('  Propriedades: ChipStyle, Selected, Deletable, ShowIcon, IconMode.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialSegmentedButton — Botão segmentado com seleção única ou múltipla.');
-  Memo.Memo.Lines.Add('  Propriedades: Items, ItemIndex, MultiSelect.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('--- CAMPOS DE ENTRADA ---');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialEdit — Input de texto com floating label, ícones, validação, máscara e autocomplete.');
-  Memo.Memo.Lines.Add('  Variantes: mvStandard, mvFilled, mvOutlined.');
-  Memo.Memo.Lines.Add('  Propriedades: Caption, Text, TextHint, Variant, ShowClearButton, ShowLeadingIcon,');
-  Memo.Memo.Lines.Add('    LeadingIconMode, PasswordMode, Required, ValidationState, HelperText, ErrorText,');
-  Memo.Memo.Lines.Add('    EditMask, TextMask (tmtCPF, tmtCNPJ, tmtPhone...), PrefixText, SuffixText.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialComboEdit — ComboBox com floating label e estilo MD3.');
-  Memo.Memo.Lines.Add('  Propriedades: Caption, Items, ItemIndex, Style (csDropDown, csDropDownList),');
-  Memo.Memo.Lines.Add('    Variant, AutoComplete, Sorted.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialCheckComboEdit — Multi-select dropdown com checkboxes.');
-  Memo.Memo.Lines.Add('  Propriedades: Caption, Items, Checked[i], CheckedCount, DisplayFormat, EmptyText.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialCurrencyEdit — Campo de moeda formatado (R$).');
-  Memo.Memo.Lines.Add('  Propriedades: Caption, Value, CurrencySymbol, DecimalPlaces, AllowNegative.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialDateEdit — Seletor de data com calendário popup.');
-  Memo.Memo.Lines.Add('  Propriedades: Caption, Date, DateOrder, ShowClearButton, Variant.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialMaskEdit — Input com máscara (telefone, CEP, CPF etc.).');
-  Memo.Memo.Lines.Add('  Propriedades: Caption, EditMask, Text, MaskedText, CharCase, Variant.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialSearchEdit — Campo de busca com debounce e ícone.');
-  Memo.Memo.Lines.Add('  Propriedades: Caption, Text, DebounceInterval (ms), Variant.');
-  Memo.Memo.Lines.Add('  Evento: OnSearch.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialSpinEdit — Stepper numérico com botões +/-.');
-  Memo.Memo.Lines.Add('  Propriedades: Caption, Value, MinValue, MaxValue, Increment, Variant.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialMemoEdit — Editor multilinha com char counter e validação.');
-  Memo.Memo.Lines.Add('  Propriedades: Caption, Lines, WordWrap, MaxLength, ShowCharCounter,');
-  Memo.Memo.Lines.Add('    ReadOnly, ScrollBars, ValidationState.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('--- SLIDERS / TIME ---');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialSlider — Slider contínuo ou discreto (com steps).');
-  Memo.Memo.Lines.Add('  Propriedades: Min, Max, Value, Discrete, Steps, ShowValueLabel.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialTimePicker — Seletor de hora 24h ou 12h AM/PM.');
-  Memo.Memo.Lines.Add('  Propriedades: Hour, Minute, TimeFormat (tfHour24, tfHour12), IsAM, TimeStr.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('--- PROGRESSO ---');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialLinearProgress — Barra de progresso linear.');
-  Memo.Memo.Lines.Add('  Propriedades: Value (0-100), Indeterminate.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialCircularProgress — Indicador circular de progresso.');
-  Memo.Memo.Lines.Add('  Propriedades: Value, Indeterminate, StrokeWidth.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialLoadingIndicator — Animação de pontos pulsantes.');
-  Memo.Memo.Lines.Add('  Propriedades: DotCount.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('--- DADOS ---');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialTabs — Tabs fixas ou scrollable com ícones.');
-  Memo.Memo.Lines.Add('  Propriedades: TabStyle (tsFixed, tsScrollable), Tabs [], TabIndex.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialListView — Lista MD3: OneLine, TwoLine, ThreeLine.');
-  Memo.Memo.Lines.Add('  Propriedades: ItemType, ShowDividers, Items (Headline, SupportText, LeadingIcon, TrailingText).');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialTreeView — Árvore hierárquica com expand/collapse, ícones e seleção.');
-  Memo.Memo.Lines.Add('  Propriedades: Nodes (Caption, IconMode, Children, Expanded), ShowIcons, ShowDividers, ItemHeight, Indent.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('--- NAVEGAÇÃO ---');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialAppBar — Top App Bar: Small, Medium (com back), Large.');
-  Memo.Memo.Lines.Add('  Propriedades: Title, NavIcon, BarSize, Actions [].');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialToolbar — Barra de ferramentas com ações de ícones.');
-  Memo.Memo.Lines.Add('  Propriedades: Actions [] (IconMode, Hint, OnClick).');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialNavBar — Barra de navegação inferior com badges.');
-  Memo.Memo.Lines.Add('  Propriedades: Items (Caption, IconMode, Badge), ItemIndex.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialNavDrawer — Drawer lateral de navegação (360dp).');
-  Memo.Memo.Lines.Add('  Propriedades: Items, ItemIndex, HeaderTitle.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialNavRail — Rail vertical de navegação (80dp).');
-  Memo.Memo.Lines.Add('  Propriedades: Items, ItemIndex, MenuIcon, FabIcon.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('--- SUPERFÍCIES ---');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialDialog — Diálogo modal com título, conteúdo e botões.');
-  Memo.Memo.Lines.Add('  Propriedades: Title, Content, Buttons (dbYes, dbNo, dbCancel).');
-  Memo.Memo.Lines.Add('  Método: Execute → TFRMDDialogResult.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialSnackbar — Toast/Snackbar temporário com ação.');
-  Memo.Memo.Lines.Add('  Método: Show(Message, ActionText).');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialTooltip — Tooltip flutuante.');
-  Memo.Memo.Lines.Add('  Propriedades: Text.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialMenu — Menu popup com ícones e separadores.');
-  Memo.Memo.Lines.Add('  Propriedades: Items (Caption, IconMode, IsSeparator). Método: Popup(X, Y).');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialGroupBox — Container com borda arredondada.');
-  Memo.Memo.Lines.Add('  Propriedades: Caption, BorderRadius, ShowBorder.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialDivider — Linha divisória horizontal.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialBottomSheet — Painel deslizante inferior com drag handle.');
-  Memo.Memo.Lines.Add('  Propriedades: SheetHeight, DragHandle. Método: Toggle.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• TFRMaterialSideSheet — Painel deslizante lateral.');
-  Memo.Memo.Lines.Add('  Propriedades: SheetWidth. Método: Toggle.');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('--- UTILITÁRIOS ---');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('• FRMaterialIcons — 50+ ícones SVG vetoriais (imHome, imSearch, imEdit, etc.).');
-  Memo.Memo.Lines.Add('• FRMaterialTheme — Sistema de cores MD3 com 12 paletas pré-definidas.');
-  Memo.Memo.Lines.Add('• FRMaterialMasks — Máscaras de entrada PT-BR (CPF, CNPJ, Telefone, CEP, etc.).');
-  Memo.Memo.Lines.Add('');
-  Memo.Memo.Lines.Add('Total: 41 componentes visuais + 3 unidades utilitárias.');
+  Y := AddSection(APage, PAD, 'TFRMaterialPageControl — Tabs with content pages');
+
+  FPageControl := TFRMaterialPageControl.Create(Self);
+  FPageControl.Parent := APage;
+  FPageControl.SetBounds(PAD, Y, ContentW(APage), 380);
+  FPageControl.Anchors := [akLeft, akTop, akRight];
+  FPageControl.OnChange := @OnPageControlChange;
+
+  { Page 1: Dashboard }
+  Page := TFRMaterialTabPage.Create(Self);
+  Page.PageControl := FPageControl;
+  Page.Caption := 'Dashboard';
+  Page.IconMode := imDashboard;
+  Page.ShowIcon := True;
+  Lbl := TLabel.Create(Self);
+  Lbl.Parent := Page;
+  Lbl.SetBounds(PAD, PAD, 300, 20);
+  Lbl.Caption := 'Resumo geral do sistema ERP';
+  Lbl.Font.Size := 11; Lbl.Font.Style := [fsBold]; Lbl.Font.Color := MD3Colors.Primary; Lbl.Transparent := True;
+  AddLabel(Page, PAD, 50, 'Vendas do mês: R$ 142.350,80');
+  AddLabel(Page, PAD, 72, 'Pedidos pendentes: 23');
+  AddLabel(Page, PAD, 94, 'Clientes ativos: 1.247');
+  AddLabel(Page, PAD, 116, 'Produtos em estoque: 8.432 itens');
+  with TFRMaterialLinearProgress.Create(Self) do
+  begin
+    Parent := Page;
+    SetBounds(PAD, 150, 400, 4);
+    Anchors := [akLeft, akTop, akRight];
+    Value := 0.72;
+  end;
+  AddLabel(Page, PAD, 162, 'Meta mensal: 72% atingida');
+
+  { Page 2: Cadastros }
+  Page := TFRMaterialTabPage.Create(Self);
+  Page.PageControl := FPageControl;
+  Page.Caption := 'Cadastros';
+  Page.IconMode := imPerson;
+  Page.ShowIcon := True;
+  Lbl := TLabel.Create(Self);
+  Lbl.Parent := Page;
+  Lbl.SetBounds(PAD, PAD, 300, 20);
+  Lbl.Caption := 'Gerenciamento de cadastros';
+  Lbl.Font.Size := 11; Lbl.Font.Style := [fsBold]; Lbl.Font.Color := MD3Colors.Primary; Lbl.Transparent := True;
+  with TFRMaterialEdit.Create(Self) do
+  begin
+    Parent := Page;
+    SetBounds(PAD, 50, 300, ROW_H);
+    Caption := 'Buscar cadastro'; TextHint := 'Nome ou código...';
+    Variant := mvOutlined; ShowClearButton := True;
+  end;
+  with TFRMaterialButton.Create(Self) do
+  begin
+    Parent := Page;
+    SetBounds(PAD + 316, 58, BTN_W, BTN_H);
+    Caption := 'Novo cliente'; ButtonStyle := mbsFilled; ShowIcon := True; IconMode := imPlus;
+  end;
+  with TFRMaterialCheckBox.Create(Self) do begin Parent := Page; SetBounds(PAD, 120, 220, 24); Caption := 'Apenas ativos'; Checked := True; end;
+  with TFRMaterialCheckBox.Create(Self) do begin Parent := Page; SetBounds(PAD + 230, 120, 220, 24); Caption := 'Com pendências'; end;
+
+  { Page 3: Financeiro }
+  Page := TFRMaterialTabPage.Create(Self);
+  Page.PageControl := FPageControl;
+  Page.Caption := 'Financeiro';
+  Page.IconMode := imStar;
+  Page.ShowIcon := True;
+  Lbl := TLabel.Create(Self);
+  Lbl.Parent := Page;
+  Lbl.SetBounds(PAD, PAD, 300, 20);
+  Lbl.Caption := 'Controle financeiro';
+  Lbl.Font.Size := 11; Lbl.Font.Style := [fsBold]; Lbl.Font.Color := MD3Colors.Primary; Lbl.Transparent := True;
+  with TFRMaterialCurrencyEdit.Create(Self) do begin Parent := Page; SetBounds(PAD, 50, 220, ROW_H); Caption := 'Valor total'; Variant := mvOutlined; Value := 15780.90; end;
+  with TFRMaterialDateEdit.Create(Self) do begin Parent := Page; SetBounds(PAD + 236, 50, 200, ROW_H); Caption := 'Vencimento'; Variant := mvOutlined; Date := Now + 30; end;
+  with TFRMaterialSwitch.Create(Self) do begin Parent := Page; SetBounds(PAD, 130, 52, 32); Checked := True; end;
+  AddLabel(Page, PAD + 64, 136, 'Gerar boleto automaticamente');
+
+  FPageControl.ActivePageIndex := 0;
+end;
+
+{ ===== Page: VirtualDataGrid ===== }
+
+procedure TFmDemo.CreatePageVirtualGrid(APage: TWinControl);
+var
+  Y: Integer;
+  Node: PVirtualNode;
+begin
+  Y := AddSection(APage, PAD, 'TFRMaterialVirtualDataGrid — Sort, Filter, ZebraStripes');
+
+  FVirtualGrid := TFRMaterialVirtualDataGrid.Create(Self);
+  FVirtualGrid.Parent := APage;
+  FVirtualGrid.SetBounds(PAD, Y, ContentW(APage), 420);
+  FVirtualGrid.Anchors := [akLeft, akTop, akRight];
+  FVirtualGrid.Density := ddNormal;
+  FVirtualGrid.ZebraStripes := True;
+  FVirtualGrid.AutoSort := True;
+  FVirtualGrid.FilterEnabled := True;
+  FVirtualGrid.OnSortColumn := @OnVGridSortColumn;
+
+  with FVirtualGrid.Header.Columns.Add do begin Text := 'Código'; Width := 80; end;
+  with FVirtualGrid.Header.Columns.Add do begin Text := 'Produto'; Width := 220; end;
+  with FVirtualGrid.Header.Columns.Add do begin Text := 'Categoria'; Width := 140; end;
+  with FVirtualGrid.Header.Columns.Add do begin Text := 'Estoque'; Width := 90; Alignment := taRightJustify; end;
+  with FVirtualGrid.Header.Columns.Add do begin Text := 'Preço Unit.'; Width := 100; Alignment := taRightJustify; end;
+
+  FVirtualGrid.Header.Options := FVirtualGrid.Header.Options + [hoVisible];
+  FVirtualGrid.TreeOptions.PaintOptions := FVirtualGrid.TreeOptions.PaintOptions + [toShowRoot];
+
+  FVirtualGrid.BeginUpdate;
+  try
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '001'; FVirtualGrid.Text[Node, 1] := 'Monitor LCD 24"'; FVirtualGrid.Text[Node, 2] := 'Informática'; FVirtualGrid.Text[Node, 3] := '12'; FVirtualGrid.Text[Node, 4] := 'R$ 850,00';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '002'; FVirtualGrid.Text[Node, 1] := 'Teclado Mecânico RGB'; FVirtualGrid.Text[Node, 2] := 'Informática'; FVirtualGrid.Text[Node, 3] := '45'; FVirtualGrid.Text[Node, 4] := 'R$ 250,00';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '003'; FVirtualGrid.Text[Node, 1] := 'Mouse Óptico 3200DPI'; FVirtualGrid.Text[Node, 2] := 'Informática'; FVirtualGrid.Text[Node, 3] := '89'; FVirtualGrid.Text[Node, 4] := 'R$ 85,00';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '004'; FVirtualGrid.Text[Node, 1] := 'Cabo HDMI 2m'; FVirtualGrid.Text[Node, 2] := 'Cabos'; FVirtualGrid.Text[Node, 3] := '120'; FVirtualGrid.Text[Node, 4] := 'R$ 25,00';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '005'; FVirtualGrid.Text[Node, 1] := 'Parafuso M6x20'; FVirtualGrid.Text[Node, 2] := 'Ferramentas'; FVirtualGrid.Text[Node, 3] := '23'; FVirtualGrid.Text[Node, 4] := 'R$ 0,50';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '006'; FVirtualGrid.Text[Node, 1] := 'Chave Phillips #2'; FVirtualGrid.Text[Node, 2] := 'Ferramentas'; FVirtualGrid.Text[Node, 3] := '67'; FVirtualGrid.Text[Node, 4] := 'R$ 12,90';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '007'; FVirtualGrid.Text[Node, 1] := 'Lâmpada LED 12W'; FVirtualGrid.Text[Node, 2] := 'Iluminação'; FVirtualGrid.Text[Node, 3] := '200'; FVirtualGrid.Text[Node, 4] := 'R$ 8,50';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '008'; FVirtualGrid.Text[Node, 1] := 'Tinta Acrílica 3.6L'; FVirtualGrid.Text[Node, 2] := 'Pintura'; FVirtualGrid.Text[Node, 3] := '34'; FVirtualGrid.Text[Node, 4] := 'R$ 89,90';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '009'; FVirtualGrid.Text[Node, 1] := 'Fita Isolante 20m'; FVirtualGrid.Text[Node, 2] := 'Material Elétrico'; FVirtualGrid.Text[Node, 3] := '150'; FVirtualGrid.Text[Node, 4] := 'R$ 5,90';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '010'; FVirtualGrid.Text[Node, 1] := 'Webcam Full HD'; FVirtualGrid.Text[Node, 2] := 'Informática'; FVirtualGrid.Text[Node, 3] := '28'; FVirtualGrid.Text[Node, 4] := 'R$ 189,00';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '011'; FVirtualGrid.Text[Node, 1] := 'Mangueira 30m'; FVirtualGrid.Text[Node, 2] := 'Hidráulica'; FVirtualGrid.Text[Node, 3] := '15'; FVirtualGrid.Text[Node, 4] := 'R$ 45,00';
+    Node := FVirtualGrid.AddChild(nil); FVirtualGrid.Text[Node, 0] := '012'; FVirtualGrid.Text[Node, 1] := 'Nobreak 1200VA'; FVirtualGrid.Text[Node, 2] := 'Informática'; FVirtualGrid.Text[Node, 3] := '8'; FVirtualGrid.Text[Node, 4] := 'R$ 620,00';
+  finally
+    FVirtualGrid.EndUpdate;
+  end;
+
+  Y := Y + 440;
+  Y := AddSection(APage, Y, 'Density Controls');
+  with TFRMaterialSegmentedButton.Create(Self) do
+  begin
+    Parent := APage;
+    SetBounds(PAD, Y, 360, BTN_H);
+    Items.Add('Compact'); Items.Add('Normal'); Items.Add('Dense');
+    ItemIndex := 1;
+    OnChange := @OnSegmentChange;
+    Tag := 999;
+  end;
 end;
 
 { ===== Event Handlers ===== }
@@ -2002,9 +1726,9 @@ const
     ('Buttons', 'FABs', ''),
     ('Toggles', 'Chips', ''),
     ('Edits', 'Inputs', 'Progress'),
-    ('Listas & Tabs', 'Navegação', ''),
-    ('Superfícies', 'Documentação', ''));
-  CTabCount: array[0..4] of Integer = (2, 2, 3, 2, 2);
+    ('Listas & Tabs', 'Tree & Data', 'VirtualDataGrid'),
+    ('Navegação', 'Superfícies', 'PageControl'));
+  CTabCount: array[0..4] of Integer = (2, 2, 3, 3, 3);
 var
   Nav, I: Integer;
   OldHandler: TNotifyEvent;
@@ -2025,8 +1749,8 @@ procedure TFmDemo.ShowPage(AIndex: Integer);
 var
   I: Integer;
 begin
-  if (AIndex < 0) or (AIndex > 10) then AIndex := 0;
-  for I := 0 to 10 do
+  if (AIndex < 0) or (AIndex > PAGE_COUNT - 1) then AIndex := 0;
+  for I := 0 to PAGE_COUNT - 1 do
     FContentPanels[I].Visible := (I = AIndex);
   FStatusBar.SimpleText := FContentPanels[AIndex].Hint;
 end;
@@ -2037,40 +1761,36 @@ var
 begin
   FThemeManager.DarkMode := FDarkMode;
   FThemeManager.Palette := FCurrentPalette;
-  
   Color := MD3Colors.Surface;
-  for I := 0 to 10 do
+  for I := 0 to PAGE_COUNT - 1 do
     FContentPanels[I].Color := MD3Colors.Surface;
 end;
 
 procedure TFmDemo.OnMainDarkToggle(Sender: TObject);
 begin
   FDarkMode := not FDarkMode;
-  if FDarkMode then
-    FDarkAction.IconMode := imLightMode
-  else
-    FDarkAction.IconMode := imNightlight;
+  if FDarkMode then FDarkAction.IconMode := imLightMode
+  else FDarkAction.IconMode := imNightlight;
   ApplyTheme;
-  FStatusBar.SimpleText := MD3PaletteName(FCurrentPalette) +
-    ' — ' + IfThen(FDarkMode, 'Dark', 'Light');
+  FStatusBar.SimpleText := MD3PaletteName(FCurrentPalette) + ' — ' + IfThen(FDarkMode, 'Dark', 'Light');
 end;
 
 procedure TFmDemo.OnMainTabChange(Sender: TObject);
 const
-  CPageBase: array[0..4] of Integer = (0, 2, 4, 7, 9);
+  CPageBase: array[0..4] of Integer = (0, 2, 4, 7, 10);
 var
   Nav, PageIdx: Integer;
 begin
   Nav := FMainNavBar.ItemIndex;
   if (Nav < 0) or (Nav > 4) then Nav := 0;
   PageIdx := CPageBase[Nav] + FMainTabs.TabIndex;
-  if PageIdx > 10 then PageIdx := 10;
+  if PageIdx > PAGE_COUNT - 1 then PageIdx := PAGE_COUNT - 1;
   ShowPage(PageIdx);
 end;
 
 procedure TFmDemo.OnMainNavChange(Sender: TObject);
 const
-  CPageBase: array[0..4] of Integer = (0, 2, 4, 7, 9);
+  CPageBase: array[0..4] of Integer = (0, 2, 4, 7, 10);
 var
   Nav: Integer;
 begin
@@ -2087,49 +1807,39 @@ begin
 end;
 
 procedure TFmDemo.OnPaletteClick(Sender: TObject);
-var
-  Pt: TPoint;
+var Pt: TPoint;
 begin
   Pt := FMainAppBar.ClientToScreen(Point(FMainAppBar.Width - 120, FMainAppBar.Height));
   FPaletteMenu.Popup(Pt.X, Pt.Y);
 end;
 
 procedure TFmDemo.OnPaletteMenuAction(Sender: TObject);
-var
-  MI: TMenuItem;
+var MI: TMenuItem;
 begin
   MI := TMenuItem(Sender);
   FCurrentPalette := TFRMDPalette(MI.Tag);
   MI.Checked := True;
   ApplyTheme;
-  FStatusBar.SimpleText := 'Paleta: ' + MD3PaletteName(FCurrentPalette) +
-    ' — ' + IfThen(FDarkMode, 'Dark', 'Light');
+  FStatusBar.SimpleText := 'Paleta: ' + MD3PaletteName(FCurrentPalette) + ' — ' + IfThen(FDarkMode, 'Dark', 'Light');
 end;
 
 procedure TFmDemo.OnButtonClick(Sender: TObject);
-var
-  view: TFmView;
 begin
   if Sender is TFRMaterialButton then
     FStatusBar.SimpleText := 'Clicou: ' + TFRMaterialButton(Sender).Caption
   else
-    FStatusBar.SimpleText := 'Clicou: IconButton';
-
-  view := TFmView.Create(Self);
-  view.ShowModal;
+    FStatusBar.SimpleText := 'Clicou: Button';
 end;
 
 procedure TFmDemo.OnDialogClick(Sender: TObject);
-var
-  R: TFRMDDialogResult;
+var R: TFRMDDialogResult;
 begin
   R := FDialog.Execute;
   case R of
     drYes:    FStatusBar.SimpleText := 'Dialog → Sim';
     drNo:     FStatusBar.SimpleText := 'Dialog → Não';
     drCancel: FStatusBar.SimpleText := 'Dialog → Cancelar';
-  else
-    FStatusBar.SimpleText := 'Dialog → Fechado';
+  else        FStatusBar.SimpleText := 'Dialog → Fechado';
   end;
 end;
 
@@ -2144,8 +1854,7 @@ begin
 end;
 
 procedure TFmDemo.OnMenuClick(Sender: TObject);
-var
-  Pt: TPoint;
+var Pt: TPoint;
 begin
   Pt := TFRMaterialButton(Sender).ClientToScreen(Point(0, TFRMaterialButton(Sender).Height));
   FMenu.Popup(Pt.X, Pt.Y);
@@ -2159,37 +1868,38 @@ end;
 
 procedure TFmDemo.OnSliderChange(Sender: TObject);
 begin
-  FSliderValueLbl.Caption := Format('Valor: %.0f', [TFRMaterialSlider(Sender).Value]);
+  if Assigned(FSliderValueLbl) then
+    FSliderValueLbl.Caption := Format('Valor: %.0f', [TFRMaterialSlider(Sender).Value]);
 end;
 
 procedure TFmDemo.OnTimePickerChange(Sender: TObject);
 begin
-  FTimePickerLbl.Caption := 'Hora: ' + FTimePicker.TimeStr;
+  if Assigned(FTimePickerLbl) and Assigned(FTimePicker) then
+    FTimePickerLbl.Caption := 'Hora: ' + FTimePicker.TimeStr;
 end;
 
 procedure TFmDemo.OnProgressTimer(Sender: TObject);
-var
-  V: Double;
+var V: Double;
 begin
+  if not Assigned(FLinearProgress) then Exit;
   V := FLinearProgress.Value + 0.01;
   if V > 1.0 then V := 0;
   FLinearProgress.Value := V;
-  FCircularProgress.Value := V;
+  if Assigned(FCircularProgress) then FCircularProgress.Value := V;
 end;
 
 procedure TFmDemo.OnBottomSheetClick(Sender: TObject);
 begin
-  FBottomSheet.Toggle;
+  if Assigned(FBottomSheet) then FBottomSheet.Toggle;
 end;
 
 procedure TFmDemo.OnSideSheetClick(Sender: TObject);
 begin
-  FSideSheet.Toggle;
+  if Assigned(FSideSheet) then FSideSheet.Toggle;
 end;
 
 procedure TFmDemo.OnListSelect(Sender: TObject);
-var
-  LV: TFRMaterialListView;
+var LV: TFRMaterialListView;
 begin
   LV := TFRMaterialListView(Sender);
   if (LV.ItemIndex >= 0) and (LV.ItemIndex < LV.Items.Count) then
@@ -2197,8 +1907,7 @@ begin
 end;
 
 procedure TFmDemo.OnTabChange(Sender: TObject);
-var
-  T: TFRMaterialTabs;
+var T: TFRMaterialTabs;
 begin
   T := TFRMaterialTabs(Sender);
   if (T.TabIndex >= 0) and (T.TabIndex < T.Tabs.Count) then
@@ -2216,8 +1925,7 @@ end;
 procedure TFmDemo.OnIconToggle(Sender: TObject);
 begin
   if Sender is TFRMaterialButtonIcon then
-    FStatusBar.SimpleText := 'Toggle: ' + TFRMaterialButtonIcon(Sender).Hint +
-      ' → ' + IfThen(TFRMaterialButtonIcon(Sender).Toggled, 'Ativado', 'Desativado');
+    FStatusBar.SimpleText := 'Toggle: ' + IfThen(TFRMaterialButtonIcon(Sender).Toggled, 'Ativado', 'Desativado');
 end;
 
 procedure TFmDemo.OnSplitClick(Sender: TObject);
@@ -2241,44 +1949,31 @@ begin
 end;
 
 procedure TFmDemo.OnSwitchChange(Sender: TObject);
-var
-  Sw: TFRMaterialSwitch;
 begin
-  Sw := TFRMaterialSwitch(Sender);
-  FStatusBar.SimpleText := 'Switch → ' + IfThen(Sw.Checked, 'Ligado', 'Desligado');
+  FStatusBar.SimpleText := 'Switch → ' + IfThen(TFRMaterialSwitch(Sender).Checked, 'Ligado', 'Desligado');
 end;
 
 procedure TFmDemo.OnCheckChange(Sender: TObject);
-var
-  Cb: TFRMaterialCheckBox;
 begin
-  Cb := TFRMaterialCheckBox(Sender);
-  FStatusBar.SimpleText := 'CheckBox "' + Cb.Caption + '" → ' +
-    IfThen(Cb.Checked, 'Marcado', 'Desmarcado');
+  FStatusBar.SimpleText := 'CheckBox "' + TFRMaterialCheckBox(Sender).Caption + '" → ' +
+    IfThen(TFRMaterialCheckBox(Sender).Checked, 'Marcado', 'Desmarcado');
 end;
 
 procedure TFmDemo.OnRadioChange(Sender: TObject);
-var
-  Rb: TFRMaterialRadioButton;
 begin
-  Rb := TFRMaterialRadioButton(Sender);
-  if Rb.Checked then
-    FStatusBar.SimpleText := 'Pagamento: ' + Rb.Caption;
+  if TFRMaterialRadioButton(Sender).Checked then
+    FStatusBar.SimpleText := 'Pagamento: ' + TFRMaterialRadioButton(Sender).Caption;
 end;
 
 procedure TFmDemo.OnChipClick(Sender: TObject);
-var
-  Ch: TFRMaterialChip;
+var Ch: TFRMaterialChip;
 begin
   Ch := TFRMaterialChip(Sender);
-  FStatusBar.SimpleText := 'Chip "' + Ch.Caption + '" → ' +
-    IfThen(Ch.Selected, 'Selecionado', 'Desmarcado');
+  FStatusBar.SimpleText := 'Chip "' + Ch.Caption + '" → ' + IfThen(Ch.Selected, 'Selecionado', 'Desmarcado');
 end;
 
 procedure TFmDemo.OnChipDelete(Sender: TObject);
-var
-  Ch: TFRMaterialChip;
-  Nome: string;
+var Ch: TFRMaterialChip; Nome: string;
 begin
   Ch := TFRMaterialChip(Sender);
   Nome := Ch.Caption;
@@ -2288,10 +1983,19 @@ begin
 end;
 
 procedure TFmDemo.OnSegmentChange(Sender: TObject);
-var
-  Seg: TFRMaterialSegmentedButton;
+var Seg: TFRMaterialSegmentedButton;
 begin
   Seg := TFRMaterialSegmentedButton(Sender);
+  if (Seg.Tag = 999) and Assigned(FVirtualGrid) then
+  begin
+    case Seg.ItemIndex of
+      0: FVirtualGrid.Density := ddCompact;
+      1: FVirtualGrid.Density := ddNormal;
+      2: FVirtualGrid.Density := ddDense;
+    end;
+    FStatusBar.SimpleText := 'VirtualGrid Density: ' + Seg.Items[Seg.ItemIndex];
+    Exit;
+  end;
   if (Seg.ItemIndex >= 0) and (Seg.ItemIndex < Seg.Items.Count) then
     FStatusBar.SimpleText := 'Segmento: ' + Seg.Items[Seg.ItemIndex]
   else
@@ -2299,8 +2003,7 @@ begin
 end;
 
 procedure TFmDemo.OnNavBarChange(Sender: TObject);
-var
-  Nav: TFRMaterialNavBar;
+var Nav: TFRMaterialNavBar;
 begin
   Nav := TFRMaterialNavBar(Sender);
   if (Nav.ItemIndex >= 0) and (Nav.ItemIndex < Nav.Items.Count) then
@@ -2329,12 +2032,22 @@ begin
     FStatusBar.SimpleText := 'Toolbar Action clicada';
 end;
 
+procedure TFmDemo.OnPageControlChange(Sender: TObject);
+begin
+  if Assigned(FPageControl) and (FPageControl.ActivePageIndex >= 0) then
+    FStatusBar.SimpleText := 'PageControl: ' + FPageControl.ActivePage.Caption;
+end;
+
+procedure TFmDemo.OnVGridSortColumn(Sender: TObject; ACol: Integer;
+  var ADirection: TFRMDSortDirection);
+begin
+  FStatusBar.SimpleText := Format('VirtualGrid: Sort col %d', [ACol]);
+end;
+
 { ===== TreeView event handlers ===== }
 
 procedure ExpandCollapseAll(ANodes: TFRMaterialTreeNodes; AExpand: Boolean);
-var
-  I: Integer;
-  Node: TFRMaterialTreeNode;
+var I: Integer; Node: TFRMaterialTreeNode;
 begin
   for I := 0 to ANodes.Count - 1 do
   begin
@@ -2346,43 +2059,25 @@ begin
 end;
 
 procedure TFmDemo.OnTreeAddRoot(Sender: TObject);
-var
-  S: string;
-  Node: TFRMaterialTreeNode;
+var S: string; Node: TFRMaterialTreeNode;
 begin
   S := Trim(FTreeEdit.Text);
-  if S = '' then
-  begin
-    FStatusBar.SimpleText := 'Digite um nome para o nó.';
-    Exit;
-  end;
+  if S = '' then begin FStatusBar.SimpleText := 'Digite um nome para o nó.'; Exit; end;
   Node := TFRMaterialTreeNode(FTreeView.Nodes.Add);
-  Node.Caption := S;
-  Node.IconMode := imFolder;
+  Node.Caption := S; Node.IconMode := imFolder;
   FTreeEdit.Text := '';
   FTreeView.Invalidate;
   FStatusBar.SimpleText := 'Nó raiz "' + S + '" adicionado.';
 end;
 
 procedure TFmDemo.OnTreeAddChild(Sender: TObject);
-var
-  S: string;
-  Node: TFRMaterialTreeNode;
+var S: string; Node: TFRMaterialTreeNode;
 begin
   S := Trim(FTreeEdit.Text);
-  if S = '' then
-  begin
-    FStatusBar.SimpleText := 'Digite um nome para o nó filho.';
-    Exit;
-  end;
-  if FTreeView.SelectedNode = nil then
-  begin
-    FStatusBar.SimpleText := 'Selecione um nó pai primeiro.';
-    Exit;
-  end;
+  if S = '' then begin FStatusBar.SimpleText := 'Digite um nome para o nó filho.'; Exit; end;
+  if FTreeView.SelectedNode = nil then begin FStatusBar.SimpleText := 'Selecione um nó pai primeiro.'; Exit; end;
   Node := TFRMaterialTreeNode(FTreeView.SelectedNode.Children.Add);
-  Node.Caption := S;
-  Node.IconMode := imList;
+  Node.Caption := S; Node.IconMode := imList;
   FTreeView.SelectedNode.Expanded := True;
   FTreeEdit.Text := '';
   FTreeView.Invalidate;
@@ -2390,17 +2085,10 @@ begin
 end;
 
 procedure TFmDemo.OnTreeDelete(Sender: TObject);
-var
-  Sel: TFRMaterialTreeNode;
-  Nodes: TFRMaterialTreeNodes;
-  S: string;
+var Sel: TFRMaterialTreeNode; Nodes: TFRMaterialTreeNodes; S: string;
 begin
   Sel := FTreeView.SelectedNode;
-  if Sel = nil then
-  begin
-    FStatusBar.SimpleText := 'Selecione um nó para excluir.';
-    Exit;
-  end;
+  if Sel = nil then begin FStatusBar.SimpleText := 'Selecione um nó para excluir.'; Exit; end;
   S := Sel.Caption;
   Nodes := TFRMaterialTreeNodes(Sel.Collection);
   FTreeView.SelectedNode := nil;
@@ -2411,20 +2099,11 @@ begin
 end;
 
 procedure TFmDemo.OnTreeRename(Sender: TObject);
-var
-  S: string;
+var S: string;
 begin
   S := Trim(FTreeEdit.Text);
-  if S = '' then
-  begin
-    FStatusBar.SimpleText := 'Digite o novo nome.';
-    Exit;
-  end;
-  if FTreeView.SelectedNode = nil then
-  begin
-    FStatusBar.SimpleText := 'Selecione um nó para renomear.';
-    Exit;
-  end;
+  if S = '' then begin FStatusBar.SimpleText := 'Digite o novo nome.'; Exit; end;
+  if FTreeView.SelectedNode = nil then begin FStatusBar.SimpleText := 'Selecione um nó para renomear.'; Exit; end;
   FStatusBar.SimpleText := 'Nó "' + FTreeView.SelectedNode.Caption + '" renomeado para "' + S + '".';
   FTreeView.SelectedNode.Caption := S;
   FTreeEdit.Text := '';

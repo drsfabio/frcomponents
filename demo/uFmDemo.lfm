@@ -1,12 +1,13 @@
 object FmDemo: TFmDemo
   Left = 200
-  Height = 700
-  Top = 100
-  Width = 1100
+  Height = 750
+  Top = 80
+  Width = 1200
   Caption = 'Material Design 3 — Component Demo'
   Color = 15790320
   Position = poScreenCenter
   LCLVersion = '4.4.0.0'
   OnCreate = FormCreate
-  OnKeyDown = FormKeyDown
+  OnDestroy = FormDestroy
+  OnResize = FormResize
 end
