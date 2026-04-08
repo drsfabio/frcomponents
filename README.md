@@ -4,14 +4,14 @@ Componentes Material Design 3 completos para Lazarus / Free Pascal, integrados a
 
 ## Visão geral
 
-Este pacote fornece **42 componentes visuais** + 4 unidades utilitárias que implementam a especificação Material Design 3 (Material You), incluindo:
+Este pacote fornece **45 componentes visuais** + 6 unidades utilitárias que implementam a especificação Material Design 3 (Material You), incluindo:
 
 - **Botões** — Button, ButtonIcon, SplitButton, FAB, ExtendedFAB, FABMenu
 - **Controles** — Switch, CheckBox, RadioButton, Chip, SegmentedButton
 - **Campos de entrada** — Edit, ComboEdit, CheckComboEdit, CurrencyEdit, DateEdit, MaskEdit, MemoEdit, SearchEdit, SpinEdit
 - **Sliders / Time** — Slider, TimePicker
 - **Progresso** — LinearProgress, CircularProgress, LoadingIndicator
-- **Dados** — Tabs, ListView, TreeView
+- **Dados** — Tabs, ListView, TreeView, DataGrid, PageControl, VirtualDataGrid
 - **Navegação** — AppBar, Toolbar, NavBar, NavDrawer, NavRail
 - **Superfícies** — Dialog, Snackbar, Tooltip, Menu, GroupBox, Divider, BottomSheet, SideSheet
 
@@ -58,9 +58,12 @@ Este pacote fornece **42 componentes visuais** + 4 unidades utilitárias que imp
 | 37 | `TFRMaterialMenu` | `FRMaterial3Menu` | Menu popup com ícones e separadores |
 | 38 | `TFRMaterialGroupBox` | `FRMaterial3Dialog` | Container com borda arredondada |
 | 39 | `TFRMaterialDivider` | `FRMaterial3Divider` | Linha divisória horizontal |
-| 41 | `TFRMaterialBottomSheet` | `FRMaterial3Sheet` | Painel deslizante inferior |
+| 40 | `TFRMaterialBottomSheet` | `FRMaterial3Sheet` | Painel deslizante inferior |
 | 41 | `TFRMaterialSideSheet` | `FRMaterial3Sheet` | Painel deslizante lateral |
 | 42 | `TFRMaterialThemeManager` | `FRMaterialThemeManager` | Gerenciador de tema Light/Dark — não-visual |
+| 43 | `TFRMaterialDataGrid` | `FRMaterial3DataGrid` | Tabela de dados baseada em TStringGrid com tema MD3 |
+| 44 | `TFRMaterialPageControl` | `FRMaterial3PageControl` | PageControl com abas MD3, close button e ícones |
+| 45 | `TFRMaterialVirtualDataGrid` | `FRMaterial3VirtualDataGrid` | Grid virtual (VirtualStringTree) com sort, filtro e edição inline |
 
 ### Unidades utilitárias
 
@@ -69,7 +72,9 @@ Este pacote fornece **42 componentes visuais** + 4 unidades utilitárias que imp
 | `FRMaterial3Base` | Sistema de cores MD3, formas, helpers, classes base |
 | `FRMaterialTheme` | Paletas pré-definidas (12), dark mode, densidade, utilitários WCAG 2.1 |
 | `FRMaterialThemeManager` | Componente não-visual para troca de tema Light/Dark em runtime |
-| `FRMaterialIcons` | 70+ ícones SVG vetoriais |
+| `FRMaterialFieldPainter` | Renderização centralizada de campos (floating label, bordas, helpers) |
+| `FRMaterialInternalEdits` | Edits internos sem borda nativa (TEdit, TMaskEdit, TMemo, etc.) |
+| `FRMaterialIcons` | 80+ ícones SVG vetoriais |
 | `FRMaterialMasks` | Máscaras PT-BR (CPF, CNPJ, Telefone, CEP) |
 
 ---
@@ -305,6 +310,94 @@ MD3LoadPalette(mpOcean, True);     { Dark mode }
 
 Paletas: Baseline, Ocean, Forest, Sunset, Rose, Lavender, Coral, Mint, Slate, Amber, Crimson, Teal.
 
+### TFRMaterialDataGrid
+
+Tabela de dados baseada em `TStringGrid` com estilo Material Design 3. Suporta sort por coluna, zebra stripes e sincronização com o tema.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Density` | `TFRMDDensity` | Compactação vertical das linhas |
+| `ZebraStripes` | `Boolean` | Alterna coloração zebrada nas linhas de dados |
+| `SortCol` | `Integer` | Coluna atualmente ordenada (somente leitura) |
+| `SortDir` | `TFRMDSortDirection` | Direção da ordenação: `sdNone`, `sdAscending`, `sdDescending` |
+| `SyncWithTheme` | `TFRMDSyncOptions` | Opções de sincronização com o tema (`toColor`, `toDensity`, `toVariant`) |
+| `OnSortColumn` | `TFRMDSortEvent` | Disparado ao clicar no cabeçalho de uma coluna |
+
+### TFRMaterialPageControl
+
+PageControl com abas MD3, suporte a ícones, botão de fechar e posição superior/inferior.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `ActivePageIndex` | `Integer` | Índice da página ativa |
+| `TabHeight` | `Integer` | Altura da barra de abas (padrão: 48px) |
+| `ShowCloseButton` | `Boolean` | Exibir botão de fechar nas abas |
+| `TabPosition` | `TFRTabPosition` | Posição das abas: `tpTop`, `tpBottom` |
+| `BackgroundImage` | `TPicture` | Imagem de fundo da barra de abas |
+| `OnChange` | `TNotifyEvent` | Disparado ao trocar de página |
+| `OnCloseTab` | `TFRMDCloseTabEvent` | Disparado antes de fechar uma aba (permite vetar) |
+
+**TFRMaterialTabPage** — cada página possui: `Caption`, `IconMode`, `ImageIndex`, `Color`.
+
+### TFRMaterialVirtualDataGrid
+
+Grid virtual baseado em `TLazVirtualStringTree` com sort automático, filtro por coluna e edição inline. Ideal para grandes volumes de dados.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Density` | `TFRMDDensity` | Compactação vertical dos nós |
+| `ZebraStripes` | `Boolean` | Alterna coloração zebrada |
+| `AutoSort` | `Boolean` | Ordenação automática ao clicar no cabeçalho (padrão: `True`) |
+| `FilterEnabled` | `Boolean` | Habilita filtro com popup por coluna (padrão: `True`) |
+| `SortCol` | `Integer` | Coluna atualmente ordenada (somente leitura) |
+| `SortDir` | `TFRMDSortDirection` | Direção da ordenação |
+| `SyncWithTheme` | `TFRMDSyncOptions` | Sincronização com o tema |
+| `OnSortColumn` | `TFRMDSortColumnEvent` | Disparado ao ordenar |
+| `OnFilterApply` | `TFRMDFilterApplyEvent` | Disparado após aplicar filtro |
+| `OnEditApplyValue` | `TFRMDEditApplyEvent` | Disparado para salvar valor editado |
+| `OnEditGetValue` | `TFRMDEditGetValueEvent` | Disparado para obter valor da célula para edição |
+
+### TFRMaterialMemoEdit
+
+Editor multilinha com floating label, char counter e estilo MD3.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Caption` | `TCaption` | Texto do label flutuante |
+| `Text` | `string` | Conteúdo do memo |
+| `Lines` | `TStrings` | Linhas do editor |
+| `MaxLength` | `Integer` | Máximo de caracteres (0 = ilimitado) |
+| `ShowCharCounter` | `Boolean` | Exibe contador de caracteres |
+| `ScrollBars` | `TScrollStyle` | Barras de rolagem |
+| `WordWrap` | `Boolean` | Quebra de linha automática |
+| `Variant` | `TFRMaterialVariant` | Estilo visual do campo |
+| `BorderRadius` | `Integer` | Raio dos cantos arredondados |
+
+### TFRMaterialSearchEdit
+
+Campo de busca com debounce integrado.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Caption` | `TCaption` | Texto do label flutuante |
+| `Text` | `string` | Texto digitado |
+| `DebounceDelay` | `Integer` | Intervalo em ms antes de disparar `OnSearch` |
+| `Variant` | `TFRMaterialVariant` | Estilo visual do campo |
+| `OnSearch` | `TNotifyEvent` | Disparado após o debounce expirar |
+
+### TFRMaterialSpinEdit
+
+Stepper numérico com botões +/- no estilo MD3.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Caption` | `TCaption` | Texto do label flutuante |
+| `Value` | `Double` | Valor numérico atual |
+| `MinValue` / `MaxValue` | `Double` | Faixa de valores |
+| `Increment` | `Double` | Passo de incremento/decremento |
+| `DecimalPlaces` | `Integer` | Casas decimais exibidas |
+| `Variant` | `TFRMaterialVariant` | Estilo visual do campo |
+
 ---
 
 ## Campos de entrada (detalhes)
@@ -356,7 +449,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
 
 2. **Compilar**  
    Na janela do Editor de Pacotes, clique em **Compilar**.  
-   As 32 units devem compilar sem erros.
+   As 36 units devem compilar sem erros.
 
 3. **Instalar**  
    Ainda no Editor de Pacotes, clique em **Usar → Instalar**.  
@@ -364,7 +457,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
 
 4. **Verificar**  
    Após o IDE reiniciar, abra a **Paleta de Componentes** e procure pela aba **BGRA Controls**.  
-   Você deverá ver os 42 componentes listados acima.
+   Você deverá ver os 45 componentes listados acima.
 
 ### Adicionando ao projeto sem instalar na paleta
 
@@ -404,6 +497,9 @@ uses
   FRMaterial3Menu,       { Menu popup }
   FRMaterial3Divider,    { Divider }
   FRMaterial3Sheet,      { BottomSheet, SideSheet }
+  FRMaterial3DataGrid,   { DataGrid (TStringGrid) }
+  FRMaterial3PageControl, { PageControl com abas }
+  FRMaterial3VirtualDataGrid, { Grid virtual com filtro/sort }
   FRMaterialThemeManager, { Gerenciador de tema }
   FRMaterialIcons;       { Ícones SVG }
 ```
@@ -441,9 +537,36 @@ Campo de texto de uma linha com estilo Material Design.
 | `NumbersOnly` | `Boolean` | `False` | Aceitar apenas entrada numérica |
 | `AutoSelect` | `Boolean` | `True` | Selecionar tudo ao receber foco |
 | `LabelSpacing` | `Integer` | `4` | Pixels entre o label e o campo |
+| `ShowLeadingIcon` | `Boolean` | `False` | Exibe ícone à esquerda do campo |
+| `LeadingIconMode` | `TFRIconMode` | `imClear` | Ícone SVG do leading icon |
+| `PasswordMode` | `Boolean` | `False` | Ativa campo de senha com botão olho (toggle visibilidade) |
+| `ShowCopyButton` | `Boolean` | `False` | Exibe botão de copiar texto |
+| `ShowCharCounter` | `Boolean` | `False` | Exibe contador de caracteres (requer `MaxLength > 0`) |
+| `MinLength` | `Integer` | `0` | Comprimento mínimo para validação |
+| `ValidateMode` | `TFRMDValidateMode` | `vmOnExit` | Quando validar: ao sair do campo ou a cada tecla |
+| `ValidationState` | `TFRMDValidationState` | `vsNone` | Estado atual: `vsNone`, `vsValid`, `vsInvalid` |
+| `ValidColor` | `TColor` | — | Cor do sublinhado quando válido |
+| `InvalidColor` | `TColor` | — | Cor do sublinhado quando inválido |
+| `PrefixText` | `string` | `''` | Texto prefixo exibido antes do valor (ex.: `R$`) |
+| `SuffixText` | `string` | `''` | Texto sufixo exibido após o valor (ex.: `kg`) |
+| `AutoFocusNext` | `Boolean` | `False` | Avança para o próximo campo ao completar máscara |
+| `Locked` | `Boolean` | `False` | Impede edição com visual diferenciado de ReadOnly |
+| `LockedColor` | `TColor` | — | Cor do campo quando bloqueado |
+| `ShowValidationDialog` | `Boolean` | `False` | Exibe diálogo de erro ao sair do campo inválido |
+| `AutoFontSize` | `Boolean` | `False` | Ajusta tamanho da fonte automaticamente |
+| `TextMask` | `TFRTextMaskType` | `tmtNone` | Máscara PT-BR automática (CPF, CNPJ, CEP, Telefone, etc.) |
+| `InputFilter` | `TFRInputFilter` | `ifNone` | Filtro de entrada: `ifNone`, `ifDigits`, `ifLetters`, `ifAlphanumeric`, `ifCustom` |
+| `AllowedChars` | `string` | `''` | Caracteres permitidos quando `InputFilter = ifCustom` |
+| `NumericMask` | `TFRNumericMaskType` | `nmtNone` | Formatação numérica automática (moeda, decimal, inteiro) |
+| `NumericValue` | `Currency` | `0` | Valor numérico quando `NumericMask` está ativo |
+| `AutoCompleteEnabled` | `Boolean` | `False` | Habilita popup de autocomplete |
+| `IconStrokeWidth` | `Single` | `2.0` | Espessura do traço dos ícones SVG |
 | `EditLabel` | `TBoundLabel` | — | Acesso direto ao label interno |
 | `ClearButton` | `TButton` | — | Acesso direto ao botão de limpeza (somente leitura) |
 | `SearchButton` | `TBitBtn` | — | Acesso direto ao botão de pesquisa (somente leitura) |
+| `LeadingIcon` | `TButton` | — | Acesso direto ao botão leading icon (somente leitura) |
+| `EyeButton` | `TButton` | — | Acesso direto ao botão olho (somente leitura) |
+| `CopyButton` | `TButton` | — | Acesso direto ao botão copiar (somente leitura) |
 
 ### Eventos principais
 
@@ -455,16 +578,41 @@ Campo de texto de uma linha com estilo Material Design.
 | `OnKeyDown`, `OnKeyPress`, `OnKeyUp` | Eventos de teclado padrão |
 | `OnUTF8KeyPress` | Tecla pressionada (string UTF-8) |
 | `OnClearButtonClick` | Botão `×` foi clicado |
+| `OnSearchButtonClick` | Botão de pesquisa foi clicado |
+| `OnLeadingIconClick` | Leading icon foi clicado |
+| `OnValidate` | Callback de validação customizada |
+| `OnAutoCompleteSelect` | Item selecionado no popup de autocomplete |
 | `OnEditingDone` | Edição confirmada (Enter ou perda de foco) |
 
 ### Exemplo
 
 ```pascal
+{ Campo de e-mail básico }
 FRMaterialEdit1.Caption         := 'E-mail';
 FRMaterialEdit1.TextHint        := 'usuario@exemplo.com';
 FRMaterialEdit1.AccentColor     := RGBToColor(33, 150, 243);
 FRMaterialEdit1.ShowClearButton  := True;
 FRMaterialEdit1.ShowSearchButton := True;
+
+{ Campo com leading icon e validação }
+FRMaterialEdit2.Caption         := 'Usuário';
+FRMaterialEdit2.ShowLeadingIcon  := True;
+FRMaterialEdit2.LeadingIconMode  := imPerson;
+FRMaterialEdit2.MinLength        := 3;
+FRMaterialEdit2.ValidateMode     := vmOnExit;
+
+{ Campo de senha com toggle de visibilidade }
+FRMaterialEdit3.Caption      := 'Senha';
+FRMaterialEdit3.PasswordMode := True;
+
+{ Campo com máscara de CPF e auto-avanço }
+FRMaterialEdit4.Caption       := 'CPF';
+FRMaterialEdit4.TextMask      := tmtCPF;
+FRMaterialEdit4.AutoFocusNext  := True;
+
+{ Campo com autocomplete }
+FRMaterialEdit5.AutoCompleteEnabled := True;
+FRMaterialEdit5.AutoCompleteItems.CommaText := 'São Paulo,Rio de Janeiro,Belo Horizonte';
 ```
 
 ---
@@ -887,7 +1035,7 @@ ThemeManager1.Apply;
 
 ## Ícones disponíveis (`TFRIconMode`)
 
-O pacote inclui **70+ ícones SVG** organizados por categoria:
+O pacote inclui **81 ícones SVG** organizados por categoria:
 
 ### Gerais
 `imClear`, `imSearch`, `imCalendar`, `imEyeOpen`, `imEyeClosed`, `imCopy`,
@@ -899,14 +1047,24 @@ O pacote inclui **70+ ícones SVG** organizados por categoria:
 `imExpandMore`, `imExpandLess`, `imFolder`, `imFolderOpen`,
 `imWarning`, `imInfo`, `imError`, `imSuccess`, `imHelp`
 
+### Segurança
+`imLock`, `imShield`
+
 ### Financeiro
 `imMoney`, `imCreditCard`, `imWallet`, `imReceipt`,
 `imBarChart`, `imPieChart`, `imTrendUp`, `imTrendDown`,
-`imPercent`, `imBank`, `imCalculator`, `imCoin`
+`imPercent`, `imBank`, `imCalculator`, `imCoin`,
+`imAccountBalance`, `imCashFlow`, `imTax`, `imInvoice`
 
 ### Estoque / Logística
 `imBox`, `imBarcode`, `imTruck`, `imWarehouse`,
-`imTag`, `imShoppingCart`, `imScale`
+`imTag`, `imShoppingCart`, `imScale`,
+`imLocalShipping`, `imRoute`, `imInventory`
+
+### Negócio / ERP
+`imStore`, `imStorefront`, `imHandshake`, `imFactory`,
+`imQrCode`, `imPrinter`, `imClipboard`, `imAssignment`,
+`imReport`, `imFile`, `imKpi`
 
 ### Uso em campos de entrada
 
@@ -921,6 +1079,13 @@ FRMaterialEdit2.PasswordMode     := True;
 { Botão com ícone de pagamento }
 FRMaterialButton1.ShowIcon  := True;
 FRMaterialButton1.IconMode  := imCreditCard;
+
+{ FAB com ícone de relatório }
+FRMaterialFAB1.IconMode := imReport;
+
+{ Chip com ícone de filtro }
+FRMaterialChip1.ShowIcon := True;
+FRMaterialChip1.IconMode := imFilter;
 ```
 
 ---

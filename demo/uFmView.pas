@@ -18,6 +18,7 @@ type
   TFmView = class(TForm)
     FRMaterialAppBar1: TFRMaterialAppBar;
     FRMaterialButton1: TFRMaterialButton;
+    FRMaterialButton2: TFRMaterialButton;
     FRMaterialChip1: TFRMaterialChip;
     FRMaterialCircularProgress1: TFRMaterialCircularProgress;
     FRMaterialDateEdit1: TFRMaterialDateEdit;

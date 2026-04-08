@@ -14,6 +14,7 @@ object FmView: TFmView
     Width = 264
     TabOrder = 0
     TabStop = True
+    SyncWithTheme = []
     IconMode = imShield
     ShowIcon = True
     Caption = 'FRMaterialButton1'
@@ -39,6 +40,7 @@ object FmView: TFmView
     Width = 196
     TabOrder = 1
     TabStop = True
+    SyncWithTheme = []
     Caption = 'FRMaterialChip1'
     Font.Height = -12
   end
@@ -55,6 +57,7 @@ object FmView: TFmView
     Width = 200
     TabOrder = 2
     TabStop = True
+    SyncWithTheme = []
     Max = 100
   end
   object FRMaterialLoadingIndicator1: TFRMaterialLoadingIndicator
@@ -80,6 +83,7 @@ object FmView: TFmView
     ParentShowHint = False
     TabOrder = 3
     TabStop = True
+    SyncWithTheme = []
     Title = 'Título da AppBar'
     NavIcon = imAssignment
     Actions = <>
@@ -90,6 +94,7 @@ object FmView: TFmView
     Top = 356
     Width = 162
     TabOrder = 4
+    SyncWithTheme = []
     AccentColor = clHighlight
     DisabledColor = 12103592
     Caption = 'Data'
@@ -112,6 +117,7 @@ object FmView: TFmView
     Align = alLeft
     TabOrder = 5
     TabStop = True
+    SyncWithTheme = []
     Items = <    
       item
         Caption = 'Home'
@@ -131,6 +137,7 @@ object FmView: TFmView
     Width = 220
     TabOrder = 6
     TabStop = True
+    SyncWithTheme = []
   end
   object FRMaterialSegmentedButton1: TFRMaterialSegmentedButton
     Left = 483
@@ -139,6 +146,7 @@ object FmView: TFmView
     Width = 300
     TabOrder = 7
     TabStop = True
+    SyncWithTheme = []
     Font.Height = -13
   end
   object FRMaterialTimePicker2: TFRMaterialTimePicker
@@ -148,6 +156,19 @@ object FmView: TFmView
     Width = 220
     TabOrder = 8
     TabStop = True
+    SyncWithTheme = []
+  end
+  object FRMaterialButton2: TFRMaterialButton
+    Left = 488
+    Height = 40
+    Top = 123
+    Width = 205
+    TabOrder = 9
+    TabStop = True
+    SyncWithTheme = []
+    Caption = 'FRMaterialButton2'
+    Font.Height = -13
+    Font.Style = [fsBold]
   end
   object FRMaterialThemeManager1: TFRMaterialThemeManager
     Palette = mpCyan
@@ -155,7 +176,7 @@ object FmView: TFmView
     Top = 8
   end
   object FRMaterialThemeManager2: TFRMaterialThemeManager
-    SeedColor = clOlive
+    SeedColor = clActiveCaption
     UseSeed = True
     Left = 184
     Top = 112
