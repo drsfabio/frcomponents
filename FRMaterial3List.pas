@@ -176,6 +176,7 @@ var
   textLeft: Integer;
   icoSz, padX, trailW: Integer;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
     ih := GetItemHeight;

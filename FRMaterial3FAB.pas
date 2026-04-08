@@ -209,6 +209,7 @@ var
   r, icoSz: Integer;
   bgColor, icoColor: TColor;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     r := GetRadius;
@@ -294,6 +295,7 @@ var
   bgColor, contentColor: TColor;
   aRect: TRect;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     r := Height * 16 div 56;
@@ -434,6 +436,7 @@ var
   fabY: Integer;
   aRect: TRect;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     r := 16;

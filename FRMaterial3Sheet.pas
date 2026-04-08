@@ -151,6 +151,7 @@ procedure TFRMaterialBottomSheet.Paint;
 var
   bmp: TBGRABitmap;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     MD3DrawShadow(bmp, 0, 0, Width - 1, Height + 28, 28, elLevel1);
@@ -253,6 +254,7 @@ procedure TFRMaterialSideSheet.Paint;
 var
   bmp: TBGRABitmap;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     MD3DrawShadow(bmp, 0, 0, Width - 1, Height - 1, 16, elLevel1);

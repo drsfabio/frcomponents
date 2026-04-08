@@ -153,6 +153,7 @@ var
   bmp: TBGRABitmap;
   c: TBGRAPixel;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     c := ColorToBGRA(ColorToRGB(MD3Colors.OutlineVariant));
@@ -255,6 +256,7 @@ var
   capH, capW: Integer;
   aRect: TRect;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     { Background }

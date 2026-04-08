@@ -248,6 +248,7 @@ var
   aRect: TRect;
   bgAlpha: Byte;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     r := Height div 2; { MD3 buttons use full rounding }
@@ -432,6 +433,7 @@ var
   bgColor, iconColor, borderColor: TColor;
   r, iconSize: Integer;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     r := Height div 2;
@@ -585,6 +587,7 @@ var
   r, sep: Integer;
   mainR, arrowR: TRect;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     r := Height div 2;

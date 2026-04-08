@@ -156,6 +156,7 @@ begin
   r := Height * 8 div 72;
   if r < 4 then r := 4;
 
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     { hour field }

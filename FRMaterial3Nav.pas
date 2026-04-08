@@ -321,6 +321,7 @@ begin
   lblY1 := Height * 48 div 80;
   lblY2 := Height * 72 div 80;
 
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.SurfaceContainer));
   try
     if FItems.Count > 0 then
@@ -474,6 +475,7 @@ begin
   ih := 56 + MD3DensityDelta(Density);
   pillR := Width * 28 div 360;
 
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.SurfaceContainerLow));
   try
     yPos := padX + 4;
@@ -641,6 +643,7 @@ begin
   pillX1 := Width * 12 div 80;
   pillX2 := Width * 68 div 80;
 
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
     yPos := padX + 4;

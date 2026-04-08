@@ -96,6 +96,7 @@ procedure TFRDialogPanel.Paint;
 var
   bmp: TBGRABitmap;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRA(0, 0, 0, 255));
   try
     bmp.FillRoundRectAntialias(0, 0, Width, Height, 28, 28,
@@ -285,6 +286,7 @@ procedure TFRDialogForm.Paint;
 var
   bmp: TBGRABitmap;
 begin
+  if (ClientWidth <= 0) or (ClientHeight <= 0) then Exit;
   { Scrim — semi-transparent dark overlay }
   bmp := TBGRABitmap.Create(ClientWidth, ClientHeight, BGRA(0, 0, 0, 128));
   try

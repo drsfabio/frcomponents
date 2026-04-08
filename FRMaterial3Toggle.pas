@@ -150,6 +150,7 @@ var
   trackR, handleX, handleSize: Integer;
   op: Byte;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     trackR := Height div 2;
@@ -303,6 +304,7 @@ begin
   boxX := 2;
   boxY := (Height - boxSize) div 2;
 
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     case FState of
@@ -443,6 +445,7 @@ begin
   circR := circSize div 2;
   dotR  := EnsureRange(circSize * 5 div 20, 3, 7);
 
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     if FChecked then

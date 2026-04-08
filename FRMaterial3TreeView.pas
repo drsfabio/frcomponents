@@ -241,6 +241,7 @@ begin
   chevW := ih * 22 div 40;
   nodeW := ih * 28 div 40;
 
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
     for I := 0 to FFlatList.Count - 1 do

@@ -545,6 +545,7 @@ var
   clr: TColor;
   tx, ty, uw, uy: Integer;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, 4, MD3Colors.SurfaceContainer);

@@ -138,6 +138,7 @@ begin
   if P.Variant = mvFilled then
   begin
     { MD3 spec: filled variant has top corners rounded, bottom corners square }
+    if (P.Rect.Right <= 0) or (P.Rect.Bottom <= 0) then Exit;
     bmp := TBGRABitmap.Create(P.Rect.Right, P.Rect.Bottom, BGRAPixelTransparent);
     try
       MD3FillTopRoundRect(bmp, P.Rect.Left, P.Rect.Top, P.Rect.Right - 1, DecoBottom - 1, CR, P.BgColor);

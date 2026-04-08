@@ -215,6 +215,7 @@ begin
   indH := Height * 3 div 48;
   if indH < 2 then indH := 2;
 
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
     { Background image }

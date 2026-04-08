@@ -194,6 +194,7 @@ var
   icoSz, textX, delX: Integer;
   aRect: TRect;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     r := Height div 4;
@@ -382,6 +383,7 @@ var
 begin
   if FItems.Count = 0 then Exit;
 
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     r := Height div 2;

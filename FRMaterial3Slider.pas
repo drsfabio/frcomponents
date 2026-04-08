@@ -203,6 +203,7 @@ var
   labelText: string;
   thumbR, trackH, stateR, dotR: Integer;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     { Proportional metrics based on Height (reference = 40) }

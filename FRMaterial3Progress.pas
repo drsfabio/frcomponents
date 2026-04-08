@@ -162,6 +162,7 @@ var
   bmp: TBGRABitmap;
   r, barX1, barX2: Integer;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     r := Height div 2;
@@ -267,11 +268,13 @@ var
   i: Integer;
   angle, px, py: Single;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     cx := Width / 2.0;
     cy := Height / 2.0;
     r := Min(cx, cy) - FStrokeWidth;
+    if r <= 0 then Exit;
     arcColor := ColorToBGRA(ColorToRGB(MD3Colors.Primary));
 
     { Track circle }
@@ -372,6 +375,7 @@ var
   i, cx, cy, dotR, spacing: Integer;
   alpha: Byte;
 begin
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
     cy := Height div 2;

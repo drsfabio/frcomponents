@@ -199,6 +199,7 @@ begin
   if icoSz < 16 then icoSz := 16;
   if icoSz > 36 then icoSz := 36;
 
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
   try
     { nav icon — Primary tint for theme integration }
@@ -334,6 +335,7 @@ begin
   icoY := (Height - icoSz) div 2;
   cellW := Height * 48 div 64;
 
+  if (Width <= 0) or (Height <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.SurfaceContainer));
   try
     xPos := (Width - FActions.Count * cellW) div 2;

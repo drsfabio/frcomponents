@@ -446,6 +446,7 @@ begin
     tabBarY := Height - FTabHeight;
 
   { Tab bar bitmap — always FTabHeight tall, drawn at tabBarY }
+  if (Width <= 0) or (FTabHeight <= 0) then Exit;
   bmp := TBGRABitmap.Create(Width, FTabHeight, ColorToBGRA(MD3Colors.Surface));
   try
     { Background image on tab bar }
