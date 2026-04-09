@@ -59,6 +59,7 @@ type
     property ShowIcon: Boolean read FShowIcon write SetShowIcon default True;
     property ImageIndex: Integer read FImageIndex write FImageIndex default -1;
     property Anchors;
+    property AutoSize;
     property Color;
     property ParentColor;
     property Constraints;
