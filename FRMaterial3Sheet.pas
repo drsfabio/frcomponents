@@ -40,8 +40,13 @@ type
     property DragHandle: Boolean read FDragHandle write FDragHandle default True;
     property Align;
     property Anchors;
-    property Visible;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
     property Enabled;
+    property PopupMenu;
+    property ShowHint;
+    property Visible;
   end;
 
   TFRMaterialSideSheet = class(TFRMaterial3Control)
@@ -63,8 +68,13 @@ type
     property SheetWidth: Integer read FSheetWidth write FSheetWidth default 360;
     property Align;
     property Anchors;
-    property Visible;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
     property Enabled;
+    property PopupMenu;
+    property ShowHint;
+    property Visible;
   end;
 
 procedure Register;

@@ -87,6 +87,7 @@ type
     property Caption: TCaption read GetLabelCaption write SetLabelCaption;
     property Color;
     property Constraints;
+    property Cursor;
     property DebounceInterval: Integer read FDebounceInterval write SetDebounceInterval default 400;
     property DisabledColor: TColor read FDisabledColor write FDisabledColor;
     property EditLabel: TBoundLabel read FLabel;
@@ -97,6 +98,7 @@ type
     property MaxLength: Integer read GetEditMaxLength write SetEditMaxLength default 0;
     property ParentColor default False;
     property ParentFont default False;
+    property PopupMenu;
     property ReadOnly: Boolean read GetEditReadOnly write SetEditReadOnly default False;
     property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
     property ShowHint;

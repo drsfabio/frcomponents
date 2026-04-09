@@ -74,8 +74,16 @@ type
     property OnSelectionChange: TNotifyEvent read FOnSelectionChange write FOnSelectionChange;
     property Align;
     property Anchors;
-    property Visible;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
     property Enabled;
+    property Font;
+    property PopupMenu;
+    property ShowHint;
+    property TabOrder;
+    property TabStop;
+    property Visible;
   end;
 
 procedure Register;

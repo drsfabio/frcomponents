@@ -34,7 +34,16 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property Checked: Boolean read FChecked write SetChecked default False;
+    property Align;
+    property Anchors;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
     property Enabled;
+    property PopupMenu;
+    property ShowHint;
+    property TabOrder;
+    property TabStop;
     property Visible;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnClick;
@@ -62,9 +71,18 @@ type
     property Checked: Boolean read GetChecked write SetChecked default False;
     property State: TCheckBoxState read FState write SetState default cbUnchecked;
     property AllowGrayed: Boolean read FAllowGrayed write SetAllowGrayed default False;
+    property Align;
+    property Anchors;
+    property BorderSpacing;
     property Caption;
+    property Constraints;
+    property Cursor;
     property Font;
     property Enabled;
+    property PopupMenu;
+    property ShowHint;
+    property TabOrder;
+    property TabStop;
     property Visible;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnClick;
@@ -89,9 +107,18 @@ type
   published
     property Checked: Boolean read FChecked write SetChecked default False;
     property GroupIndex: Integer read FGroupIndex write FGroupIndex default 0;
+    property Align;
+    property Anchors;
+    property BorderSpacing;
     property Caption;
+    property Constraints;
+    property Cursor;
     property Font;
     property Enabled;
+    property PopupMenu;
+    property ShowHint;
+    property TabOrder;
+    property TabStop;
     property Visible;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnClick;

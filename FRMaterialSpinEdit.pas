@@ -84,6 +84,7 @@ type
     property Caption: TCaption read GetLabelCaption write SetLabelCaption;
     property Color;
     property Constraints;
+    property Cursor;
     property DisabledColor: TColor read FDisabledColor write FDisabledColor;
     property EditLabel: TBoundLabel read FLabel;
     property Enabled;
@@ -95,6 +96,7 @@ type
     property ParentColor default False;
     property ParentFont default False;
     property AutoFontSize: Boolean read FAutoFontSize write FAutoFontSize default True;
+    property PopupMenu;
     property ShowHint;
     property TabOrder;
     property TabStop default True;

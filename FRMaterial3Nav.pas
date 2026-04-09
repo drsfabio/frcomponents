@@ -70,8 +70,14 @@ type
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property Align;
     property Anchors;
-    property Visible;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
     property Enabled;
+    property Font;
+    property PopupMenu;
+    property ShowHint;
+    property Visible;
   end;
 
   { ── Navigation Drawer ── }
@@ -100,8 +106,14 @@ type
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property Align;
     property Anchors;
-    property Visible;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
     property Enabled;
+    property Font;
+    property PopupMenu;
+    property ShowHint;
+    property Visible;
   end;
 
   { ── Navigation Rail ── }
@@ -136,8 +148,14 @@ type
     property OnFabClick: TNotifyEvent read FOnFabClick write FOnFabClick;
     property Align;
     property Anchors;
-    property Visible;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
     property Enabled;
+    property Font;
+    property PopupMenu;
+    property ShowHint;
+    property Visible;
   end;
 
 procedure Register;

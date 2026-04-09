@@ -125,6 +125,8 @@ type
 
   published
     property Align;
+    property Anchors;
+    property BorderSpacing;
     property Constraints;
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;
     property Variant: TFRMaterialVariant read FVariant write FVariant default mvStandard;

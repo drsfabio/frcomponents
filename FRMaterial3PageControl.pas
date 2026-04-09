@@ -58,8 +58,15 @@ type
     property IconMode: TFRIconMode read FIconMode write SetIconMode default imClear;
     property ShowIcon: Boolean read FShowIcon write SetShowIcon default True;
     property ImageIndex: Integer read FImageIndex write FImageIndex default -1;
+    property Anchors;
     property Color;
+    property Constraints;
+    property Cursor;
+    property Font;
+    property PopupMenu;
+    property ShowHint;
     property Tag;
+    property Visible;
   end;
 
   { Event fired before closing a tab }
@@ -122,8 +129,11 @@ type
     property BorderSpacing;
     property Color;
     property Constraints;
+    property Cursor;
     property Enabled;
     property Font;
+    property PopupMenu;
+    property ShowHint;
     property TabOrder;
     property TabStop;
     property Visible;

@@ -102,6 +102,7 @@ type
     property Caption: TCaption read GetLabelCaption write SetLabelCaption;
     property Color;
     property Constraints;
+    property Cursor;
     property DisabledColor: TColor read FDisabledColor write FDisabledColor;
     property EditLabel: TBoundLabel read FLabel;
     property Enabled;
@@ -128,6 +129,7 @@ type
     property MinLength: Integer read FMinLength write FMinLength default 0;
     property ValidateMode: TFRValidateMode read FValidateMode write FValidateMode default vmOnExit;
     property OnValidate: TFRValidateEvent read FOnValidate write FOnValidate;
+    property PopupMenu;
     property ShowHint;
     property TabOrder;
     property TabStop default True;

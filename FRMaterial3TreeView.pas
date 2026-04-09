@@ -92,8 +92,16 @@ type
     property OnCollapse: TNotifyEvent read FOnCollapse write FOnCollapse;
     property Align;
     property Anchors;
-    property Visible;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
     property Enabled;
+    property Font;
+    property PopupMenu;
+    property ShowHint;
+    property TabOrder;
+    property TabStop;
+    property Visible;
   end;
 
 procedure Register;

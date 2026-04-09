@@ -39,6 +39,12 @@ type
   published
     property Value: Double read FValue write SetValue;
     property Indeterminate: Boolean read FIndeterminate write SetIndeterminate default False;
+    property Align;
+    property Anchors;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
+    property Enabled;
     property Visible;
   end;
 
@@ -65,6 +71,12 @@ type
     property Value: Double read FValue write SetValue;
     property Indeterminate: Boolean read FIndeterminate write SetIndeterminate default True;
     property StrokeWidth: Integer read FStrokeWidth write SetStrokeWidth default 4;
+    property Align;
+    property Anchors;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
+    property Enabled;
     property Visible;
   end;
 
@@ -85,6 +97,12 @@ type
     destructor Destroy; override;
   published
     property DotCount: Integer read FDotCount write SetDotCount default 3;
+    property Align;
+    property Anchors;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
+    property Enabled;
     property Visible;
   end;
 

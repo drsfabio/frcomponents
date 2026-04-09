@@ -47,11 +47,18 @@ type
     property TimeFormat: TFRMDTimeFormat read FTimeFormat write SetTimeFormat default tfHour24;
     property IsAM: Boolean read FIsAM write FIsAM default True;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    property Align;
     property Anchors;
-    property Visible;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
     property Enabled;
-    property TabStop;
+    property Font;
+    property PopupMenu;
+    property ShowHint;
     property TabOrder;
+    property TabStop;
+    property Visible;
   end;
 
 procedure Register;

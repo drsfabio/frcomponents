@@ -156,8 +156,10 @@ type
 
   published
     property Align;
+    property Anchors;
     { Alinhamento do texto no campo (padrão: taRightJustify, comum em moeda) }
     property Alignment: TAlignment read GetAlignment write SetAlignment default taRightJustify;
+    property BorderSpacing;
     property Color;
     property Constraints;
     property Cursor: TCursor read GetEditCursor write SetEditCursor default crDefault;

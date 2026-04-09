@@ -51,7 +51,16 @@ type
     property Discrete: Boolean read FDiscrete write SetDiscrete default False;
     property Steps: Integer read FSteps write SetSteps default 10;
     property ShowValueLabel: Boolean read FShowValueLabel write SetShowValueLabel default False;
+    property Align;
+    property Anchors;
+    property BorderSpacing;
+    property Constraints;
+    property Cursor;
     property Enabled;
+    property PopupMenu;
+    property ShowHint;
+    property TabOrder;
+    property TabStop;
     property Visible;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
