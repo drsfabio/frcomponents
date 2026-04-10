@@ -31,7 +31,7 @@ type
 
   { ── TFRMaterialBadge ── }
 
-  TFRMaterialBadge = class(TGraphicControl, IFRMaterialComponent)
+  TFRMaterialBadge = class(TFRMaterial3Graphic)
   private
     FBadgeMode: TFRMDBadgeMode;
     FValue: Integer;
@@ -47,7 +47,7 @@ type
     procedure SetOffsetY(AValue: Integer);
     procedure UpdatePosition;
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SetParent(NewParent: TWinControl); override;
   public
@@ -109,6 +109,7 @@ begin
   if FBadgeMode = AValue then Exit;
   FBadgeMode := AValue;
   UpdatePosition;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -118,6 +119,7 @@ begin
   if FValue = AValue then Exit;
   FValue := AValue;
   UpdatePosition;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -127,6 +129,7 @@ begin
   if FMaxValue = AValue then Exit;
   FMaxValue := AValue;
   UpdatePosition;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -139,6 +142,7 @@ begin
   if Assigned(FAttachTo) then
     FAttachTo.FreeNotification(Self);
   UpdatePosition;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -187,19 +191,27 @@ procedure TFRMaterialBadge.UpdatePosition;
 var
   txt: string;
   bw, bh: Integer;
+  tmp: TBGRABitmap;
 begin
   if FBadgeMode = bmDot then
   begin
-    bw := 6;
-    bh := 6;
+    bw := 8;
+    bh := 8;
   end
   else
   begin
     txt := GetDisplayText;
-    bh := 16;
-    Canvas.Font.Size := 8;
-    Canvas.Font.Style := [fsBold];
-    bw := Max(bh, Canvas.TextWidth(txt) + 8);
+    bh := 18;
+    { Use temporary BGRABitmap for text measurement — avoids Canvas handle issues }
+    tmp := TBGRABitmap.Create(1, 1);
+    try
+      tmp.FontFullHeight := 11;
+      tmp.FontStyle := [fsBold];
+      tmp.FontQuality := fqFineAntialiasing;
+      bw := Max(bh, tmp.TextSize(txt).cx + 10);
+    finally
+      tmp.Free;
+    end;
   end;
 
   Width := bw;
@@ -207,58 +219,51 @@ begin
 
   if Assigned(FAttachTo) and Assigned(Parent) and Assigned(FAttachTo.Parent) then
   begin
-    { Position at top-right of target control }
+    { Position at top-right corner of target control }
     if FAttachTo.Parent = Parent then
     begin
-      Left := FAttachTo.Left + FAttachTo.Width - bw div 2 + FOffsetX;
-      Top := FAttachTo.Top - bh div 2 + FOffsetY;
+      Left := FAttachTo.Left + FAttachTo.Width - (bw * 2 div 3) + FOffsetX;
+      Top := FAttachTo.Top - (bh div 3) + FOffsetY;
     end;
   end;
 end;
 
-procedure TFRMaterialBadge.Paint;
+function TFRMaterialBadge.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   badgeColor, textColor: TColor;
   txt: string;
   tw, th: Integer;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
+  Result := True;
 
   UpdatePosition;
 
   badgeColor := MD3Colors.Error;
   textColor := MD3Colors.OnError;
 
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    if FBadgeMode = bmDot then
-    begin
-      bmp.FillEllipseAntialias(Width / 2, Height / 2, Width / 2, Height / 2,
-        ColorToBGRA(badgeColor));
-    end
-    else
-    begin
-      { Pill shape }
-      MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, Height div 2, badgeColor);
+  if FBadgeMode = bmDot then
+  begin
+    ABmp.FillEllipseAntialias(Width / 2, Height / 2,
+      Width / 2 - 0.5, Height / 2 - 0.5,
+      ColorToBGRA(badgeColor));
+  end
+  else
+  begin
+    { Pill shape }
+    MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, Height div 2, badgeColor);
 
-      { Text }
-      if FValue > 0 then
-      begin
-        txt := GetDisplayText;
-        bmp.FontFullHeight := 11;
-        bmp.FontStyle := [fsBold];
-        bmp.FontQuality := fqFineAntialiasing;
-        tw := bmp.TextSize(txt).cx;
-        th := bmp.TextSize(txt).cy;
-        bmp.TextOut((Width - tw) div 2, (Height - th) div 2,
-          txt, ColorToBGRA(textColor));
-      end;
+    { Text — centered in pill }
+    if FValue > 0 then
+    begin
+      txt := GetDisplayText;
+      ABmp.FontFullHeight := 10;
+      ABmp.FontStyle := [fsBold];
+      ABmp.FontQuality := fqFineAntialiasing;
+      tw := ABmp.TextSize(txt).cx;
+      th := ABmp.TextSize(txt).cy;
+      ABmp.TextOut((Width - tw) div 2, (Height - th) div 2,
+        txt, ColorToBGRA(textColor));
     end;
-
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
   end;
 end;
 

@@ -36,7 +36,7 @@ type
     procedure SetShowIcon(AValue: Boolean);
     procedure SetIconMode(AValue: TFRIconMode);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure DoOnResize; override;
     procedure Click; override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -75,7 +75,7 @@ type
     function GetItemSelected(Index: Integer): Boolean;
     procedure SetItemSelected(Index: Integer; AValue: Boolean);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     class function GetControlClassDefaultSize: TSize; override;
   public
@@ -188,55 +188,46 @@ begin
     Height := 32 + MD3DensityDelta(Density);
 end;
 
-procedure TFRMaterialChip.Paint;
+function TFRMaterialChip.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp, iconBmp: TBGRABitmap;
+  iconBmp: TBGRABitmap;
   r: Integer;
   bgColor, textColor, borderColor: TColor;
   icoSz, textX, delX: Integer;
   aRect: TRect;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    r := Height div 4;
-    if r < 4 then r := 4;
+  Result := True;
+  r := Height div 4;
+  if r < 4 then r := 4;
 
-    if FSelected and (FChipStyle = csFilter) then
-    begin
-      bgColor := MD3Colors.SecondaryContainer;
-      textColor := MD3Colors.OnSecondaryContainer;
-      borderColor := clNone;
-    end
-    else
-    begin
-      bgColor := clNone;
-      textColor := MD3Colors.OnSurfaceVariant;
-      borderColor := MD3Colors.Outline;
-    end;
-
-    { Background }
-    if bgColor <> clNone then
-      MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, r, bgColor);
-
-    { Border }
-    if borderColor <> clNone then
-      MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0);
-
-    { State layer }
-    if Enabled then
-      MD3StateLayer(bmp, 0, 0, Width - 1, Height - 1, r, textColor, InteractionState);
-
-    PaintRipple(bmp, textColor);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+  if FSelected and (FChipStyle = csFilter) then
+  begin
+    bgColor := MD3Colors.SecondaryContainer;
+    textColor := MD3Colors.OnSecondaryContainer;
+    borderColor := clNone;
+  end
+  else
+  begin
+    bgColor := clNone;
+    textColor := MD3Colors.OnSurfaceVariant;
+    borderColor := MD3Colors.Outline;
   end;
 
+  { Background }
+  if bgColor <> clNone then
+    MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, r, bgColor);
+
+  { Border }
+  if borderColor <> clNone then
+    MD3RoundRect(ABmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0);
+
+  { State layer }
+  if Enabled then
+    MD3StateLayer(ABmp, 0, 0, Width - 1, Height - 1, r, textColor, InteractionState);
+
   { Content layout }
-  Canvas.Font := Self.Font;
-  Canvas.Font.Size := Height * 9 div 32;
-  if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
+  ABmp.FontHeight := Abs((Height * 9 div 32) * 96 div 72);
+  if ABmp.FontHeight < 7 then ABmp.FontHeight := 7;
   textX := Height div 2;
   icoSz := Height * 18 div 32;
   if icoSz < 12 then icoSz := 12;
@@ -245,13 +236,13 @@ begin
   if FSelected and (FChipStyle = csFilter) then
   begin
     iconBmp := FRGetCachedIcon(imSearch, FRColorToSVGHex(textColor), 2.0, icoSz, icoSz);
-    iconBmp.Draw(Canvas, Height div 4, (Height - icoSz) div 2, False);
+    ABmp.PutImage(Height div 4, (Height - icoSz) div 2, iconBmp, dmDrawWithTransparency);
     textX := Height div 4 + icoSz + Height div 4;
   end
   else if FShowIcon then
   begin
     iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(textColor), 2.0, icoSz, icoSz);
-    iconBmp.Draw(Canvas, Height div 4, (Height - icoSz) div 2, False);
+    ABmp.PutImage(Height div 4, (Height - icoSz) div 2, iconBmp, dmDrawWithTransparency);
     textX := Height div 4 + icoSz + Height div 4;
   end;
 
@@ -260,13 +251,13 @@ begin
   if FDeletable then
     delX := Width - Height * 28 div 32;
   aRect := Rect(textX, 0, delX, Height);
-  MD3DrawText(Canvas, Caption, aRect, textColor, taLeftJustify, True);
+  MD3DrawTextBGRA(ABmp, Caption, aRect, textColor, taLeftJustify, True);
 
   { Delete icon }
   if FDeletable then
   begin
     iconBmp := FRGetCachedIcon(imClear, FRColorToSVGHex(textColor), 2.0, icoSz, icoSz);
-    iconBmp.Draw(Canvas, Width - Height div 4 - icoSz, (Height - icoSz) div 2, False);
+    ABmp.PutImage(Width - Height div 4 - icoSz, (Height - icoSz) div 2, iconBmp, dmDrawWithTransparency);
   end;
 end;
 
@@ -375,66 +366,60 @@ begin
   inherited;
 end;
 
-procedure TFRMaterialSegmentedButton.Paint;
+function TFRMaterialSegmentedButton.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   i, sw, x1, x2, r: Integer;
   bgColor, textColor, borderColor: TColor;
   isSel: Boolean;
   aRect: TRect;
 begin
+  Result := True;
   if FItems.Count = 0 then Exit;
 
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    r := Height div 2;
-    sw := GetSegmentWidth;
-    borderColor := MD3Colors.Outline;
+  r := Height div 2;
+  sw := GetSegmentWidth;
+  borderColor := MD3Colors.Outline;
 
-    { Full outline }
-    MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0);
+  { Full outline }
+  MD3RoundRect(ABmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0);
 
-    { Segment fills }
-    for i := 0 to FItems.Count - 1 do
+  { Segment fills }
+  for i := 0 to FItems.Count - 1 do
+  begin
+    x1 := i * sw;
+    x2 := x1 + sw;
+    if i = FItems.Count - 1 then
+      x2 := Width;
+
+    if FMultiSelect then
+      isSel := GetItemSelected(i)
+    else
+      isSel := (i = FItemIndex);
+
+    if isSel then
     begin
-      x1 := i * sw;
-      x2 := x1 + sw;
-      if i = FItems.Count - 1 then
-        x2 := Width;
-
-      if FMultiSelect then
-        isSel := GetItemSelected(i)
+      bgColor := MD3Colors.SecondaryContainer;
+      if (i = 0) and (i = FItems.Count - 1) then
+        { Single segment — round all 4 corners }
+        MD3FillRoundRect(ABmp, x1, 0, x2 - 1, Height - 1, r, bgColor)
+      else if i = 0 then
+        { First segment — round left corners only: extend right to hide right rounding }
+        MD3FillRoundRect(ABmp, x1, 0, x2 + r, Height - 1, r, bgColor)
+      else if i = FItems.Count - 1 then
+        { Last segment — round right corners only: extend left to hide left rounding }
+        MD3FillRoundRect(ABmp, x1 - r, 0, x2 - 1, Height - 1, r, bgColor)
       else
-        isSel := (i = FItemIndex);
-
-      if isSel then
-      begin
-        bgColor := MD3Colors.SecondaryContainer;
-        { Only round the first/last segments }
-        if (i = 0) and (i = FItems.Count - 1) then
-          MD3FillRoundRect(bmp, x1, 0, x2 - 1, Height - 1, r, bgColor)
-        else if i = 0 then
-          MD3FillRoundRect(bmp, x1, 0, x2, Height - 1, r, bgColor)
-        else if i = FItems.Count - 1 then
-          MD3FillRoundRect(bmp, x1, 0, x2 - 1, Height - 1, r, bgColor)
-        else
-          MD3FillRoundRect(bmp, x1, 0, x2, Height - 1, 0, bgColor);
-      end;
-
-      { Divider between segments }
-      if i > 0 then
-        bmp.DrawLineAntialias(x1, 0, x1, Height,
-          ColorToBGRA(ColorToRGB(borderColor)), 1.0);
+        { Middle segment — no rounding }
+        MD3FillRoundRect(ABmp, x1, 0, x2, Height - 1, 0, bgColor);
     end;
 
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+    { Divider between segments }
+    if i > 0 then
+      ABmp.DrawLineAntialias(x1, 0, x1, Height,
+        ColorToBGRA(ColorToRGB(borderColor)), 1.0);
   end;
 
   { Text labels }
-  Canvas.Font := Self.Font;
   for i := 0 to FItems.Count - 1 do
   begin
     x1 := i * sw;
@@ -453,7 +438,7 @@ begin
       textColor := MD3Colors.OnSurface;
 
     aRect := Rect(x1, 0, x2, Height);
-    MD3DrawText(Canvas, FItems[i], aRect, textColor, taCenter, True);
+    MD3DrawTextBGRA(ABmp, FItems[i], aRect, textColor, taCenter, True);
   end;
 end;
 

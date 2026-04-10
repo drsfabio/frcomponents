@@ -31,7 +31,7 @@ type
     procedure SetInsetStart(AValue: Integer);
     procedure SetInsetEnd(AValue: Integer);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     class function GetControlClassDefaultSize: TSize; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -50,11 +50,16 @@ type
     FBorderRadius: Integer;
     FShowBorder: Boolean;
     FContentPadding: Integer;
+    FPaintCache: TBGRABitmap;
+    FPaintCacheW: Integer;
+    FPaintCacheH: Integer;
     procedure SetBorderRadius(AValue: Integer);
     procedure SetShowBorder(AValue: Boolean);
     procedure SetContentPadding(AValue: Integer);
     function GetCaptionHeight: Integer;
+    procedure InvalidatePaintCache;
   protected
+    function PaintCached(ABmp: TBGRABitmap): Boolean; virtual;
     procedure Paint; override;
     procedure AdjustClientRect(var ARect: TRect); override;
   public
@@ -131,6 +136,7 @@ begin
     Height := 1
   else
     Width := 1;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -138,6 +144,7 @@ procedure TFRMaterialDivider.SetInsetStart(AValue: Integer);
 begin
   if FInsetStart = AValue then Exit;
   FInsetStart := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -145,26 +152,20 @@ procedure TFRMaterialDivider.SetInsetEnd(AValue: Integer);
 begin
   if FInsetEnd = AValue then Exit;
   FInsetEnd := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
-procedure TFRMaterialDivider.Paint;
+function TFRMaterialDivider.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   c: TBGRAPixel;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    c := ColorToBGRA(ColorToRGB(MD3Colors.OutlineVariant));
-    if FOrientation = doHorizontal then
-      bmp.DrawLineAntialias(FInsetStart, 0, Width - FInsetEnd, 0, c, 1.0)
-    else
-      bmp.DrawLineAntialias(0, FInsetStart, 0, Height - FInsetEnd, c, 1.0);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
-  end;
+  Result := True;
+  c := ColorToBGRA(ColorToRGB(MD3Colors.OutlineVariant));
+  if FOrientation = doHorizontal then
+    ABmp.DrawLineAntialias(FInsetStart, 0, Width - FInsetEnd, 0, c, 1.0)
+  else
+    ABmp.DrawLineAntialias(0, FInsetStart, 0, Height - FInsetEnd, c, 1.0);
 end;
 
 { ── TFRMaterialGroupBox ── }
@@ -190,6 +191,8 @@ end;
 destructor TFRMaterialGroupBox.Destroy;
 begin
   FRMDUnregisterComponent(Self);
+  if Assigned(FPaintCache) then
+    FPaintCache.Free;
   inherited Destroy;
 end;
 
@@ -201,10 +204,22 @@ begin
   Invalidate;
 end;
 
+procedure TFRMaterialGroupBox.InvalidatePaintCache;
+begin
+  if Assigned(FPaintCache) then
+  begin
+    FPaintCache.Free;
+    FPaintCache := nil;
+  end;
+  FPaintCacheW := 0;
+  FPaintCacheH := 0;
+end;
+
 procedure TFRMaterialGroupBox.SetBorderRadius(AValue: Integer);
 begin
   if FBorderRadius = AValue then Exit;
   FBorderRadius := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -212,6 +227,7 @@ procedure TFRMaterialGroupBox.SetShowBorder(AValue: Boolean);
 begin
   if FShowBorder = AValue then Exit;
   FShowBorder := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -220,6 +236,7 @@ begin
   if AValue < 0 then AValue := 0;
   if FContentPadding = AValue then Exit;
   FContentPadding := AValue;
+  InvalidatePaintCache;
   ReAlign;
   Invalidate;
 end;
@@ -250,27 +267,37 @@ begin
   ARect.Bottom := ARect.Bottom - FContentPadding;
 end;
 
+function TFRMaterialGroupBox.PaintCached(ABmp: TBGRABitmap): Boolean;
+begin
+  Result := True;
+  { Background }
+  MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, FBorderRadius, Color);
+
+  { Border }
+  if FShowBorder then
+    MD3RoundRect(ABmp, 0.5, 0.5, Width - 1.5, Height - 1.5, FBorderRadius,
+      MD3Colors.OutlineVariant, 1.0);
+end;
+
 procedure TFRMaterialGroupBox.Paint;
 var
-  bmp: TBGRABitmap;
   capH, capW: Integer;
   aRect: TRect;
 begin
   if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    { Background }
-    MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, FBorderRadius, Color);
 
-    { Border }
-    if FShowBorder then
-      MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, FBorderRadius,
-        MD3Colors.OutlineVariant, 1.0);
-
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+  { Use paint cache if available and valid }
+  if (FPaintCache = nil) or (FPaintCacheW <> Width) or (FPaintCacheH <> Height) then
+  begin
+    if Assigned(FPaintCache) then
+      FPaintCache.Free;
+    FPaintCache := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
+    FPaintCacheW := Width;
+    FPaintCacheH := Height;
+    PaintCached(FPaintCache);
   end;
+
+  FPaintCache.Draw(Canvas, 0, 0, False);
 
   { Caption }
   if Caption <> '' then

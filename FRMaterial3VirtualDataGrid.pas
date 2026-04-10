@@ -85,11 +85,13 @@ type
     FEdit: TEdit;
     FBtnApply: TPanel;
     FBtnClear: TPanel;
+    FClosing: Boolean;
     procedure EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure BtnApplyClick(Sender: TObject);
     procedure BtnClearClick(Sender: TObject);
     procedure DoApplyFilter;
     procedure DoClearFilter;
+    procedure CloseAndRelease;
     procedure FormDeactivate(Sender: TObject);
   public
     constructor CreatePopup(AGrid: TFRMaterialVirtualDataGrid; AColumn: Integer;
@@ -900,6 +902,15 @@ begin
     ACanvas.LineTo(R.Right, R.Bottom - 1);
   end;
 
+  { ── Vertical separator between columns ── }
+  if Column.Index < Integer(Header.Columns.Count) - 1 then
+  begin
+    ACanvas.Pen.Color := divClr;
+    ACanvas.Pen.Width := 1;
+    ACanvas.MoveTo(R.Right - 1, R.Top + 8);
+    ACanvas.LineTo(R.Right - 1, R.Bottom - 8);
+  end;
+
   { ── Filter icon (rightmost area) ── }
   filterW := 0;
   if FFilterEnabled then
@@ -945,7 +956,7 @@ begin
     end;
   end;
 
-  { ── Text — MD3 Label Large: medium weight, 11pt ── }
+  { ── Text — MD3 Label Large with word-wrap ── }
   txt := Column.Text;
 
   ACanvas.Font.Assign(Header.Font);
@@ -960,8 +971,10 @@ begin
   TextRect := R;
   TextRect.Left  := TextRect.Left + 10;
   TextRect.Right := TextRect.Right - 10 - filterW - sortW;
+  TextRect.Top   := TextRect.Top + 4;
+  TextRect.Bottom := TextRect.Bottom - 4;
 
-  Flags := DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX;
+  Flags := DT_WORDBREAK or DT_END_ELLIPSIS or DT_NOPREFIX;
   case Column.CaptionAlignment of
     taCenter:        Flags := Flags or DT_CENTER;
     taRightJustify:  Flags := Flags or DT_RIGHT;
@@ -1033,6 +1046,15 @@ begin
     ACanvas.LineTo(R.Right, R.Bottom - 1);
   end;
 
+  { ── Vertical separator between columns ── }
+  if Column.Index < Integer(Header.Columns.Count) - 1 then
+  begin
+    ACanvas.Pen.Color := divClr;
+    ACanvas.Pen.Width := 1;
+    ACanvas.MoveTo(R.Right - 1, R.Top + 8);
+    ACanvas.LineTo(R.Right - 1, R.Bottom - 8);
+  end;
+
   { ── Filter icon (rightmost area) ── }
   filterW := 0;
   if FFilterEnabled then
@@ -1078,7 +1100,7 @@ begin
     end;
   end;
 
-  { ── Text — MD3 Label Large ── }
+  { ── Text — MD3 Label Large with word-wrap ── }
   txt := Column.Text;
 
   ACanvas.Font.Assign(Header.Font);
@@ -1093,8 +1115,10 @@ begin
   TextRect := R;
   TextRect.Left  := TextRect.Left + 10;
   TextRect.Right := TextRect.Right - 10 - filterW - sortW;
+  TextRect.Top   := TextRect.Top + 4;
+  TextRect.Bottom := TextRect.Bottom - 4;
 
-  Flags := DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX;
+  Flags := DT_WORDBREAK or DT_END_ELLIPSIS or DT_NOPREFIX;
   case Column.CaptionAlignment of
     taCenter:        Flags := Flags or DT_CENTER;
     taRightJustify:  Flags := Flags or DT_RIGHT;
@@ -1786,8 +1810,9 @@ var
   curFilter: String;
 begin
   inherited CreateNew(nil);
-  FGrid   := AGrid;
-  FColumn := AColumn;
+  FGrid    := AGrid;
+  FColumn  := AColumn;
+  FClosing := False;
 
   BorderStyle := bsNone;
   FormStyle   := fsStayOnTop;
@@ -1865,8 +1890,7 @@ begin
     VK_ESCAPE:
     begin
       Key := 0;
-      Close;
-      Free;
+      CloseAndRelease;
     end;
   end;
 end;
@@ -1885,22 +1909,27 @@ procedure TFRMDFilterPopup.DoApplyFilter;
 begin
   FGrid.SetFilterText(FColumn, Trim(FEdit.Text));
   FGrid.Invalidate;
-  Close;
-  Free;
+  CloseAndRelease;
 end;
 
 procedure TFRMDFilterPopup.DoClearFilter;
 begin
   FGrid.ClearFilter(FColumn);
   FGrid.Invalidate;
+  CloseAndRelease;
+end;
+
+procedure TFRMDFilterPopup.CloseAndRelease;
+begin
+  if FClosing then Exit;
+  FClosing := True;
   Close;
-  Free;
+  Release;
 end;
 
 procedure TFRMDFilterPopup.FormDeactivate(Sender: TObject);
 begin
-  Close;
-  Free;
+  CloseAndRelease;
 end;
 
 { ── Export helpers ── }

@@ -11,7 +11,6 @@ interface
 
 uses
   Classes, SysUtils, Graphics, Controls, Types, ExtCtrls,
-  BGRABitmap, BGRABitmapTypes,
   FRMaterial3Base, FRMaterialTheme;
 
 type
@@ -93,7 +92,6 @@ class procedure TFRMaterialFieldPainter.DrawField(const P: TFRMDFieldPaintParams
 var
   LeftPos, RightPos, FieldTop, CR, DecoBottom: Integer;
   PrefixW: Integer;
-  bmp: TBGRABitmap;
   InlineY: Integer;
   FloatY: Integer;
   CurrY: Integer;
@@ -137,15 +135,16 @@ begin
   
   if P.Variant = mvFilled then
   begin
-    { MD3 spec: filled variant has top corners rounded, bottom corners square }
+    { MD3 spec: filled variant has top corners rounded, bottom corners square.
+      Desenhamos um RoundRect completo e preenchemos a parte inferior com retângulo
+      para obter cantos arredondados apenas no topo, sem criar TBGRABitmap. }
     if (P.Rect.Right <= 0) or (P.Rect.Bottom <= 0) then Exit;
-    bmp := TBGRABitmap.Create(P.Rect.Right, P.Rect.Bottom, BGRAPixelTransparent);
-    try
-      MD3FillTopRoundRect(bmp, P.Rect.Left, P.Rect.Top, P.Rect.Right - 1, DecoBottom - 1, CR, P.BgColor);
-      bmp.Draw(P.Canvas, 0, 0, False);
-    finally
-      bmp.Free;
-    end;
+    P.Canvas.Brush.Color := P.BgColor;
+    P.Canvas.Pen.Color := P.BgColor;
+    { Desenha retângulo arredondado completo }
+    P.Canvas.RoundRect(P.Rect.Left, P.Rect.Top, P.Rect.Right, DecoBottom, CR, CR);
+    { Preenche a metade inferior com cantos retos }
+    P.Canvas.FillRect(P.Rect.Left, P.Rect.Top + CR div 2, P.Rect.Right, DecoBottom);
   end
   else
   begin
@@ -282,8 +281,7 @@ begin
   if P.BottomMargin > 0 then
   begin
     P.Canvas.Font.Assign(P.EditFont); // Volta ao fonte padrão herdado
-    P.Canvas.Font.Size := P.EditFont.Size - 1;
-    if P.Canvas.Font.Size < 7 then P.Canvas.Font.Size := 7;
+    P.Canvas.Font.Size := 7;
     P.Canvas.Brush.Style := bsClear;
 
     if P.HelperText <> '' then

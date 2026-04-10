@@ -74,6 +74,7 @@ type
     procedure SetSelectedNode(AValue: TFRMaterialTreeNode);
     function GetEffectiveItemHeight: Integer;
   protected
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
@@ -219,25 +220,24 @@ begin
   if FSelectedNode <> AValue then
   begin
     FSelectedNode := AValue;
+    InvalidatePaintCache;
     Invalidate;
     if Assigned(FOnSelectionChange) then
       FOnSelectionChange(Self);
   end;
 end;
 
-procedure TFRMaterialTreeView.Paint;
+function TFRMaterialTreeView.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   I, yPos, xOff, ih: Integer;
   Node: TFRMaterialTreeNode;
-  aRect: TRect;
-  clr, icoClr: TColor;
-  svg: string;
+  icoClr: TColor;
   iconBmp: TBGRABitmap;
   chevMode: TFRIconMode;
   nodeIcon: TFRIconMode;
   chevSz, nodeSz, padX, chevW, nodeW: Integer;
 begin
+  Result := True;
   RebuildFlatList;
   ih := GetEffectiveItemHeight;
 
@@ -251,71 +251,83 @@ begin
   chevW := ih * 22 div 40;
   nodeW := ih * 28 div 40;
 
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
-  try
-    for I := 0 to FFlatList.Count - 1 do
+  ABmp.Fill(ColorToBGRA(MD3Colors.Surface));
+
+  for I := 0 to FFlatList.Count - 1 do
+  begin
+    Node := TFRMaterialTreeNode(FFlatList[I]);
+    yPos := I * ih - FScrollOffset;
+    if (yPos + ih < 0) or (yPos > Height) then Continue;
+
+    xOff := padX + Node.FLevel * FIndent;
+
+    { Selection highlight }
+    if Node = FSelectedNode then
+      ABmp.FillRoundRectAntialias(padX div 2, yPos + 2, Width - padX div 2, yPos + ih - 2,
+        14, 14, ColorToBGRA(MD3Colors.SecondaryContainer));
+
+    { Expand/collapse chevron for parent nodes }
+    if Node.HasChildren then
     begin
-      Node := TFRMaterialTreeNode(FFlatList[I]);
-      yPos := I * ih - FScrollOffset;
-      if (yPos + ih < 0) or (yPos > Height) then Continue;
-
-      xOff := padX + Node.FLevel * FIndent;
-
-      { Selection highlight }
-      if Node = FSelectedNode then
-        bmp.FillRoundRectAntialias(padX div 2, yPos + 2, Width - padX div 2, yPos + ih - 2,
-          14, 14, ColorToBGRA(MD3Colors.SecondaryContainer));
-
-      { Expand/collapse chevron for parent nodes }
-      if Node.HasChildren then
-      begin
-        if Node.FExpanded then
-          chevMode := imExpandMore
-        else
-          chevMode := imExpandLess;
-
-        icoClr := MD3Colors.OnSurfaceVariant;
-        iconBmp := FRGetCachedIcon(chevMode, FRColorToSVGHex(icoClr), 2.0, chevSz, chevSz);
-        
-        if iconBmp <> nil then
-          bmp.PutImage(xOff, yPos + (ih - chevSz) div 2, iconBmp, dmDrawWithTransparency);
-
-        xOff := xOff + chevW;
-      end
+      if Node.FExpanded then
+        chevMode := imExpandMore
       else
-        xOff := xOff + chevW; { align leaf items with parent content }
+        chevMode := imExpandLess;
 
-      { Node icon }
-      if FShowIcons and (Node.FIconMode <> imClear) then
-      begin
-        if Node = FSelectedNode then
-          icoClr := MD3Colors.OnSecondaryContainer
-        else
-          icoClr := MD3Colors.OnSurfaceVariant;
-          
-        nodeIcon := Node.FIconMode;
-        iconBmp := FRGetCachedIcon(nodeIcon, FRColorToSVGHex(icoClr), 2.0, nodeSz, nodeSz);
-        
-        if iconBmp <> nil then
-          bmp.PutImage(xOff, yPos + (ih - nodeSz) div 2, iconBmp, dmDrawWithTransparency);
-          
-        xOff := xOff + nodeW;
-      end;
+      icoClr := MD3Colors.OnSurfaceVariant;
+      iconBmp := FRGetCachedIcon(chevMode, FRColorToSVGHex(icoClr), 2.0, chevSz, chevSz);
 
-      { Divider }
-      if FShowDividers and (I < FFlatList.Count - 1) then
-        bmp.DrawLineAntialias(padX, yPos + ih - 1, Width - 1, yPos + ih - 1,
-          ColorToBGRA(MD3Colors.OutlineVariant), 1);
+      if iconBmp <> nil then
+        ABmp.PutImage(xOff, yPos + (ih - chevSz) div 2, iconBmp, dmDrawWithTransparency);
+
+      xOff := xOff + chevW;
+    end
+    else
+      xOff := xOff + chevW; { align leaf items with parent content }
+
+    { Node icon }
+    if FShowIcons and (Node.FIconMode <> imClear) then
+    begin
+      if Node = FSelectedNode then
+        icoClr := MD3Colors.OnSecondaryContainer
+      else
+        icoClr := MD3Colors.OnSurfaceVariant;
+
+      nodeIcon := Node.FIconMode;
+      iconBmp := FRGetCachedIcon(nodeIcon, FRColorToSVGHex(icoClr), 2.0, nodeSz, nodeSz);
+
+      if iconBmp <> nil then
+        ABmp.PutImage(xOff, yPos + (ih - nodeSz) div 2, iconBmp, dmDrawWithTransparency);
+
+      xOff := xOff + nodeW;
     end;
 
-    PaintRipple(bmp, MD3Colors.OnSurface);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+    { Divider }
+    if FShowDividers and (I < FFlatList.Count - 1) then
+      ABmp.DrawLineAntialias(padX, yPos + ih - 1, Width - 1, yPos + ih - 1,
+        ColorToBGRA(MD3Colors.OutlineVariant), 1);
   end;
+end;
+
+procedure TFRMaterialTreeView.Paint;
+var
+  I, yPos, xOff, ih: Integer;
+  Node: TFRMaterialTreeNode;
+  aRect: TRect;
+  clr: TColor;
+  padX, chevW, nodeW: Integer;
+begin
+  inherited Paint;
 
   { Text labels — second pass on Canvas }
+  RebuildFlatList;
+  ih := GetEffectiveItemHeight;
+
+  padX := ih * 16 div 40;
+  if padX < 4 then padX := 4;
+  chevW := ih * 22 div 40;
+  nodeW := ih * 28 div 40;
+
   for I := 0 to FFlatList.Count - 1 do
   begin
     Node := TFRMaterialTreeNode(FFlatList[I]);
@@ -377,6 +389,7 @@ begin
     begin
       if Assigned(FOnCollapse) then FOnCollapse(Self);
     end;
+    InvalidatePaintCache;
     Invalidate;
   end
   else
@@ -396,6 +409,7 @@ begin
   FScrollOffset := FScrollOffset - (WheelDelta div 3);
   if FScrollOffset < 0 then FScrollOffset := 0;
   if FScrollOffset > maxScroll then FScrollOffset := maxScroll;
+  InvalidatePaintCache;
   Invalidate;
   Result := True;
 end;

@@ -37,7 +37,8 @@ type
     procedure SetIconMode(AValue: TFRIconMode);
     procedure GetStyleColors(out ABg, AText, ABorder: TColor);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
+    function RippleColor: TColor; override;
     procedure DoOnResize; override;
     class function GetControlClassDefaultSize: TSize; override;
   public
@@ -74,7 +75,8 @@ type
     procedure SetToggled(AValue: Boolean);
     procedure GetStyleColors(out ABg, AIcon, ABorder: TColor);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
+    function RippleColor: TColor; override;
     procedure Click; override;
     class function GetControlClassDefaultSize: TSize; override;
   public
@@ -104,7 +106,8 @@ type
     procedure SetDropDownMenu(AValue: TPopupMenu);
     procedure GetStyleColors(out ABg, AText, ABorder: TColor);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
+    function RippleColor: TColor; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
@@ -213,6 +216,7 @@ procedure TFRMaterialButton.SetButtonStyle(AValue: TFRMDButtonStyle);
 begin
   if FButtonStyle = AValue then Exit;
   FButtonStyle := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -220,6 +224,7 @@ procedure TFRMaterialButton.SetShowIcon(AValue: Boolean);
 begin
   if FShowIcon = AValue then Exit;
   FShowIcon := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -227,6 +232,7 @@ procedure TFRMaterialButton.SetIconMode(AValue: TFRIconMode);
 begin
   if FIconMode = AValue then Exit;
   FIconMode := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -240,9 +246,16 @@ begin
   end;
 end;
 
-procedure TFRMaterialButton.Paint;
+function TFRMaterialButton.RippleColor: TColor;
 var
-  bmp: TBGRABitmap;
+  bg, txt, brd: TColor;
+begin
+  GetStyleColors(bg, txt, brd);
+  Result := txt;
+end;
+
+function TFRMaterialButton.PaintCached(ABmp: TBGRABitmap): Boolean;
+var
   bgColor, textColor, borderColor: TColor;
   r: Integer;
   iconSize, iconX, textX, totalW, tw: Integer;
@@ -250,46 +263,37 @@ var
   aRect: TRect;
   bgAlpha: Byte;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    r := Height div 2; { MD3 buttons use full rounding }
-    GetStyleColors(bgColor, textColor, borderColor);
+  Result := True;
+  r := Height div 2; { MD3 buttons use full rounding }
+  GetStyleColors(bgColor, textColor, borderColor);
 
-    bgAlpha := 255;
-    if not Enabled then
-      bgAlpha := 30; { 12% opacity for disabled bg }
+  bgAlpha := 255;
+  if not Enabled then
+    bgAlpha := 30; { 12% opacity for disabled bg }
 
-    { Shadow for elevated style }
-    if (FButtonStyle = mbsElevated) and Enabled then
-      MD3FillRoundRect(bmp, 1, 2, Width - 1, Height, r, MD3Colors.OnSurface, 20);
+  { Shadow for elevated style }
+  if (FButtonStyle = mbsElevated) and Enabled then
+    MD3FillRoundRect(ABmp, 1, 2, Width - 1, Height, r, MD3Colors.OnSurface, 20);
 
-    { Background }
-    if bgColor <> clNone then
-      MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, r, bgColor, bgAlpha);
+  { Background }
+  if bgColor <> clNone then
+    MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, r, bgColor, bgAlpha);
 
-    { Border for outlined — reduced opacity when disabled per MD3 spec }
-    if borderColor <> clNone then
-    begin
-      if Enabled then
-        MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0)
-      else
-        MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0, 30);
-    end;
-
-    { State layer }
+  { Border for outlined — reduced opacity when disabled per MD3 spec }
+  if borderColor <> clNone then
+  begin
     if Enabled then
-      MD3StateLayer(bmp, 0, 0, Width - 1, Height - 1, r, textColor, InteractionState);
-
-    PaintRipple(bmp, textColor);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+      MD3RoundRect(ABmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0)
+    else
+      MD3RoundRect(ABmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0, 30);
   end;
 
-  { Text + optional icon }
-  Canvas.Font := Self.Font;
-  tw := Canvas.TextWidth(Caption);
+  { State layer }
+  if Enabled then
+    MD3StateLayer(ABmp, 0, 0, Width - 1, Height - 1, r, textColor, InteractionState);
+
+  { Text + optional icon — rendered into the bitmap for cache }
+  tw := ABmp.TextSize(Caption).cx;
   iconSize := 0;
   if FShowIcon then
     iconSize := 18;
@@ -309,11 +313,13 @@ begin
   if FShowIcon and (iconSize > 0) then
   begin
     iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(textColor), 2.0, iconSize, iconSize);
-    iconBmp.Draw(Canvas, iconX, (Height - iconSize) div 2, False);
+    if Assigned(iconBmp) then
+      ABmp.PutImage(iconX, (Height - iconSize) div 2, iconBmp, dmDrawWithTransparency);
   end;
 
+  { Draw text into bitmap }
   aRect := Rect(textX, 0, Width, Height);
-  MD3DrawText(Canvas, Caption, aRect, textColor, taLeftJustify, True);
+  MD3DrawTextBGRA(ABmp, Caption, aRect, textColor, taLeftJustify, True);
 end;
 
 { ── TFRMaterialButtonIcon ── }
@@ -339,6 +345,7 @@ procedure TFRMaterialButtonIcon.SetIconStyle(AValue: TFRMDIconButtonStyle);
 begin
   if FIconStyle = AValue then Exit;
   FIconStyle := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -346,6 +353,7 @@ procedure TFRMaterialButtonIcon.SetIconMode(AValue: TFRIconMode);
 begin
   if FIconMode = AValue then Exit;
   FIconMode := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -353,6 +361,7 @@ procedure TFRMaterialButtonIcon.SetToggle(AValue: Boolean);
 begin
   if FToggle = AValue then Exit;
   FToggle := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -360,6 +369,7 @@ procedure TFRMaterialButtonIcon.SetToggled(AValue: Boolean);
 begin
   if FToggled = AValue then Exit;
   FToggled := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -429,37 +439,38 @@ begin
   end;
 end;
 
-procedure TFRMaterialButtonIcon.Paint;
+function TFRMaterialButtonIcon.RippleColor: TColor;
 var
-  bmp, iconBmp: TBGRABitmap;
+  bg, ic, brd: TColor;
+begin
+  GetStyleColors(bg, ic, brd);
+  Result := ic;
+end;
+
+function TFRMaterialButtonIcon.PaintCached(ABmp: TBGRABitmap): Boolean;
+var
+  iconBmp: TBGRABitmap;
   bgColor, iconColor, borderColor: TColor;
   r, iconSize: Integer;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    r := Height div 2;
-    GetStyleColors(bgColor, iconColor, borderColor);
+  Result := True;
+  r := Height div 2;
+  GetStyleColors(bgColor, iconColor, borderColor);
 
-    if bgColor <> clNone then
-      MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, r, bgColor);
+  if bgColor <> clNone then
+    MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, r, bgColor);
 
-    if borderColor <> clNone then
-      MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0);
+  if borderColor <> clNone then
+    MD3RoundRect(ABmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0);
 
-    if Enabled then
-      MD3StateLayer(bmp, 0, 0, Width - 1, Height - 1, r, iconColor, InteractionState);
-
-    PaintRipple(bmp, iconColor);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
-  end;
+  if Enabled then
+    MD3StateLayer(ABmp, 0, 0, Width - 1, Height - 1, r, iconColor, InteractionState);
 
   { Icon }
   iconSize := Min(Width, Height) div 2;
   iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(iconColor), 2.0, iconSize, iconSize);
-  iconBmp.Draw(Canvas, (Width - iconSize) div 2, (Height - iconSize) div 2, False);
+  if Assigned(iconBmp) then
+    ABmp.PutImage((Width - iconSize) div 2, (Height - iconSize) div 2, iconBmp, dmDrawWithTransparency);
 end;
 
 { ── TFRMaterialSplitButton ── }
@@ -487,6 +498,7 @@ procedure TFRMaterialSplitButton.SetButtonStyle(AValue: TFRMDButtonStyle);
 begin
   if FButtonStyle = AValue then Exit;
   FButtonStyle := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -567,6 +579,7 @@ begin
   if inArrow <> FArrowHovered then
   begin
     FArrowHovered := inArrow;
+    InvalidatePaintCache;
     Invalidate;
   end;
   inherited;
@@ -577,65 +590,67 @@ begin
   if FArrowHovered then
   begin
     FArrowHovered := False;
+    InvalidatePaintCache;
     Invalidate;
   end;
   inherited;
 end;
 
-procedure TFRMaterialSplitButton.Paint;
+function TFRMaterialSplitButton.RippleColor: TColor;
 var
-  bmp, iconBmp: TBGRABitmap;
+  bg, txt, brd: TColor;
+begin
+  GetStyleColors(bg, txt, brd);
+  Result := txt;
+end;
+
+function TFRMaterialSplitButton.PaintCached(ABmp: TBGRABitmap): Boolean;
+var
+  iconBmp: TBGRABitmap;
   bgColor, textColor, borderColor: TColor;
   r, sep: Integer;
   mainR, arrowR: TRect;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    r := Height div 2;
-    GetStyleColors(bgColor, textColor, borderColor);
-    mainR := GetMainRect;
-    arrowR := GetArrowRect;
-    sep := arrowR.Left;
+  Result := True;
+  r := Height div 2;
+  GetStyleColors(bgColor, textColor, borderColor);
+  mainR := GetMainRect;
+  arrowR := GetArrowRect;
+  sep := arrowR.Left;
 
-    { Full background }
-    if bgColor <> clNone then
-      MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, r, bgColor);
+  { Full background }
+  if bgColor <> clNone then
+    MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, r, bgColor);
 
-    if borderColor <> clNone then
-      MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0);
+  if borderColor <> clNone then
+    MD3RoundRect(ABmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r, borderColor, 1.0);
 
-    { Divider line between main and arrow }
-    bmp.DrawLineAntialias(sep, 4, sep, Height - 4,
-      ColorToBGRA(ColorToRGB(textColor), 60), 1.0);
+  { Divider line between main and arrow }
+  ABmp.DrawLineAntialias(sep, 4, sep, Height - 4,
+    ColorToBGRA(ColorToRGB(textColor), 60), 1.0);
 
-    { State layers (separate for main and arrow areas) }
-    if Enabled then
+  { State layers (separate for main and arrow areas) }
+  if Enabled then
+  begin
+    if FArrowHovered or FArrowPressed then
     begin
-      if FArrowHovered or FArrowPressed then
-      begin
-        if FArrowPressed then
-          MD3StateLayer(bmp, arrowR.Left, 0, Width - 1, Height - 1, r, textColor, isPressed)
-        else
-          MD3StateLayer(bmp, arrowR.Left, 0, Width - 1, Height - 1, r, textColor, isHovered);
-      end;
-      if Hovered and not FArrowHovered then
-        MD3StateLayer(bmp, 0, 0, sep, Height - 1, r, textColor, InteractionState);
+      if FArrowPressed then
+        MD3StateLayer(ABmp, arrowR.Left, 0, Width - 1, Height - 1, r, textColor, isPressed)
+      else
+        MD3StateLayer(ABmp, arrowR.Left, 0, Width - 1, Height - 1, r, textColor, isHovered);
     end;
-
-    PaintRipple(bmp, textColor);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+    if Hovered and not FArrowHovered then
+      MD3StateLayer(ABmp, 0, 0, sep, Height - 1, r, textColor, InteractionState);
   end;
 
   { Main text }
-  MD3DrawText(Canvas, Caption, mainR, textColor, taCenter, True);
+  MD3DrawTextBGRA(ABmp, Caption, mainR, textColor, taCenter, True);
 
   { Arrow icon — chevron down (expand_more) per MD3 spec }
   iconBmp := FRGetCachedIcon(imExpandMore, FRColorToSVGHex(textColor), 2.5, 18, 18);
-  iconBmp.Draw(Canvas, arrowR.Left + (arrowR.Right - arrowR.Left - 18) div 2,
-    (Height - 18) div 2, False);
+  if Assigned(iconBmp) then
+    ABmp.PutImage(arrowR.Left + (arrowR.Right - arrowR.Left - 18) div 2,
+      (Height - 18) div 2, iconBmp, dmDrawWithTransparency);
 end;
 
 end.

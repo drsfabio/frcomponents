@@ -49,7 +49,7 @@ type
     function IsDayEnabled(ADay: Integer): Boolean;
     procedure DoNavigate(ADir: Integer);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseLeave; override;
@@ -165,6 +165,7 @@ begin
   DecodeDate(FDate, y, m, d);
   FViewYear := y;
   FViewMonth := m;
+  InvalidatePaintCache;
   Invalidate;
   if Assigned(FOnChange) then
     FOnChange(Self);
@@ -174,6 +175,7 @@ procedure TFRMaterialDatePicker.SetMinDate(AValue: TDate);
 begin
   if FMinDate = AValue then Exit;
   FMinDate := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -181,6 +183,7 @@ procedure TFRMaterialDatePicker.SetMaxDate(AValue: TDate);
 begin
   if FMaxDate = AValue then Exit;
   FMaxDate := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -188,6 +191,7 @@ procedure TFRMaterialDatePicker.SetShowToday(AValue: Boolean);
 begin
   if FShowToday = AValue then Exit;
   FShowToday := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -252,6 +256,7 @@ begin
     Dec(FViewYear);
   end;
   FHoverDay := 0;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -283,6 +288,7 @@ begin
     if PtInRect(Point(X, Y), r) and IsDayEnabled(i) then
     begin
       FDate := EncodeDate(FViewYear, FViewMonth, i);
+      InvalidatePaintCache;
       Invalidate;
       if Assigned(FOnChange) then
         FOnChange(Self);
@@ -319,6 +325,7 @@ begin
   begin
     FHoverDay := newHover;
     FHoverNav := newNav;
+    InvalidatePaintCache;
     Invalidate;
   end;
 end;
@@ -330,13 +337,13 @@ begin
   begin
     FHoverDay := 0;
     FHoverNav := 0;
+    InvalidatePaintCache;
     Invalidate;
   end;
 end;
 
-procedure TFRMaterialDatePicker.Paint;
+function TFRMaterialDatePicker.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   i, gridLeft, gridTop, cx, cy, col, row, idx: Integer;
   dayStr, monthTitle: string;
   selY, selM, selD: Word;
@@ -346,7 +353,7 @@ var
   navIcon: TBGRABitmap;
   dayNames: array[0..6] of string;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
+  Result := True;
 
   DecodeDate(FDate, selY, selM, selD);
   DecodeDate(SysUtils.Date, todayY, todayM, todayD);
@@ -362,109 +369,104 @@ begin
   gridLeft := (Width - CELL_SIZE * GRID_COLS) div 2;
   gridTop := HEADER_H + DOW_H;
 
-  bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
-  try
-    { ── Header: Month Year ── }
-    monthTitle := FormatSettings.LongMonthNames[FViewMonth] + ' ' + IntToStr(FViewYear);
-    bmp.FontFullHeight := 18;
-    bmp.FontStyle := [fsBold];
-    bmp.FontQuality := fqFineAntialiasing;
-    bmp.TextOut(
-      (Width - bmp.TextSize(monthTitle).cx) div 2,
-      (HEADER_H - 18) div 2,
-      monthTitle,
-      ColorToBGRA(MD3Colors.OnSurface));
+  ABmp.Fill(ColorToBGRA(MD3Colors.Surface));
 
-    { Navigation arrows }
-    { Prev }
-    if FHoverNav = -1 then
-      bmp.FillEllipseAntialias(28, 28, 18, 18,
-        ColorToBGRA(MD3Colors.OnSurface, 12));
-    navIcon := FRGetCachedIcon(imArrowBack,
-      FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 24, 24);
-    bmp.PutImage(16, 16, navIcon, dmDrawWithTransparency);
+  { ── Header: Month Year ── }
+  monthTitle := FormatSettings.LongMonthNames[FViewMonth] + ' ' + IntToStr(FViewYear);
+  ABmp.FontFullHeight := 18;
+  ABmp.FontStyle := [fsBold];
+  ABmp.FontQuality := fqFineAntialiasing;
+  ABmp.TextOut(
+    (Width - ABmp.TextSize(monthTitle).cx) div 2,
+    (HEADER_H - 18) div 2,
+    monthTitle,
+    ColorToBGRA(MD3Colors.OnSurface));
 
-    { Next }
-    if FHoverNav = 1 then
-      bmp.FillEllipseAntialias(Width - 28, 28, 18, 18,
-        ColorToBGRA(MD3Colors.OnSurface, 12));
-    navIcon := FRGetCachedIcon(imArrowForward,
-      FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 24, 24);
-    bmp.PutImage(Width - 40, 16, navIcon, dmDrawWithTransparency);
+  { Navigation arrows }
+  { Prev }
+  if FHoverNav = -1 then
+    ABmp.FillEllipseAntialias(28, 28, 18, 18,
+      ColorToBGRA(MD3Colors.OnSurface, 12));
+  navIcon := FRGetCachedIcon(imArrowBack,
+    FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 24, 24);
+  ABmp.PutImage(16, 16, navIcon, dmDrawWithTransparency);
 
-    { ── Day-of-week headers ── }
-    bmp.FontFullHeight := 12;
-    bmp.FontStyle := [];
-    for i := 0 to 6 do
+  { Next }
+  if FHoverNav = 1 then
+    ABmp.FillEllipseAntialias(Width - 28, 28, 18, 18,
+      ColorToBGRA(MD3Colors.OnSurface, 12));
+  navIcon := FRGetCachedIcon(imArrowForward,
+    FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 24, 24);
+  ABmp.PutImage(Width - 40, 16, navIcon, dmDrawWithTransparency);
+
+  { ── Day-of-week headers ── }
+  ABmp.FontFullHeight := 12;
+  ABmp.FontStyle := [];
+  for i := 0 to 6 do
+  begin
+    cx := gridLeft + i * CELL_SIZE + CELL_SIZE div 2;
+    cy := HEADER_H + (DOW_H - 12) div 2;
+    ABmp.TextOut(
+      cx - ABmp.TextSize(dayNames[i]).cx div 2,
+      cy,
+      dayNames[i],
+      ColorToBGRA(MD3Colors.OnSurfaceVariant));
+  end;
+
+  { ── Day cells ── }
+  ABmp.FontFullHeight := 14;
+  ABmp.FontStyle := [];
+  for i := 1 to DaysInViewMonth do
+  begin
+    idx := (i - 1) + FirstDayOfWeek;
+    col := idx mod GRID_COLS;
+    row := idx div GRID_COLS;
+    cx := gridLeft + col * CELL_SIZE + CELL_SIZE div 2;
+    cy := gridTop + row * CELL_SIZE + CELL_SIZE div 2;
+
+    isSelected := (FViewYear = selY) and (FViewMonth = selM) and (i = Integer(selD));
+    isToday := FShowToday and (FViewYear = todayY) and
+               (FViewMonth = todayM) and (i = Integer(todayD));
+    dayEnabled := IsDayEnabled(i);
+
+    dayStr := IntToStr(i);
+
+    { Background }
+    if isSelected then
     begin
-      cx := gridLeft + i * CELL_SIZE + CELL_SIZE div 2;
-      cy := HEADER_H + (DOW_H - 12) div 2;
-      bmp.TextOut(
-        cx - bmp.TextSize(dayNames[i]).cx div 2,
-        cy,
-        dayNames[i],
-        ColorToBGRA(MD3Colors.OnSurfaceVariant));
-    end;
-
-    { ── Day cells ── }
-    bmp.FontFullHeight := 14;
-    bmp.FontStyle := [];
-    for i := 1 to DaysInViewMonth do
+      ABmp.FillEllipseAntialias(cx, cy, 18, 18,
+        ColorToBGRA(MD3Colors.Primary));
+      textColor := MD3Colors.OnPrimary;
+    end
+    else if (FHoverDay = i) and dayEnabled then
     begin
-      idx := (i - 1) + FirstDayOfWeek;
-      col := idx mod GRID_COLS;
-      row := idx div GRID_COLS;
-      cx := gridLeft + col * CELL_SIZE + CELL_SIZE div 2;
-      cy := gridTop + row * CELL_SIZE + CELL_SIZE div 2;
-
-      isSelected := (FViewYear = selY) and (FViewMonth = selM) and (i = Integer(selD));
-      isToday := FShowToday and (FViewYear = todayY) and
-                 (FViewMonth = todayM) and (i = Integer(todayD));
-      dayEnabled := IsDayEnabled(i);
-
-      dayStr := IntToStr(i);
-
-      { Background }
-      if isSelected then
-      begin
-        bmp.FillEllipseAntialias(cx, cy, 18, 18,
-          ColorToBGRA(MD3Colors.Primary));
-        textColor := MD3Colors.OnPrimary;
-      end
-      else if (FHoverDay = i) and dayEnabled then
-      begin
-        bmp.FillEllipseAntialias(cx, cy, 18, 18,
-          ColorToBGRA(MD3Colors.OnSurface, 12));
-        textColor := MD3Colors.OnSurface;
-      end
-      else if isToday then
-      begin
-        bmp.EllipseAntialias(cx, cy, 18, 18,
-          ColorToBGRA(MD3Colors.Primary), 1.5);
-        textColor := MD3Colors.Primary;
-      end
+      ABmp.FillEllipseAntialias(cx, cy, 18, 18,
+        ColorToBGRA(MD3Colors.OnSurface, 12));
+      textColor := MD3Colors.OnSurface;
+    end
+    else if isToday then
+    begin
+      ABmp.EllipseAntialias(cx, cy, 18, 18,
+        ColorToBGRA(MD3Colors.Primary), 1.5);
+      textColor := MD3Colors.Primary;
+    end
+    else
+    begin
+      if dayEnabled then
+        textColor := MD3Colors.OnSurface
       else
-      begin
-        if dayEnabled then
-          textColor := MD3Colors.OnSurface
-        else
-          textColor := MD3Colors.OnSurfaceVariant;
-      end;
-
-      { Day number }
-      if not dayEnabled then
-        textColor := MD3Blend(MD3Colors.Surface, MD3Colors.OnSurface, 80);
-
-      bmp.TextOut(
-        cx - bmp.TextSize(dayStr).cx div 2,
-        cy - bmp.TextSize(dayStr).cy div 2,
-        dayStr,
-        ColorToBGRA(textColor));
+        textColor := MD3Colors.OnSurfaceVariant;
     end;
 
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+    { Day number }
+    if not dayEnabled then
+      textColor := MD3Blend(MD3Colors.Surface, MD3Colors.OnSurface, 80);
+
+    ABmp.TextOut(
+      cx - ABmp.TextSize(dayStr).cx div 2,
+      cy - ABmp.TextSize(dayStr).cy div 2,
+      dayStr,
+      ColorToBGRA(textColor));
   end;
 end;
 

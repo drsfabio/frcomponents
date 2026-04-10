@@ -6,7 +6,7 @@ Componentes Material Design 3 completos para Lazarus / Free Pascal, integrados a
 
 ## Visão geral
 
-Este pacote fornece **49 componentes visuais** + 6 unidades utilitárias que implementam a especificação Material Design 3 (Material You), incluindo:
+Este pacote fornece **50 componentes visuais** + 6 unidades utilitárias que implementam a especificação Material Design 3 (Material You), incluindo:
 
 - **Botões** — Button, ButtonIcon, SplitButton, FAB, ExtendedFAB, FABMenu
 - **Controles** — Switch, CheckBox, RadioButton, Chip, SegmentedButton
@@ -16,7 +16,7 @@ Este pacote fornece **49 componentes visuais** + 6 unidades utilitárias que imp
 - **Dados** — Tabs, ListView, TreeView, DataGrid, PageControl, VirtualDataGrid
 - **Navegação** — AppBar, Toolbar, NavBar, NavDrawer, NavRail
 - **Superfícies** — Dialog, Snackbar, Tooltip, Menu, GroupBox, Divider, BottomSheet, SideSheet
-- **Containers** — Card (Filled, Outlined, Elevated)
+- **Containers** — Card (Filled, Outlined, Elevated), GridPanel (auto-flow 12 colunas)
 - **Indicadores** — Badge (Dot, Count), Carousel, DatePicker
 
 ### Resumo de componentes
@@ -72,6 +72,7 @@ Este pacote fornece **49 componentes visuais** + 6 unidades utilitárias que imp
 | 47 | `TFRMaterialBadge` | `FRMaterial3Badge` | Badge — indicador dot ou contagem (99+) |
 | 48 | `TFRMaterialCarousel` | `FRMaterial3Carousel` | Carousel horizontal com auto-play e indicadores |
 | 49 | `TFRMaterialDatePicker` | `FRMaterial3DatePicker` | Seletor de data com calendário mensal completo |
+| 50 | `TFRMaterialGridPanel` | `FRMaterial3GridPanel` | Grid layout 12 colunas — auto-flow, ColSpan por filho, gap configurável |
 
 ### Unidades utilitárias
 
@@ -458,6 +459,32 @@ Stepper numérico com botões +/- no estilo MD3.
 | `DecimalPlaces` | `Integer` | Casas decimais exibidas |
 | `Variant` | `TFRMaterialVariant` | Estilo visual do campo |
 
+### TFRMaterialGridPanel
+
+Grid layout com sistema de 12 colunas (padrão MD3). Filhos são posicionados automaticamente em linhas, com wrap quando não cabem.
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `ColumnCount` | `Integer` | Número de colunas do grid (padrão 12, máx 24) |
+| `GapH` | `Integer` | Espaçamento horizontal entre colunas (px) |
+| `GapV` | `Integer` | Espaçamento vertical entre linhas (px) |
+| `Items` | `TFRGridItems` | Coleção de itens — cada item associa um controle filho ao seu ColSpan |
+
+**TFRGridItem (item da coleção)**:
+
+| Propriedade | Tipo | Descrição |
+|---|---|---|
+| `Control` | `TControl` | Controle filho associado |
+| `ColSpan` | `Integer` | Quantas colunas o controle ocupa (1–ColumnCount) |
+
+**Uso no IDE:** Arraste controles para dentro do GridPanel. Um item é criado automaticamente na coleção `Items`. Defina o `ColSpan` de cada item no Object Inspector.
+
+**Uso por código:**
+```pascal
+GridPanel.SetColSpan(EdCodigo, 3);  // 3 de 12 colunas
+GridPanel.SetColSpan(EdNome, 9);    // completa a linha
+```
+
 ---
 
 ## Campos de entrada (detalhes)
@@ -517,7 +544,7 @@ Caso o BGRABitmapPack ainda não esteja disponível no seu IDE, instale-o primei
 
 4. **Verificar**  
    Após o IDE reiniciar, abra a **Paleta de Componentes** e procure pela aba **BGRA Controls**.  
-   Você deverá ver os 49 componentes listados acima.
+   Você deverá ver os 50 componentes listados acima.
 
 ### Adicionando ao projeto sem instalar na paleta
 

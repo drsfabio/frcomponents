@@ -50,16 +50,19 @@ type
   private
     FTitle: string;
     FSubtitle: string;
+    FSubtitleColor: TColor;
     FNavIcon: TFRIconMode;
     FActions: TFRMaterialAppBarActions;
     FBarSize: TFRMDAppBarSize;
     FOnNavClick: TNotifyEvent;
     procedure SetTitle(const AValue: string);
     procedure SetSubtitle(const AValue: string);
+    procedure SetSubtitleColor(AValue: TColor);
     procedure SetBarSize(AValue: TFRMDAppBarSize);
     procedure SetActions(AValue: TFRMaterialAppBarActions);
     function GetBarHeight: Integer;
   protected
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure DoOnResize; override;
@@ -69,6 +72,7 @@ type
   published
     property Title: string read FTitle write SetTitle;
     property Subtitle: string read FSubtitle write SetSubtitle;
+    property SubtitleColor: TColor read FSubtitleColor write SetSubtitleColor default clNone;
     property NavIcon: TFRIconMode read FNavIcon write FNavIcon;
     property Actions: TFRMaterialAppBarActions read FActions write SetActions;
     property BarSize: TFRMDAppBarSize read FBarSize write SetBarSize default absSmall;
@@ -92,7 +96,7 @@ type
     FActions: TFRMaterialAppBarActions;
     procedure SetActions(AValue: TFRMaterialAppBarActions);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure DoOnResize; override;
   public
@@ -153,6 +157,7 @@ begin
   inherited Create(AOwner);
   FTitle := 'Title';
   FSubtitle := '';
+  FSubtitleColor := clNone;
   FActions := TFRMaterialAppBarActions.Create(Self);
   FBarSize := absSmall;
   Width := 400;
@@ -195,6 +200,15 @@ begin
   end;
 end;
 
+procedure TFRMaterialAppBar.SetSubtitleColor(AValue: TColor);
+begin
+  if FSubtitleColor <> AValue then
+  begin
+    FSubtitleColor := AValue;
+    Invalidate;
+  end;
+end;
+
 procedure TFRMaterialAppBar.SetBarSize(AValue: TFRMDAppBarSize);
 begin
   if FBarSize <> AValue then
@@ -210,87 +224,121 @@ begin
   FActions.Assign(AValue);
 end;
 
-procedure TFRMaterialAppBar.Paint;
+function TFRMaterialAppBar.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
-  aRect: TRect;
   iconBmp: TBGRABitmap;
   i, xAct: Integer;
-  titleLeft: Integer;
-  baseH, padX, icoY, icoSz: Integer;
+  baseH, padX, gapX, icoY, icoSz: Integer;
   BadgeText: string;
   bc: TBGRAPixel;
   tw, bw, bh, bx, by: Integer;
-  titleH, subH: Integer;
 begin
+  Result := True;
   baseH := GetBarHeight;
-  padX := Width * 16 div 400;
-  if padX < 8 then padX := 8;
+  padX := 16;
+  gapX := 8;
   icoY := Height * 20 div baseH;
   icoSz := Height * 24 div baseH;
   if icoSz < 16 then icoSz := 16;
   if icoSz > 36 then icoSz := 36;
 
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
-  try
-    { nav icon — Primary tint for theme integration }
-    titleLeft := padX;
-    if FNavIcon <> imClear then
-    begin
-      iconBmp := FRGetCachedIcon(FNavIcon, FRColorToSVGHex(MD3Colors.Primary), 2.0, icoSz, icoSz);
-      bmp.PutImage(padX, icoY, iconBmp, dmDrawWithTransparency);
-      titleLeft := padX + icoSz + padX;
-    end;
+  ABmp.Fill(ColorToBGRA(MD3Colors.Surface));
+  { nav icon — Primary tint for theme integration }
+  if FNavIcon <> imClear then
+  begin
+    iconBmp := FRGetCachedIcon(FNavIcon, FRColorToSVGHex(MD3Colors.Primary), 2.0, icoSz, icoSz);
+    ABmp.PutImage(padX, icoY, iconBmp, dmDrawWithTransparency);
+  end;
 
-    { actions from right — Primary tint + badge }
-    bc := ColorToBGRA(ColorToRGB(MD3Colors.Error));
-    xAct := Width - padX;
-    for i := FActions.Count - 1 downto 0 do
-    begin
-      iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.Primary), 2.0, icoSz, icoSz);
-      Dec(xAct, icoSz);
-      bmp.PutImage(xAct, icoY, iconBmp, dmDrawWithTransparency);
+  { actions from right — Primary tint + badge }
+  bc := ColorToBGRA(ColorToRGB(MD3Colors.Error));
+  xAct := Width - padX;
+  for i := FActions.Count - 1 downto 0 do
+  begin
+    iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.Primary), 2.0, icoSz, icoSz);
+    Dec(xAct, icoSz);
+    ABmp.PutImage(xAct, icoY, iconBmp, dmDrawWithTransparency);
 
-      { Badge rendering }
-      if FActions[i].FBadge <> '' then
+    { Badge rendering — pill background only; text drawn in Paint }
+    if FActions[i].FBadge <> '' then
+    begin
+      if FActions[i].FBadge = ' ' then
+        ABmp.FillEllipseAntialias(xAct + icoSz - 2, icoY + 2, 4, 4, bc)
+      else
       begin
-        if FActions[i].FBadge = ' ' then
-          bmp.FillEllipseAntialias(xAct + icoSz - 2, icoY + 2, 4, 4, bc)
+        if Length(FActions[i].FBadge) > 3 then
+          BadgeText := '999+'
         else
-        begin
-          if Length(FActions[i].FBadge) > 3 then
-            BadgeText := '999+'
-          else
-            BadgeText := FActions[i].FBadge;
-          Canvas.Font.Size := 7;
-          tw := Canvas.TextWidth(BadgeText);
-          bw := tw + 8;
-          if bw < 16 then bw := 16;
-          bh := 16;
-          bx := xAct + icoSz - 4 - bw div 2;
-          by := icoY - 4;
-          bmp.FillRoundRectAntialias(bx, by, bx + bw, by + bh, 7.9, 7.9, bc);
-          Canvas.Font.Color := ColorToRGB(MD3Colors.OnError);
-          Canvas.Brush.Style := bsClear;
-          Canvas.TextOut(bx + (bw - tw) div 2, by + 1, BadgeText);
-          Canvas.Brush.Style := bsSolid;
-        end;
+          BadgeText := FActions[i].FBadge;
+        Canvas.Font.Size := 7;
+        tw := Canvas.TextWidth(BadgeText);
+        bw := tw + 8;
+        if bw < 16 then bw := 16;
+        bh := 16;
+        bx := xAct + icoSz - 4 - bw div 2;
+        by := icoY - 4;
+        ABmp.FillRoundRectAntialias(bx, by, bx + bw, by + bh, 7.9, 7.9, bc);
       end;
-
-      Dec(xAct, padX);
     end;
 
-    PaintRipple(bmp, MD3Colors.OnSurface);
+    Dec(xAct, gapX);
+  end;
 
-    { Bottom elevation shadow — subtle gradient inside control bounds }
-    for i := 0 to 3 do
-      bmp.DrawHorizLine(0, Height - 4 + i, Width - 1,
-        BGRA(0, 0, 0, Byte(20 - i * 5)));
+  { Bottom elevation shadow — subtle gradient inside control bounds }
+  for i := 0 to 3 do
+    ABmp.DrawHorizLine(0, Height - 4 + i, Width - 1,
+      BGRA(0, 0, 0, Byte(20 - i * 5)));
+end;
 
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+procedure TFRMaterialAppBar.Paint;
+var
+  aRect: TRect;
+  i, xAct: Integer;
+  titleLeft: Integer;
+  baseH, padX, gapX, icoSz: Integer;
+  BadgeText: string;
+  tw, bw, bx, by: Integer;
+  titleH, subH: Integer;
+begin
+  inherited Paint;
+
+  baseH := GetBarHeight;
+  padX := 16;
+  gapX := 8;
+  icoSz := Height * 24 div baseH;
+  if icoSz < 16 then icoSz := 16;
+  if icoSz > 36 then icoSz := 36;
+
+  { Recalculate titleLeft }
+  titleLeft := padX;
+  if FNavIcon <> imClear then
+    titleLeft := padX + icoSz + padX;
+
+  { Recalculate xAct + draw badge text }
+  xAct := Width - padX;
+  for i := FActions.Count - 1 downto 0 do
+  begin
+    Dec(xAct, icoSz);
+
+    if (FActions[i].FBadge <> '') and (FActions[i].FBadge <> ' ') then
+    begin
+      if Length(FActions[i].FBadge) > 3 then
+        BadgeText := '999+'
+      else
+        BadgeText := FActions[i].FBadge;
+      Canvas.Font.Size := 7;
+      tw := Canvas.TextWidth(BadgeText);
+      bw := tw + 8;
+      if bw < 16 then bw := 16;
+      bx := xAct + icoSz - 4 - bw div 2;
+      by := Height * 20 div baseH - 4;
+      Canvas.Font.Color := ColorToRGB(MD3Colors.OnError);
+      Canvas.Brush.Style := bsClear;
+      Canvas.TextOut(bx + (bw - tw) div 2, by + 1, BadgeText);
+      Canvas.Brush.Style := bsSolid;
+    end;
+
+    Dec(xAct, gapX);
   end;
 
   { title + subtitle text }
@@ -313,7 +361,10 @@ begin
         Canvas.Font.Style := [];
         Canvas.Font.Size := Height * 9 div baseH;
         aRect := Rect(titleLeft, aRect.Bottom + 2, xAct, aRect.Bottom + 2 + subH);
-        MD3DrawText(Canvas, FSubtitle, aRect, MD3Colors.OnSurfaceVariant, taLeftJustify, False);
+        if FSubtitleColor = clNone then
+          MD3DrawText(Canvas, FSubtitle, aRect, MD3Colors.OnSurfaceVariant, taLeftJustify, False)
+        else
+          MD3DrawText(Canvas, FSubtitle, aRect, FSubtitleColor, taLeftJustify, False);
       end
       else
       begin
@@ -348,14 +399,14 @@ end;
 procedure TFRMaterialAppBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   i, xAct: Integer;
-  baseH, padX, icoSz, icoY, hitH: Integer;
+  baseH, padX, gapX, icoSz, icoY, hitH: Integer;
 begin
   inherited;
   if Button <> mbLeft then Exit;
 
   baseH := GetBarHeight;
-  padX := Width * 16 div 400;
-  if padX < 8 then padX := 8;
+  padX := 16;
+  gapX := 8;
   icoSz := Height * 24 div baseH;
   if icoSz < 16 then icoSz := 16;
   if icoSz > 36 then icoSz := 36;
@@ -381,7 +432,7 @@ begin
         FActions[i].FOnClick(FActions[i]);
       Exit;
     end;
-    Dec(xAct, padX);
+    Dec(xAct, gapX);
   end;
 end;
 
@@ -406,32 +457,25 @@ begin
   FActions.Assign(AValue);
 end;
 
-procedure TFRMaterialToolbar.Paint;
+function TFRMaterialToolbar.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   i, xPos: Integer;
   iconBmp: TBGRABitmap;
   icoSz, icoY, cellW: Integer;
 begin
+  Result := True;
   icoSz := Height * 24 div 64;
   if icoSz < 16 then icoSz := 16;
   icoY := (Height - icoSz) div 2;
   cellW := Height * 48 div 64;
 
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.SurfaceContainer));
-  try
-    xPos := (Width - FActions.Count * cellW) div 2;
-    for i := 0 to FActions.Count - 1 do
-    begin
-      iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.OnSurface), 2.0, icoSz, icoSz);
-      bmp.PutImage(xPos + (cellW - icoSz) div 2, icoY, iconBmp, dmDrawWithTransparency);
-      Inc(xPos, cellW);
-    end;
-    PaintRipple(bmp, MD3Colors.OnSurface);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+  ABmp.Fill(ColorToBGRA(MD3Colors.SurfaceContainer));
+  xPos := (Width - FActions.Count * cellW) div 2;
+  for i := 0 to FActions.Count - 1 do
+  begin
+    iconBmp := FRGetCachedIcon(FActions[i].FIconMode, FRColorToSVGHex(MD3Colors.OnSurface), 2.0, icoSz, icoSz);
+    ABmp.PutImage(xPos + (cellW - icoSz) div 2, icoY, iconBmp, dmDrawWithTransparency);
+    Inc(xPos, cellW);
   end;
 end;
 

@@ -59,7 +59,7 @@ type
     function GetTabLeft(AIndex: Integer): Integer;
     procedure BackgroundImageChanged(Sender: TObject);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure DoOnResize; override;
   public
@@ -204,9 +204,8 @@ begin
   end;
 end;
 
-procedure TFRMaterialTabs.Paint;
+function TFRMaterialTabs.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   i, tw, xPos: Integer;
   tab: TFRMaterialTabItem;
   aRect: TRect;
@@ -216,6 +215,7 @@ var
   clipText: string;
   icoSz, indH: Integer;
 begin
+  Result := True;
   { Proportional metrics based on Height (reference = 48) }
   icoSz := Height * 20 div 48;
   if icoSz < 12 then icoSz := 12;
@@ -223,54 +223,46 @@ begin
   indH := Height * 3 div 48;
   if indH < 2 then indH := 2;
 
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
-  try
-    { Background image }
-    if Assigned(FBackgroundImage.Graphic) and (not FBackgroundImage.Graphic.Empty) then
-    begin
-      bmp.Canvas.StretchDraw(Rect(0, 0, Width, Height), FBackgroundImage.Graphic);
-    end;
-
-    { bottom line }
-    bmp.DrawLineAntialias(0, Height - 1, Width, Height - 1,
-      ColorToBGRA(MD3Colors.SurfaceContainerHighest), 1);
-
-    for i := 0 to FTabs.Count - 1 do
-    begin
-      tab := FTabs[i];
-      xPos := GetTabLeft(i);
-      if FTabAlignment = taLeading then
-        tw := MeasureTabWidth(i)
-      else
-        tw := GetTabWidth;
-
-      if i = FTabIndex then
-      begin
-        { indicator }
-        bmp.FillRect(xPos + tw div 4, Height - indH, xPos + tw - tw div 4, Height,
-          ColorToBGRA(MD3Colors.Primary), dmDrawWithTransparency);
-      end;
-
-      { icon }
-      if tab.FIconMode <> imClear then
-      begin
-        if i = FTabIndex then
-          textColor := MD3Colors.Primary
-        else
-          textColor := MD3Colors.OnSurfaceVariant;
-        iconBmp := FRGetCachedIcon(tab.FIconMode, FRColorToSVGHex(textColor), 2.0, icoSz, icoSz);
-        bmp.PutImage(xPos + (tw - icoSz) div 2, Height * 8 div 48, iconBmp, dmDrawWithTransparency);
-      end;
-    end;
-
-    PaintRipple(bmp, MD3Colors.Primary);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+  ABmp.Fill(ColorToBGRA(MD3Colors.Surface));
+  { Background image }
+  if Assigned(FBackgroundImage.Graphic) and (not FBackgroundImage.Graphic.Empty) then
+  begin
+    ABmp.Canvas.StretchDraw(Rect(0, 0, Width, Height), FBackgroundImage.Graphic);
   end;
 
-  { text labels — second pass on Canvas after bmp.Draw }
+  { bottom line }
+  ABmp.DrawLineAntialias(0, Height - 1, Width, Height - 1,
+    ColorToBGRA(MD3Colors.SurfaceContainerHighest), 1);
+
+  for i := 0 to FTabs.Count - 1 do
+  begin
+    tab := FTabs[i];
+    xPos := GetTabLeft(i);
+    if FTabAlignment = taLeading then
+      tw := MeasureTabWidth(i)
+    else
+      tw := GetTabWidth;
+
+    if i = FTabIndex then
+    begin
+      { indicator }
+      ABmp.FillRect(xPos + tw div 4, Height - indH, xPos + tw - tw div 4, Height,
+        ColorToBGRA(MD3Colors.Primary), dmDrawWithTransparency);
+    end;
+
+    { icon }
+    if tab.FIconMode <> imClear then
+    begin
+      if i = FTabIndex then
+        textColor := MD3Colors.Primary
+      else
+        textColor := MD3Colors.OnSurfaceVariant;
+      iconBmp := FRGetCachedIcon(tab.FIconMode, FRColorToSVGHex(textColor), 2.0, icoSz, icoSz);
+      ABmp.PutImage(xPos + (tw - icoSz) div 2, Height * 8 div 48, iconBmp, dmDrawWithTransparency);
+    end;
+  end;
+
+  { text labels — second pass on Canvas after bitmap done }
   for i := 0 to FTabs.Count - 1 do
   begin
     tab := FTabs[i];
@@ -293,17 +285,17 @@ begin
     aRect := Rect(xPos + 4, textY, xPos + tw - 4, Height - 4);
 
     { Clipping: truncar texto com ellipsis se não couber }
-    Canvas.Font.Size := Height * 10 div 48;
-    if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
+    ABmp.FontHeight := Abs((Height * 10 div 48) * 96 div 72);
+    if ABmp.FontHeight < 7 then ABmp.FontHeight := 7;
     clipText := tab.FCaption;
-    if Canvas.TextWidth(clipText) > (aRect.Right - aRect.Left) then
+    if ABmp.TextSize(clipText).cx > (aRect.Right - aRect.Left) then
     begin
-      while (Length(clipText) > 1) and (Canvas.TextWidth(clipText + '...') > (aRect.Right - aRect.Left)) do
+      while (Length(clipText) > 1) and (ABmp.TextSize(clipText + '...').cx > (aRect.Right - aRect.Left)) do
         Delete(clipText, Length(clipText), 1);
       clipText := clipText + '...';
     end;
 
-    MD3DrawText(Canvas, clipText, aRect, textColor, taCenter, True);
+    MD3DrawTextBGRA(ABmp, clipText, aRect, textColor, taCenter, True);
   end;
 end;
 

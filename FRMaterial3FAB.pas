@@ -33,7 +33,7 @@ type
     function GetIconSize: Integer;
     function GetRadius: Integer;
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure DoOnResize; override;
     class function GetControlClassDefaultSize: TSize; override;
   public
@@ -56,7 +56,7 @@ type
     procedure SetIconMode(AValue: TFRIconMode);
     procedure SetShowIcon(AValue: Boolean);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure DoOnResize; override;
     class function GetControlClassDefaultSize: TSize; override;
   public
@@ -113,7 +113,7 @@ type
     procedure SetExpanded(AValue: Boolean);
     procedure SetItems(AValue: TFRMaterialFABMenuItems);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure Click; override;
     class function GetControlClassDefaultSize: TSize; override;
   public
@@ -204,39 +204,31 @@ begin
   Result := GetFABDimension * 28 div 100;
 end;
 
-procedure TFRMaterialFAB.Paint;
+function TFRMaterialFAB.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp, iconBmp: TBGRABitmap;
+  iconBmp: TBGRABitmap;
   r, icoSz: Integer;
   bgColor, icoColor: TColor;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    r := GetRadius;
-    bgColor := MD3Colors.PrimaryContainer;
-    icoColor := MD3Colors.OnPrimaryContainer;
+  Result := True;
+  r := GetRadius;
+  bgColor := MD3Colors.PrimaryContainer;
+  icoColor := MD3Colors.OnPrimaryContainer;
 
-    { Shadow }
-    MD3DrawShadow(bmp, 0, 0, Width - 1, Height - 1, r, elLevel2);
+  { Shadow }
+  MD3DrawShadow(ABmp, 0, 0, Width - 1, Height - 1, r, elLevel2);
 
-    { Background }
-    MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, r, bgColor);
+  { Background }
+  MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, r, bgColor);
 
-    { State layer }
-    if Enabled then
-      MD3StateLayer(bmp, 0, 0, Width - 1, Height - 1, r, icoColor, InteractionState);
-
-    PaintRipple(bmp, icoColor);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
-  end;
+  { State layer }
+  if Enabled then
+    MD3StateLayer(ABmp, 0, 0, Width - 1, Height - 1, r, icoColor, InteractionState);
 
   { Icon }
   icoSz := GetIconSize;
   iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(icoColor), 2.5, icoSz, icoSz);
-  iconBmp.Draw(Canvas, (Width - icoSz) div 2, (Height - icoSz) div 2, False);
+  ABmp.PutImage((Width - icoSz) div 2, (Height - icoSz) div 2, iconBmp, dmDrawWithTransparency);
 end;
 
 procedure TFRMaterialFAB.DoOnResize;
@@ -289,42 +281,33 @@ begin
     Height := 56 + MD3DensityDelta(Density);
 end;
 
-procedure TFRMaterialExtendedFAB.Paint;
+function TFRMaterialExtendedFAB.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp, iconBmp: TBGRABitmap;
+  iconBmp: TBGRABitmap;
   r, icoSz, textX, totalW, tw: Integer;
   bgColor, contentColor: TColor;
   aRect: TRect;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    r := Height * 16 div 56;
-    if r < 8 then r := 8;
-    bgColor := MD3Colors.PrimaryContainer;
-    contentColor := MD3Colors.OnPrimaryContainer;
+  Result := True;
+  r := Height * 16 div 56;
+  if r < 8 then r := 8;
+  bgColor := MD3Colors.PrimaryContainer;
+  contentColor := MD3Colors.OnPrimaryContainer;
 
-    { Shadow }
-    MD3DrawShadow(bmp, 0, 0, Width - 1, Height - 1, r, elLevel2);
+  { Shadow }
+  MD3DrawShadow(ABmp, 0, 0, Width - 1, Height - 1, r, elLevel2);
 
-    { Background }
-    MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, r, bgColor);
+  { Background }
+  MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, r, bgColor);
 
-    { State layer }
-    if Enabled then
-      MD3StateLayer(bmp, 0, 0, Width - 1, Height - 1, r, contentColor, InteractionState);
-
-    PaintRipple(bmp, contentColor);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
-  end;
+  { State layer }
+  if Enabled then
+    MD3StateLayer(ABmp, 0, 0, Width - 1, Height - 1, r, contentColor, InteractionState);
 
   { Icon + Text layout }
-  Canvas.Font := Self.Font;
-  Canvas.Font.Size := Height * 10 div 56;
-  if Canvas.Font.Size < 8 then Canvas.Font.Size := 8;
-  tw := Canvas.TextWidth(Caption);
+  ABmp.FontHeight := Abs((Height * 10 div 56) * 96 div 72);
+  if ABmp.FontHeight < 8 then ABmp.FontHeight := 8;
+  tw := ABmp.TextSize(Caption).cx;
   icoSz := Height * 24 div 56;
   if icoSz < 16 then icoSz := 16;
 
@@ -334,15 +317,15 @@ begin
     textX := (Width - totalW) div 2;
 
     iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(contentColor), 2.5, icoSz, icoSz);
-    iconBmp.Draw(Canvas, textX, (Height - icoSz) div 2, False);
+    ABmp.PutImage(textX, (Height - icoSz) div 2, iconBmp, dmDrawWithTransparency);
 
     aRect := Rect(textX + icoSz + 12, 0, Width, Height);
-    MD3DrawText(Canvas, Caption, aRect, contentColor, taLeftJustify, True);
+    MD3DrawTextBGRA(ABmp, Caption, aRect, contentColor, taLeftJustify, True);
   end
   else
   begin
     aRect := Rect(0, 0, Width, Height);
-    MD3DrawText(Canvas, Caption, aRect, contentColor, taCenter, True);
+    MD3DrawTextBGRA(ABmp, Caption, aRect, contentColor, taCenter, True);
   end;
 end;
 
@@ -429,53 +412,43 @@ begin
   inherited;
 end;
 
-procedure TFRMaterialFABMenu.Paint;
+function TFRMaterialFABMenu.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp, iconBmp: TBGRABitmap;
+  iconBmp: TBGRABitmap;
   r, i, yOff, icoSz: Integer;
   bgColor, contentColor, itemBg, itemContent: TColor;
   fabY: Integer;
   aRect: TRect;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    r := 16;
-    bgColor := MD3Colors.PrimaryContainer;
-    contentColor := MD3Colors.OnPrimaryContainer;
-    itemBg := MD3Colors.SurfaceContainerHigh;
-    itemContent := MD3Colors.OnSurface;
-    icoSz := 24;
+  Result := True;
+  r := 16;
+  bgColor := MD3Colors.PrimaryContainer;
+  contentColor := MD3Colors.OnPrimaryContainer;
+  itemBg := MD3Colors.SurfaceContainerHigh;
+  itemContent := MD3Colors.OnSurface;
+  icoSz := 24;
 
-    { Draw expanded items above main FAB }
-    if FExpanded then
+  { Draw expanded items above main FAB }
+  if FExpanded then
+  begin
+    for i := 0 to FItems.Count - 1 do
     begin
-      for i := 0 to FItems.Count - 1 do
-      begin
-        yOff := i * 52;
-        MD3FillRoundRect(bmp, 4, yOff + 2, 52, yOff + 46, 12, itemBg);
-      end;
+      yOff := i * 52;
+      MD3FillRoundRect(ABmp, 4, yOff + 2, 52, yOff + 46, 12, itemBg);
     end;
-
-    { Main FAB at bottom }
-    fabY := Height - 56;
-    MD3DrawShadow(bmp, 0, fabY, 55, fabY + 55, r, elLevel2);
-    MD3FillRoundRect(bmp, 0, fabY, 55, fabY + 55, r, bgColor);
-
-    if Enabled then
-      MD3StateLayer(bmp, 0, fabY, 55, fabY + 55, r, contentColor, InteractionState);
-
-    PaintRipple(bmp, contentColor);
-
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
   end;
 
-  { Main FAB icon }
+  { Main FAB at bottom }
   fabY := Height - 56;
+  MD3DrawShadow(ABmp, 0, fabY, 55, fabY + 55, r, elLevel2);
+  MD3FillRoundRect(ABmp, 0, fabY, 55, fabY + 55, r, bgColor);
+
+  if Enabled then
+    MD3StateLayer(ABmp, 0, fabY, 55, fabY + 55, r, contentColor, InteractionState);
+
+  { Main FAB icon }
   iconBmp := FRGetCachedIcon(FIconMode, FRColorToSVGHex(contentColor), 2.5, icoSz, icoSz);
-  iconBmp.Draw(Canvas, (56 - icoSz) div 2, fabY + (56 - icoSz) div 2, False);
+  ABmp.PutImage((56 - icoSz) div 2, fabY + (56 - icoSz) div 2, iconBmp, dmDrawWithTransparency);
 
   { Item icons and labels }
   if FExpanded then
@@ -484,11 +457,11 @@ begin
     begin
       yOff := i * 52;
       iconBmp := FRGetCachedIcon(FItems[i].IconMode, FRColorToSVGHex(itemContent), 2.0, icoSz, icoSz);
-      iconBmp.Draw(Canvas, (56 - icoSz) div 2, yOff + (48 - icoSz) div 2, False);
+      ABmp.PutImage((56 - icoSz) div 2, yOff + (48 - icoSz) div 2, iconBmp, dmDrawWithTransparency);
       if FItems[i].Caption <> '' then
       begin
         aRect := Rect(60, yOff, Width, yOff + 48);
-        MD3DrawText(Canvas, FItems[i].Caption, aRect, itemContent, taLeftJustify, True);
+        MD3DrawTextBGRA(ABmp, FItems[i].Caption, aRect, itemContent, taLeftJustify, True);
       end;
     end;
   end;

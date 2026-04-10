@@ -27,7 +27,7 @@ type
     FOnChange: TNotifyEvent;
     procedure SetChecked(AValue: Boolean);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure Click; override;
     class function GetControlClassDefaultSize: TSize; override;
   public
@@ -62,6 +62,7 @@ type
     function GetChecked: Boolean;
     procedure SetChecked(AValue: Boolean);
   protected
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure Paint; override;
     procedure Click; override;
     procedure Resize; override;
@@ -101,6 +102,7 @@ type
     procedure SetChecked(AValue: Boolean);
     procedure UncheckSiblings;
   protected
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure Paint; override;
     procedure Click; override;
     procedure Resize; override;
@@ -165,6 +167,7 @@ procedure TFRMaterialSwitch.SetChecked(AValue: Boolean);
 begin
   if FChecked = AValue then Exit;
   FChecked := AValue;
+  InvalidatePaintCache;
   Invalidate;
   if Assigned(FOnChange) then FOnChange(Self);
 end;
@@ -175,85 +178,78 @@ begin
   inherited;
 end;
 
-procedure TFRMaterialSwitch.Paint;
+function TFRMaterialSwitch.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   trackColor, handleColor, stateColor: TColor;
   trackR, handleX, handleSize: Integer;
   op: Byte;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    trackR := Height div 2;
+  Result := True;
+  trackR := Height div 2;
 
-    if FChecked then
-    begin
-      trackColor := MD3Colors.Primary;
-      handleColor := MD3Colors.OnPrimary;
-      stateColor := MD3Colors.OnPrimary;
-      handleSize := 24;
-      handleX := Width - handleSize div 2 - 4;
-    end
-    else
-    begin
-      trackColor := MD3Colors.SurfaceContainerHighest;
-      handleColor := MD3Colors.Outline;
-      stateColor := MD3Colors.OnSurface;
-      handleSize := 16;
-      handleX := handleSize div 2 + 4;
-    end;
-
-    if not Enabled then
-    begin
-      trackColor := MD3Colors.SurfaceContainerHighest;
-      handleColor := MD3Colors.OnSurface;
-    end;
-
-    { Track }
-    MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, trackR, trackColor,
-      IfThen(Enabled, 255, 30));
-
-    { Track border when unchecked }
-    if not FChecked then
-      MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, trackR,
-        MD3Colors.Outline, 2.0, IfThen(Enabled, 255, 30));
-
-    { State layer on handle — only for hover/press, not focus }
-    if Enabled then
-    begin
-      op := MD3StateOpacity(InteractionState);
-      if (op > 0) and (InteractionState in [isHovered, isPressed]) then
-      begin
-        { Clamp center so the 40px circle stays within component bounds }
-        bmp.FillEllipseAntialias(
-          EnsureRange(handleX, 20, Width - 20),
-          Height / 2.0, 20, 20,
-          ColorToBGRA(ColorToRGB(stateColor), op));
-      end;
-    end;
-
-    { Handle }
-    bmp.FillEllipseAntialias(handleX, Height / 2.0,
-      handleSize / 2.0, handleSize / 2.0,
-      ColorToBGRA(ColorToRGB(handleColor), IfThen(Enabled, 255, 97)));
-
-    { Check icon inside handle when checked }
-    if FChecked and (handleSize >= 24) then
-    begin
-      bmp.DrawLineAntialias(handleX - 4, Height / 2.0,
-        handleX - 1, Height / 2.0 + 3,
-        ColorToBGRA(ColorToRGB(trackColor)), 2.0);
-      bmp.DrawLineAntialias(handleX - 1, Height / 2.0 + 3,
-        handleX + 5, Height / 2.0 - 3,
-        ColorToBGRA(ColorToRGB(trackColor)), 2.0);
-    end;
-
-    PaintRipple(bmp, trackColor);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+  if FChecked then
+  begin
+    trackColor := MD3Colors.Primary;
+    handleColor := MD3Colors.OnPrimary;
+    stateColor := MD3Colors.OnPrimary;
+    handleSize := 24;
+    handleX := Width - handleSize div 2 - 4;
+  end
+  else
+  begin
+    trackColor := MD3Colors.SurfaceContainerHighest;
+    handleColor := MD3Colors.Outline;
+    stateColor := MD3Colors.OnSurface;
+    handleSize := 16;
+    handleX := handleSize div 2 + 4;
   end;
+
+  if not Enabled then
+  begin
+    trackColor := MD3Colors.SurfaceContainerHighest;
+    handleColor := MD3Colors.OnSurface;
+  end;
+
+  { Track }
+  MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, trackR, trackColor,
+    IfThen(Enabled, 255, 30));
+
+  { Track border when unchecked }
+  if not FChecked then
+    MD3RoundRect(ABmp, 0.5, 0.5, Width - 1.5, Height - 1.5, trackR,
+      MD3Colors.Outline, 2.0, IfThen(Enabled, 255, 30));
+
+  { State layer on handle — only for hover/press, not focus }
+  if Enabled then
+  begin
+    op := MD3StateOpacity(InteractionState);
+    if (op > 0) and (InteractionState in [isHovered, isPressed]) then
+    begin
+      { Clamp center so the 40px circle stays within component bounds }
+      ABmp.FillEllipseAntialias(
+        EnsureRange(handleX, 20, Width - 20),
+        Height / 2.0, 20, 20,
+        ColorToBGRA(ColorToRGB(stateColor), op));
+    end;
+  end;
+
+  { Handle }
+  ABmp.FillEllipseAntialias(handleX, Height / 2.0,
+    handleSize / 2.0, handleSize / 2.0,
+    ColorToBGRA(ColorToRGB(handleColor), IfThen(Enabled, 255, 97)));
+
+  { Check icon inside handle when checked }
+  if FChecked and (handleSize >= 24) then
+  begin
+    ABmp.DrawLineAntialias(handleX - 4, Height / 2.0,
+      handleX - 1, Height / 2.0 + 3,
+      ColorToBGRA(ColorToRGB(trackColor)), 2.0);
+    ABmp.DrawLineAntialias(handleX - 1, Height / 2.0 + 3,
+      handleX + 5, Height / 2.0 - 3,
+      ColorToBGRA(ColorToRGB(trackColor)), 2.0);
+  end;
+
+  PaintRipple(ABmp, trackColor);
 end;
 
 { ── TFRMaterialCheckBox ── }
@@ -291,6 +287,7 @@ procedure TFRMaterialCheckBox.SetState(AValue: TCheckBoxState);
 begin
   if FState = AValue then Exit;
   FState := AValue;
+  InvalidatePaintCache;
   Invalidate;
   if Assigned(FOnChange) then FOnChange(Self);
 end;
@@ -323,79 +320,82 @@ begin
   Font.Size := EnsureRange(Height * 10 div 24, 8, 14);
 end;
 
-procedure TFRMaterialCheckBox.Paint;
+function TFRMaterialCheckBox.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   boxSize, boxX, boxY: Integer;
   boxColor, checkColor, borderColor: TColor;
-  aRect: TRect;
   op: Byte;
 begin
+  Result := True;
   { Box proporcional à altura — referência: 18px para Height 24 }
   boxSize := EnsureRange(Height * 18 div 24, 12, 22);
   boxX := 2;
   boxY := (Height - boxSize) div 2;
 
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    case FState of
-      cbUnchecked:
-      begin
-        borderColor := MD3Colors.OnSurfaceVariant;
-        MD3RoundRect(bmp, boxX + 0.5, boxY + 0.5,
-          boxX + boxSize - 0.5, boxY + boxSize - 0.5, 2, borderColor, 2.0);
-      end;
-      cbChecked:
-      begin
-        boxColor := MD3Colors.Primary;
-        checkColor := MD3Colors.OnPrimary;
-        MD3FillRoundRect(bmp, boxX, boxY, boxX + boxSize, boxY + boxSize, 2, boxColor);
-        { Check mark }
-        bmp.DrawLineAntialias(boxX + 4, boxY + boxSize / 2.0,
-          boxX + 7, boxY + boxSize - 5,
-          ColorToBGRA(ColorToRGB(checkColor)), 2.0);
-        bmp.DrawLineAntialias(boxX + 7, boxY + boxSize - 5,
-          boxX + boxSize - 4, boxY + 5,
-          ColorToBGRA(ColorToRGB(checkColor)), 2.0);
-      end;
-      cbGrayed:
-      begin
-        boxColor := MD3Colors.Primary;
-        checkColor := MD3Colors.OnPrimary;
-        MD3FillRoundRect(bmp, boxX, boxY, boxX + boxSize, boxY + boxSize, 2, boxColor);
-        { Dash }
-        bmp.DrawLineAntialias(boxX + 4, boxY + boxSize / 2.0,
-          boxX + boxSize - 4, boxY + boxSize / 2.0,
-          ColorToBGRA(ColorToRGB(checkColor)), 2.0);
-      end;
-    end;
-
-    { State layer — circular per MD3 spec.
-      Content color depends on state: Primary when checked, OnSurface otherwise. }
-    if Enabled then
+  case FState of
+    cbUnchecked:
     begin
-      op := MD3StateOpacity(InteractionState);
-      if op > 0 then
-      begin
-        if FState = cbChecked then
-          bmp.FillEllipseAntialias(boxX + boxSize / 2.0, boxY + boxSize / 2.0,
-            17, 17, ColorToBGRA(ColorToRGB(MD3Colors.Primary), op))
-        else
-          bmp.FillEllipseAntialias(boxX + boxSize / 2.0, boxY + boxSize / 2.0,
-            17, 17, ColorToBGRA(ColorToRGB(MD3Colors.OnSurface), op));
-      end;
+      borderColor := MD3Colors.OnSurfaceVariant;
+      MD3RoundRect(ABmp, boxX + 0.5, boxY + 0.5,
+        boxX + boxSize - 0.5, boxY + boxSize - 0.5, 2, borderColor, 2.0);
     end;
-
-    PaintRipple(bmp, MD3Colors.Primary);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+    cbChecked:
+    begin
+      boxColor := MD3Colors.Primary;
+      checkColor := MD3Colors.OnPrimary;
+      MD3FillRoundRect(ABmp, boxX, boxY, boxX + boxSize, boxY + boxSize, 2, boxColor);
+      { Check mark }
+      ABmp.DrawLineAntialias(boxX + 4, boxY + boxSize / 2.0,
+        boxX + 7, boxY + boxSize - 5,
+        ColorToBGRA(ColorToRGB(checkColor)), 2.0);
+      ABmp.DrawLineAntialias(boxX + 7, boxY + boxSize - 5,
+        boxX + boxSize - 4, boxY + 5,
+        ColorToBGRA(ColorToRGB(checkColor)), 2.0);
+    end;
+    cbGrayed:
+    begin
+      boxColor := MD3Colors.Primary;
+      checkColor := MD3Colors.OnPrimary;
+      MD3FillRoundRect(ABmp, boxX, boxY, boxX + boxSize, boxY + boxSize, 2, boxColor);
+      { Dash }
+      ABmp.DrawLineAntialias(boxX + 4, boxY + boxSize / 2.0,
+        boxX + boxSize - 4, boxY + boxSize / 2.0,
+        ColorToBGRA(ColorToRGB(checkColor)), 2.0);
+    end;
   end;
 
-  { Caption text }
+  { State layer — circular per MD3 spec.
+    Content color depends on state: Primary when checked, OnSurface otherwise. }
+  if Enabled then
+  begin
+    op := MD3StateOpacity(InteractionState);
+    if op > 0 then
+    begin
+      if FState = cbChecked then
+        ABmp.FillEllipseAntialias(boxX + boxSize / 2.0, boxY + boxSize / 2.0,
+          17, 17, ColorToBGRA(ColorToRGB(MD3Colors.Primary), op))
+      else
+        ABmp.FillEllipseAntialias(boxX + boxSize / 2.0, boxY + boxSize / 2.0,
+          17, 17, ColorToBGRA(ColorToRGB(MD3Colors.OnSurface), op));
+    end;
+  end;
+
+  PaintRipple(ABmp, MD3Colors.Primary);
+end;
+
+procedure TFRMaterialCheckBox.Paint;
+var
+  aRect: TRect;
+  boxSize, boxX: Integer;
+begin
+  { Call inherited Paint which handles PaintCached }
+  inherited Paint;
+
+  { Caption text — drawn on Canvas after bitmap }
   if Caption <> '' then
   begin
+    boxSize := EnsureRange(Height * 18 div 24, 12, 22);
+    boxX := 2;
     aRect := Rect(boxX + boxSize + 12, 0, Width, Height);
     Canvas.Font := Self.Font;
     MD3DrawText(Canvas, Caption, aRect, MD3Colors.OnSurface, taLeftJustify, True);
@@ -426,6 +426,7 @@ begin
   FChecked := AValue;
   if FChecked then
     UncheckSiblings;
+  InvalidatePaintCache;
   Invalidate;
   if Assigned(FOnChange) then FOnChange(Self);
 end;
@@ -463,13 +464,12 @@ begin
   Font.Size := EnsureRange(Height * 10 div 24, 8, 14);
 end;
 
-procedure TFRMaterialRadioButton.Paint;
+function TFRMaterialRadioButton.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   circSize, circX, circY, circR, dotR: Integer;
   ringColor: TColor;
-  aRect: TRect;
 begin
+  Result := True;
   { Proporcional à altura — referência: 20px para Height 24 }
   circSize := EnsureRange(Height * 20 div 24, 14, 24);
   circX := 2 + circSize div 2;
@@ -477,40 +477,43 @@ begin
   circR := circSize div 2;
   dotR  := EnsureRange(circSize * 5 div 20, 3, 7);
 
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    if FChecked then
-    begin
-      ringColor := MD3Colors.Primary;
-      { Outer ring }
-      bmp.EllipseAntialias(circX, circY, circR, circR,
-        ColorToBGRA(ColorToRGB(ringColor)), 2.0);
-      { Inner dot }
-      bmp.FillEllipseAntialias(circX, circY, dotR, dotR,
-        ColorToBGRA(ColorToRGB(ringColor)));
-    end
-    else
-    begin
-      ringColor := MD3Colors.OnSurfaceVariant;
-      bmp.EllipseAntialias(circX, circY, circR, circR,
-        ColorToBGRA(ColorToRGB(ringColor)), 2.0);
-    end;
-
-    { State layer }
-    if Enabled then
-      MD3StateLayer(bmp, circX - 18, circY - 18, circX + 18, circY + 18,
-        18, MD3Colors.OnSurface, InteractionState);
-
-    PaintRipple(bmp, MD3Colors.Primary);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+  if FChecked then
+  begin
+    ringColor := MD3Colors.Primary;
+    { Outer ring }
+    ABmp.EllipseAntialias(circX, circY, circR, circR,
+      ColorToBGRA(ColorToRGB(ringColor)), 2.0);
+    { Inner dot }
+    ABmp.FillEllipseAntialias(circX, circY, dotR, dotR,
+      ColorToBGRA(ColorToRGB(ringColor)));
+  end
+  else
+  begin
+    ringColor := MD3Colors.OnSurfaceVariant;
+    ABmp.EllipseAntialias(circX, circY, circR, circR,
+      ColorToBGRA(ColorToRGB(ringColor)), 2.0);
   end;
 
-  { Caption text }
+  { State layer }
+  if Enabled then
+    MD3StateLayer(ABmp, circX - 18, circY - 18, circX + 18, circY + 18,
+      18, MD3Colors.OnSurface, InteractionState);
+
+  PaintRipple(ABmp, MD3Colors.Primary);
+end;
+
+procedure TFRMaterialRadioButton.Paint;
+var
+  circSize: Integer;
+  aRect: TRect;
+begin
+  { Call inherited Paint which handles PaintCached }
+  inherited Paint;
+
+  { Caption text — drawn on Canvas after bitmap }
   if Caption <> '' then
   begin
+    circSize := EnsureRange(Height * 20 div 24, 14, 24);
     aRect := Rect(circSize + 16, 0, Width, Height);
     Canvas.Font := Self.Font;
     MD3DrawText(Canvas, Caption, aRect, MD3Colors.OnSurface, taLeftJustify, True);

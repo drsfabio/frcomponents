@@ -967,14 +967,21 @@ begin
 end;
 
 function TFRMaterialEditBase.GetBottomMargin: Integer;
+var
+  SaveSize: Integer;
 begin
   Result := 0;
   if (FHelperText <> '') or (FErrorText <> '') or FShowCharCounter then
   begin
     if HandleAllocated then
-      Result := Canvas.TextHeight('Hg') + 4
+    begin
+      SaveSize := Canvas.Font.Size;
+      Canvas.Font.Size := 7;
+      Result := Canvas.TextHeight('Hg') + 4;
+      Canvas.Font.Size := SaveSize;
+    end
     else
-      Result := 18; { fallback seguro antes do handle ser criado }
+      Result := 16;
   end;
 end;
 
@@ -1504,9 +1511,8 @@ begin
       FLabel.BorderSpacing.Top +
       FEdit.Constraints.MinHeight +
       FEdit.BorderSpacing.Around +
-      FEdit.BorderSpacing.Bottom +
-      FEdit.BorderSpacing.Top +
-      BottomExtra;
+      FEdit.BorderSpacing.Bottom +  { ja inclui BottomExtra + 4 }
+      FEdit.BorderSpacing.Top;
 
     if Self.Height <> AutoSizedHeight then
       Self.Height := AutoSizedHeight;

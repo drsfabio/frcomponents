@@ -37,6 +37,7 @@ type
     function XToValue(AX: Integer): Double;
     procedure ClampValue;
   protected
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
@@ -110,6 +111,7 @@ begin
   end;
   if FValue = AValue then Exit;
   FValue := AValue;
+  InvalidatePaintCache;
   Invalidate;
   if Assigned(FOnChange) then FOnChange(Self);
 end;
@@ -119,6 +121,7 @@ begin
   if FMin = AValue then Exit;
   FMin := AValue;
   ClampValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -127,6 +130,7 @@ begin
   if FMax = AValue then Exit;
   FMax := AValue;
   ClampValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -134,6 +138,7 @@ procedure TFRMaterialSlider.SetDiscrete(AValue: Boolean);
 begin
   if FDiscrete = AValue then Exit;
   FDiscrete := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -142,6 +147,7 @@ begin
   if AValue < 1 then AValue := 1;
   if FSteps = AValue then Exit;
   FSteps := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -149,6 +155,7 @@ procedure TFRMaterialSlider.SetShowValueLabel(AValue: Boolean);
 begin
   if FShowValueLabel = AValue then Exit;
   FShowValueLabel := AValue;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -204,76 +211,80 @@ begin
   inherited;
 end;
 
-procedure TFRMaterialSlider.Paint;
+function TFRMaterialSlider.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   trackY, thumbX, pad, i, stepX: Integer;
   activeColor, inactiveColor, thumbColor: TColor;
-  labelRect: TRect;
-  labelText: string;
   thumbR, trackH, stateR, dotR: Integer;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    { Proportional metrics based on Height (reference = 40) }
-    pad := Height div 2;
-    thumbR := Height * 10 div 40;
-    if thumbR < 6 then thumbR := 6;
-    trackH := Height * 2 div 40;
-    if trackH < 1 then trackH := 1;
-    stateR := Height div 2;
-    dotR := Height * 2 div 40;
-    if dotR < 1 then dotR := 1;
+  Result := True;
+  { Proportional metrics based on Height (reference = 40) }
+  pad := Height div 2;
+  thumbR := Height * 10 div 40;
+  if thumbR < 6 then thumbR := 6;
+  trackH := Height * 2 div 40;
+  if trackH < 1 then trackH := 1;
+  stateR := Height div 2;
+  dotR := Height * 2 div 40;
+  if dotR < 1 then dotR := 1;
 
-    trackY := Height div 2;
-    thumbX := ValueToX(FValue);
-    activeColor := MD3Colors.Primary;
-    inactiveColor := MD3Colors.SurfaceContainerHighest;
-    thumbColor := MD3Colors.Primary;
+  trackY := Height div 2;
+  thumbX := ValueToX(FValue);
+  activeColor := MD3Colors.Primary;
+  inactiveColor := MD3Colors.SurfaceContainerHighest;
+  thumbColor := MD3Colors.Primary;
 
-    { Inactive track }
-    bmp.FillRoundRectAntialias(pad, trackY - trackH, Width - pad, trackY + trackH,
-      trackH, trackH, ColorToBGRA(ColorToRGB(inactiveColor)));
+  { Inactive track }
+  ABmp.FillRoundRectAntialias(pad, trackY - trackH, Width - pad, trackY + trackH,
+    trackH, trackH, ColorToBGRA(ColorToRGB(inactiveColor)));
 
-    { Active track }
-    if thumbX > pad then
-      bmp.FillRoundRectAntialias(pad, trackY - trackH, thumbX, trackY + trackH,
-        trackH, trackH, ColorToBGRA(ColorToRGB(activeColor)));
+  { Active track }
+  if thumbX > pad then
+    ABmp.FillRoundRectAntialias(pad, trackY - trackH, thumbX, trackY + trackH,
+      trackH, trackH, ColorToBGRA(ColorToRGB(activeColor)));
 
-    { Discrete step dots }
-    if FDiscrete and (FSteps > 0) then
+  { Discrete step dots }
+  if FDiscrete and (FSteps > 0) then
+  begin
+    for i := 0 to FSteps do
     begin
-      for i := 0 to FSteps do
-      begin
-        stepX := pad + Round(i / FSteps * (Width - 2 * pad));
-        if stepX <= thumbX then
-          bmp.FillEllipseAntialias(stepX, trackY, dotR, dotR,
-            ColorToBGRA(ColorToRGB(MD3Colors.OnPrimary)))
-        else
-          bmp.FillEllipseAntialias(stepX, trackY, dotR, dotR,
-            ColorToBGRA(ColorToRGB(activeColor)));
-      end;
+      stepX := pad + Round(i / FSteps * (Width - 2 * pad));
+      if stepX <= thumbX then
+        ABmp.FillEllipseAntialias(stepX, trackY, dotR, dotR,
+          ColorToBGRA(ColorToRGB(MD3Colors.OnPrimary)))
+      else
+        ABmp.FillEllipseAntialias(stepX, trackY, dotR, dotR,
+          ColorToBGRA(ColorToRGB(activeColor)));
     end;
-
-    { State layer on thumb }
-    if Enabled then
-      MD3StateLayer(bmp, thumbX - stateR, trackY - stateR, thumbX + stateR, trackY + stateR,
-        stateR, activeColor, InteractionState);
-
-    { Thumb }
-    bmp.FillEllipseAntialias(thumbX, trackY, thumbR, thumbR,
-      ColorToBGRA(ColorToRGB(thumbColor)));
-
-    PaintRipple(bmp, thumbColor);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
   end;
 
-  { Value label tooltip }
+  { State layer on thumb }
+  if Enabled then
+    MD3StateLayer(ABmp, thumbX - stateR, trackY - stateR, thumbX + stateR, trackY + stateR,
+      stateR, activeColor, InteractionState);
+
+  { Thumb }
+  ABmp.FillEllipseAntialias(thumbX, trackY, thumbR, thumbR,
+    ColorToBGRA(ColorToRGB(thumbColor)));
+
+  PaintRipple(ABmp, thumbColor);
+end;
+
+procedure TFRMaterialSlider.Paint;
+var
+  thumbX, stateR, pad: Integer;
+  labelRect: TRect;
+  labelText: string;
+begin
+  { Call inherited Paint which handles PaintCached and ripple }
+  inherited Paint;
+
+  { Value label tooltip — drawn on Canvas after bitmap }
   if FShowValueLabel and (FDragging or Hovered) then
   begin
+    pad := Height div 2;
+    stateR := Height div 2;
+    thumbX := ValueToX(FValue);
     labelText := FormatFloat('0.#', FValue);
     Canvas.Font.Size := Height * 8 div 40;
     if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;

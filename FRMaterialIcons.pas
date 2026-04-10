@@ -1567,6 +1567,8 @@ procedure TFRMaterialIconButton.Paint;
 var
   bmp: TBGRABitmap;
 begin
+  if (Width <= 0) or (Height <= 0) or (not Visible) then Exit;
+
   { Não preenche fundo — o parent (TFRMaterialEditBase) já pintou a região }
 
   if (FCacheW <> Width) or (FCacheH <> Height) or (FCacheMode <> FIconMode) then

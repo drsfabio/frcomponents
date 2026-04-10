@@ -27,7 +27,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Graphics, Grids, Types, StdCtrls,
-  {$IFDEF FPC} LResources, LCLType, LMessages, {$ENDIF}
+  {$IFDEF FPC} LResources, LCLType, LCLIntf, LMessages, {$ENDIF}
   BGRABitmap, BGRABitmapTypes,
   FRMaterial3Base, FRMaterialTheme;
 
@@ -249,11 +249,25 @@ begin
   Canvas.Brush.Color := bg;
   Canvas.FillRect(ARect);
 
-  { ── Divider horizontal (apenas entre linhas de dados) ── }
-  if not isHeader then
+  { ── Dividers ── }
+  Canvas.Pen.Color := ColorToRGB(MD3Colors.OutlineVariant);
+  Canvas.Pen.Width := 1;
+
+  if isHeader then
   begin
-    Canvas.Pen.Color := ColorToRGB(MD3Colors.OutlineVariant);
-    Canvas.Pen.Width := 1;
+    { Header: separador vertical entre colunas }
+    if ACol < ColCount - 1 then
+    begin
+      Canvas.MoveTo(ARect.Right - 1, ARect.Top + 8);
+      Canvas.LineTo(ARect.Right - 1, ARect.Bottom - 8);
+    end;
+    { Header: divider inferior }
+    Canvas.MoveTo(ARect.Left,  ARect.Bottom - 1);
+    Canvas.LineTo(ARect.Right, ARect.Bottom - 1);
+  end
+  else
+  begin
+    { Dados: divider horizontal entre linhas }
     Canvas.MoveTo(ARect.Left,  ARect.Bottom - 1);
     Canvas.LineTo(ARect.Right, ARect.Bottom - 1);
   end;
@@ -301,7 +315,16 @@ begin
   ARect.Right  := ARect.Right - 4;
   ARect.Top    := ARect.Top   + 4;
   ARect.Bottom := ARect.Bottom - 4;
-  Canvas.TextRect(ARect, ARect.Left, ARect.Top + (ARect.Height - Canvas.TextHeight('A')) div 2, txt);
+
+  if isHeader then
+  begin
+    { Header: word-wrap + centralizado verticalmente }
+    DrawText(Canvas.Handle, PChar(txt), Length(txt), ARect,
+      DT_LEFT or DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
+  end
+  else
+    Canvas.TextRect(ARect, ARect.Left,
+      ARect.Top + (ARect.Height - Canvas.TextHeight('A')) div 2, txt);
 
   Canvas.Brush.Style := bsSolid;
   Canvas.Font.Style  := [];

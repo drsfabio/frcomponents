@@ -534,7 +534,7 @@ end;
 
 procedure TMenuForm.Paint;
 var
-  bmp: TBGRABitmap;
+  ABmp: TBGRABitmap;
   i, yPos: Integer;
   item: TFRMaterialMenuItem;
   aRect: TRect;
@@ -545,49 +545,45 @@ var
   clr: TColor;
   tx, ty, uw, uy: Integer;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
+  ABmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
   try
-    MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, 4, MD3Colors.SurfaceContainer);
+    MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, 4, MD3Colors.SurfaceContainer);
 
-    yPos := 8;
-    for i := 0 to FItems.Count - 1 do
+  yPos := 8;
+  for i := 0 to FItems.Count - 1 do
+  begin
+    item := FItems[i];
+    if item.FIsSeparator then
     begin
-      item := FItems[i];
-      if item.FIsSeparator then
-      begin
-        bmp.DrawLineAntialias(0, yPos + 4, Width, yPos + 4,
-          ColorToBGRA(MD3Colors.OutlineVariant), 1);
-        Inc(yPos, 9);
-        Continue;
-      end;
-
-      { hover highlight }
-      if (i = FHoverIndex) and item.FEnabled then
-        bmp.FillRect(0, yPos, Width, yPos + 48,
-          ColorToBGRA(MD3Colors.PrimaryContainer), dmDrawWithTransparency);
-
-      { icon }
-      if item.FIconMode <> imClear then
-      begin
-        iconBmp := FRGetCachedIcon(item.FIconMode, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 24, 24);
-        bmp.PutImage(12, yPos + (48 - 24) div 2, iconBmp, dmDrawWithTransparency);
-      end;
-
-      { submenu arrow indicator "›" }
-      if item.HasSubItems then
-      begin
-        iconBmp := FRGetCachedIcon(imArrowForward, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 20, 20);
-        bmp.PutImage(Width - 28, yPos + (48 - 20) div 2, iconBmp, dmDrawWithTransparency);
-      end;
-
-      Inc(yPos, 48);
+      ABmp.DrawLineAntialias(0, yPos + 4, Width, yPos + 4,
+        ColorToBGRA(MD3Colors.OutlineVariant), 1);
+      Inc(yPos, 9);
+      Continue;
     end;
 
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+    { hover highlight }
+    if (i = FHoverIndex) and item.FEnabled then
+      ABmp.FillRect(0, yPos, Width, yPos + 48,
+        ColorToBGRA(MD3Colors.PrimaryContainer), dmDrawWithTransparency);
+
+    { icon }
+    if item.FIconMode <> imClear then
+    begin
+      iconBmp := FRGetCachedIcon(item.FIconMode, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 24, 24);
+      ABmp.PutImage(12, yPos + (48 - 24) div 2, iconBmp, dmDrawWithTransparency);
+    end;
+
+    { submenu arrow indicator "›" }
+    if item.HasSubItems then
+    begin
+      iconBmp := FRGetCachedIcon(imArrowForward, FRColorToSVGHex(MD3Colors.OnSurfaceVariant), 2.0, 20, 20);
+      ABmp.PutImage(Width - 28, yPos + (48 - 20) div 2, iconBmp, dmDrawWithTransparency);
+    end;
+
+    Inc(yPos, 48);
   end;
+
+  ABmp.Draw(Canvas, 0, 0, False);
 
   { draw text on Canvas with accelerator underline }
   Canvas.Font.Size := 10;
@@ -636,6 +632,9 @@ begin
     end;
 
     Inc(yPos, 48);
+  end;
+  finally
+    ABmp.Free;
   end;
 end;
 

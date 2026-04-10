@@ -120,6 +120,11 @@ procedure MD3StateLayer(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
 procedure MD3DrawText(ACanvas: TCanvas; const AText: string; ARect: TRect;
   AColor: TColor; AHAlign: TAlignment = taCenter; AVCenter: Boolean = True);
 
+{ Draws text on a TBGRABitmap with proper antialiasing on transparent backgrounds.
+  Use this instead of MD3DrawText inside PaintCached methods. }
+procedure MD3DrawTextBGRA(ABmp: TBGRABitmap; const AText: string; ARect: TRect;
+  AColor: TColor; AHAlign: TAlignment = taCenter; AVCenter: Boolean = True);
+
 { Desenha sombra MD3 com nível de elevação. }
 procedure MD3DrawShadow(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
   ARadius: Integer; ALevel: TFRMDElevation);
@@ -161,9 +166,14 @@ type
     FRippleFading: Boolean;
     FRippleFadeProgress: Single;
     FRippleTimer: TTimer;
+    { Paint cache — evita recriar TBGRABitmap a cada Paint }
+    FPaintCache: TBGRABitmap;
+    FPaintCacheW: Integer;
+    FPaintCacheH: Integer;
     procedure DoRippleTick(Sender: TObject);
   protected
     procedure EraseBackground({%H-}DC: HDC); override;
+    procedure Paint; override;
     procedure MouseEnter; override;
     procedure MouseLeave; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -172,6 +182,14 @@ type
     function InteractionState: TFRMDInteractionState;
     { Desenha o efeito ripple (círculo expandindo do ponto de clique) }
     procedure PaintRipple(ABmp: TBGRABitmap; ARippleColor: TColor);
+    { Renderiza o conteúdo do componente no bitmap. Override nos descendentes.
+      Retorna True se o bitmap foi pintado; False para pular o cache (ex: componentes
+      com subcontroles que pintam diretamente no Canvas, como Edits). }
+    function PaintCached(ABmp: TBGRABitmap): Boolean; virtual;
+    { Cor usada pelo ripple. Override para customizar (ex: OnPrimary para botões filled). }
+    function RippleColor: TColor; virtual;
+    { Marca o cache de pintura como inválido. Chamar quando propriedades visuais mudam. }
+    procedure InvalidatePaintCache;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -196,9 +214,19 @@ type
   TFRMaterial3Graphic = class(TGraphicControl, IFRMaterialComponent)
   private
     FHovered: Boolean;
+    { Paint cache — evita recriar TBGRABitmap a cada Paint }
+    FPaintCache: TBGRABitmap;
+    FPaintCacheW: Integer;
+    FPaintCacheH: Integer;
   protected
+    procedure Paint; override;
     procedure MouseEnter; override;
     procedure MouseLeave; override;
+    { Renderiza o conteúdo no bitmap. Override nos descendentes.
+      Retorna True se pintou; False para pular o cache. }
+    function PaintCached(ABmp: TBGRABitmap): Boolean; virtual;
+    { Marca o cache de pintura como inválido. }
+    procedure InvalidatePaintCache;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -697,6 +725,27 @@ begin
   ACanvas.TextOut(tx, ty, AText);
 end;
 
+procedure MD3DrawTextBGRA(ABmp: TBGRABitmap; const AText: string; ARect: TRect;
+  AColor: TColor; AHAlign: TAlignment; AVCenter: Boolean);
+var
+  sz: TSize;
+  tx, ty: Integer;
+begin
+  if AText = '' then Exit;
+  ABmp.FontQuality := fqFineAntialiasing;
+  sz := ABmp.TextSize(AText);
+  case AHAlign of
+    taLeftJustify:  tx := ARect.Left;
+    taCenter:       tx := ARect.Left + (ARect.Right - ARect.Left - sz.cx) div 2;
+    taRightJustify: tx := ARect.Right - sz.cx;
+  end;
+  if AVCenter then
+    ty := ARect.Top + (ARect.Bottom - ARect.Top - sz.cy) div 2
+  else
+    ty := ARect.Top;
+  ABmp.TextOut(tx, ty, AText, ColorToBGRA(ColorToRGB(AColor)));
+end;
+
 { ── MD3DrawShadow ── }
 
 procedure MD3DrawShadow(ABmp: TBGRABitmap; X1, Y1, X2, Y2: Single;
@@ -727,6 +776,9 @@ begin
   FRippleFading := False;
   FRippleFadeProgress := 0;
   FRippleTimer := nil;
+  FPaintCache := nil;
+  FPaintCacheW := 0;
+  FPaintCacheH := 0;
   ControlStyle := ControlStyle + [csClickEvents, csCaptureMouse];
   TabStop := True;
 
@@ -735,6 +787,7 @@ end;
 
 destructor TFRMaterial3Control.Destroy;
 begin
+  FreeAndNil(FPaintCache);
   FreeAndNil(FRippleTimer);
   FRMDUnregisterComponent(Self);
   inherited Destroy;
@@ -747,7 +800,80 @@ begin
   if toDensity in FSyncWithTheme then
     SetDensity(FRMDGetThemeDensity(AThemeManager));
 
+  InvalidatePaintCache;
   Invalidate;
+end;
+
+procedure TFRMaterial3Control.InvalidatePaintCache;
+begin
+  FreeAndNil(FPaintCache);
+  FPaintCacheW := 0;
+  FPaintCacheH := 0;
+end;
+
+function TFRMaterial3Control.PaintCached(ABmp: TBGRABitmap): Boolean;
+begin
+  { Retorna False por padrão — descendentes que não usam bitmap
+    (ex: Edits com sub-controles) podem ignorar o cache. }
+  Result := False;
+end;
+
+function TFRMaterial3Control.RippleColor: TColor;
+begin
+  Result := MD3Colors.OnSurface;
+end;
+
+procedure TFRMaterial3Control.Paint;
+var
+  NeedsRebuild: Boolean;
+  bmpRipple: TBGRABitmap;
+begin
+  if (Width <= 0) or (Height <= 0) then Exit;
+
+  NeedsRebuild := (FPaintCache = nil)
+    or (FPaintCacheW <> Width)
+    or (FPaintCacheH <> Height);
+
+  if NeedsRebuild then
+  begin
+    FreeAndNil(FPaintCache);
+    FPaintCache := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
+    { GDI canvas font (for Canvas.TextWidth measurements) }
+    FPaintCache.Canvas.Font := Self.Font;
+    FPaintCache.Canvas.Font.PixelsPerInch := Font.PixelsPerInch;
+    { BGRABitmap native font (for MD3DrawTextBGRA / ABmp.TextOut) }
+    FPaintCache.FontName := Self.Font.Name;
+    FPaintCache.FontStyle := Self.Font.Style;
+    FPaintCache.FontQuality := fqFineAntialiasing;
+    if Self.Font.Size > 0 then
+      FPaintCache.FontHeight := Abs(Self.Font.Height)
+    else
+      FPaintCache.FontFullHeight := 14;
+    if not PaintCached(FPaintCache) then
+    begin
+      FreeAndNil(FPaintCache);
+      FPaintCacheW := 0;
+      FPaintCacheH := 0;
+      Exit;
+    end;
+    FPaintCacheW := Width;
+    FPaintCacheH := Height;
+  end;
+
+  { Ripple ativo: combina cache + ripple em bitmap temporário }
+  if (FRippleProgress > 0) or FRippleFading then
+  begin
+    bmpRipple := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
+    try
+      bmpRipple.PutImage(0, 0, FPaintCache, dmDrawWithTransparency);
+      PaintRipple(bmpRipple, RippleColor);
+      bmpRipple.Draw(Canvas, 0, 0, False);
+    finally
+      bmpRipple.Free;
+    end;
+  end
+  else
+    FPaintCache.Draw(Canvas, 0, 0, False);
 end;
 
 procedure TFRMaterial3Control.EraseBackground(DC: HDC);
@@ -768,6 +894,7 @@ end;
 procedure TFRMaterial3Control.MouseEnter;
 begin
   FHovered := True;
+  InvalidatePaintCache;
   Invalidate;
   inherited;
 end;
@@ -776,6 +903,7 @@ procedure TFRMaterial3Control.MouseLeave;
 begin
   FHovered := False;
   FPressed := False;
+  InvalidatePaintCache;
   if FRippleProgress > 0 then
   begin
     FRippleFading := True;
@@ -790,6 +918,7 @@ begin
   if Button = mbLeft then
   begin
     FPressed := True;
+    InvalidatePaintCache;
     { Start ripple animation }
     if not (csDesigning in ComponentState) then
     begin
@@ -816,6 +945,7 @@ begin
   if Button = mbLeft then
   begin
     FPressed := False;
+    InvalidatePaintCache;
     { Start fade-out }
     if FRippleProgress > 0 then
     begin
@@ -898,12 +1028,16 @@ constructor TFRMaterial3Graphic.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHovered := False;
+  FPaintCache := nil;
+  FPaintCacheW := 0;
+  FPaintCacheH := 0;
 
   FRMDRegisterComponent(Self);
 end;
 
 destructor TFRMaterial3Graphic.Destroy;
 begin
+  FreeAndNil(FPaintCache);
   FRMDUnregisterComponent(Self);
   inherited Destroy;
 end;
@@ -911,12 +1045,63 @@ end;
 procedure TFRMaterial3Graphic.ApplyTheme(const AThemeManager: TObject);
 begin
   if not Assigned(AThemeManager) then Exit;
+  InvalidatePaintCache;
   Invalidate;
+end;
+
+procedure TFRMaterial3Graphic.InvalidatePaintCache;
+begin
+  FreeAndNil(FPaintCache);
+  FPaintCacheW := 0;
+  FPaintCacheH := 0;
+end;
+
+function TFRMaterial3Graphic.PaintCached(ABmp: TBGRABitmap): Boolean;
+begin
+  Result := False;
+end;
+
+procedure TFRMaterial3Graphic.Paint;
+var
+  NeedsRebuild: Boolean;
+begin
+  if (Width <= 0) or (Height <= 0) then Exit;
+
+  NeedsRebuild := (FPaintCache = nil)
+    or (FPaintCacheW <> Width)
+    or (FPaintCacheH <> Height);
+
+  if NeedsRebuild then
+  begin
+    FreeAndNil(FPaintCache);
+    FPaintCache := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
+    FPaintCache.Canvas.Font := Self.Font;
+    FPaintCache.Canvas.Font.PixelsPerInch := Font.PixelsPerInch;
+    FPaintCache.FontName := Self.Font.Name;
+    FPaintCache.FontStyle := Self.Font.Style;
+    FPaintCache.FontQuality := fqFineAntialiasing;
+    if Self.Font.Size > 0 then
+      FPaintCache.FontHeight := Abs(Self.Font.Height)
+    else
+      FPaintCache.FontFullHeight := 14;
+    if not PaintCached(FPaintCache) then
+    begin
+      FreeAndNil(FPaintCache);
+      FPaintCacheW := 0;
+      FPaintCacheH := 0;
+      Exit;
+    end;
+    FPaintCacheW := Width;
+    FPaintCacheH := Height;
+  end;
+
+  FPaintCache.Draw(Canvas, 0, 0, False);
 end;
 
 procedure TFRMaterial3Graphic.MouseEnter;
 begin
   FHovered := True;
+  InvalidatePaintCache;
   Invalidate;
   inherited;
 end;
@@ -924,6 +1109,7 @@ end;
 procedure TFRMaterial3Graphic.MouseLeave;
 begin
   FHovered := False;
+  InvalidatePaintCache;
   Invalidate;
   inherited;
 end;
@@ -944,6 +1130,7 @@ begin
   if FDensity <> AValue then
   begin
     FDensity := AValue;
+    InvalidatePaintCache;
     Invalidate;
     DoOnResize;
   end;

@@ -136,6 +136,9 @@ begin
   FHeaderImage := TPicture.Create;
   FHeaderImage.OnChange := @HeaderImageChanged;
 
+  { BorderWidth offsets ALL child controls (absolute + aligned) }
+  BorderWidth := FContentPadding;
+
   Width := 300;
   Height := 200;
 end;
@@ -187,6 +190,7 @@ begin
   if AValue < 0 then AValue := 0;
   if FContentPadding = AValue then Exit;
   FContentPadding := AValue;
+  BorderWidth := AValue;
   ReAlign;
   Invalidate;
 end;
@@ -246,10 +250,10 @@ end;
 procedure TFRMaterialCard.AdjustClientRect(var ARect: TRect);
 begin
   inherited AdjustClientRect(ARect);
-  ARect.Left := ARect.Left + FContentPadding;
-  ARect.Top := ARect.Top + FContentPadding + FHeaderHeight;
-  ARect.Right := ARect.Right - FContentPadding;
-  ARect.Bottom := ARect.Bottom - FContentPadding;
+  { BorderWidth already offsets all 4 sides by ContentPadding.
+    Only add HeaderHeight to top for the image area. }
+  if FHeaderHeight > 0 then
+    ARect.Top := ARect.Top + FHeaderHeight;
 end;
 
 procedure TFRMaterialCard.MouseEnter;
@@ -329,7 +333,7 @@ end;
 
 procedure TFRMaterialCard.Paint;
 var
-  bmp: TBGRABitmap;
+  ABmp: TBGRABitmap;
   bgColor, borderColor, stateColor: TColor;
   elev: TFRMDElevation;
   r: Integer;
@@ -338,78 +342,77 @@ var
   ripAlpha: Byte;
 begin
   if (Width <= 0) or (Height <= 0) then Exit;
+  ABmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
+  try
 
   GetStyleColors(bgColor, borderColor, elev);
   r := FBorderRadius;
 
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    { Shadow for elevated variant }
-    if elev > elLevel0 then
-      MD3DrawShadow(bmp, 1, 1, Width - 2, Height - 2, r, elev);
+  { Shadow for elevated variant }
+  if elev > elLevel0 then
+    MD3DrawShadow(ABmp, 1, 1, Width - 2, Height - 2, r, elev);
 
-    { Background }
-    MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, r, bgColor);
+  { Background }
+  MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, r, bgColor);
 
-    { Header image }
-    if (FHeaderHeight > 0) and Assigned(FHeaderImage.Graphic) and
-       (not FHeaderImage.Graphic.Empty) then
-    begin
-      { Clip image into top rounded area using a mask approach }
-      bmp.Canvas.ClipRect := Rect(0, 0, Width, FHeaderHeight);
-      bmp.Canvas.StretchDraw(Rect(0, 0, Width, FHeaderHeight), FHeaderImage.Graphic);
-      bmp.Canvas.ClipRect := Rect(0, 0, Width, Height);
-    end;
-
-    { State layer (hover/press) for clickable cards }
-    if FClickable then
-    begin
-      if FPressed then
-        interState := isPressed
-      else if FHovered then
-        interState := isHovered
-      else
-        interState := isNormal;
-
-      stateColor := MD3Colors.OnSurface;
-      MD3StateLayer(bmp, 0, 0, Width - 1, Height - 1, r, stateColor, interState);
-    end;
-
-    { Ripple effect }
-    if FClickable and ((FRippleProgress > 0) or FRippleFading) then
-    begin
-      maxRad := Sqrt(Sqr(Single(Width)) + Sqr(Single(Height)));
-      if FRippleFading then
-        ripAlpha := EnsureRange(Round(20 * (1.0 - FRippleFadeProgress)), 0, 255)
-      else
-        ripAlpha := 20;
-      bmp.FillEllipseAntialias(
-        FRippleX, FRippleY,
-        maxRad * FRippleProgress, maxRad * FRippleProgress,
-        ColorToBGRA(MD3Colors.OnSurface, ripAlpha));
-    end;
-
-    { Border for outlined variant }
-    if borderColor <> clNone then
-      MD3RoundRect(bmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r,
-        borderColor, 1.0);
-
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+  { Header image }
+  if (FHeaderHeight > 0) and Assigned(FHeaderImage.Graphic) and
+     (not FHeaderImage.Graphic.Empty) then
+  begin
+    { Clip image into top rounded area using a mask approach }
+    ABmp.Canvas.ClipRect := Rect(0, 0, Width, FHeaderHeight);
+    ABmp.Canvas.StretchDraw(Rect(0, 0, Width, FHeaderHeight), FHeaderImage.Graphic);
+    ABmp.Canvas.ClipRect := Rect(0, 0, Width, Height);
   end;
 
-  { Caption text — drawn below header if present }
+  { State layer (hover/press) for clickable cards }
+  if FClickable then
+  begin
+    if FPressed then
+      interState := isPressed
+    else if FHovered then
+      interState := isHovered
+    else
+      interState := isNormal;
+
+    stateColor := MD3Colors.OnSurface;
+    MD3StateLayer(ABmp, 0, 0, Width - 1, Height - 1, r, stateColor, interState);
+  end;
+
+  { Ripple effect }
+  if FClickable and ((FRippleProgress > 0) or FRippleFading) then
+  begin
+    maxRad := Sqrt(Sqr(Single(Width)) + Sqr(Single(Height)));
+    if FRippleFading then
+      ripAlpha := EnsureRange(Round(20 * (1.0 - FRippleFadeProgress)), 0, 255)
+    else
+      ripAlpha := 20;
+    ABmp.FillEllipseAntialias(
+      FRippleX, FRippleY,
+      maxRad * FRippleProgress, maxRad * FRippleProgress,
+      ColorToBGRA(MD3Colors.OnSurface, ripAlpha));
+  end;
+
+  { Border for outlined variant }
+  if borderColor <> clNone then
+    MD3RoundRect(ABmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r,
+      borderColor, 1.0);
+
+  { Caption text — drawn on bitmap canvas }
   if Caption <> '' then
   begin
-    Canvas.Font := Self.Font;
-    Canvas.Font.Style := [fsBold];
-    Canvas.Font.Size := 11;
-    MD3DrawText(Canvas,
+    ABmp.FontStyle := [fsBold];
+    ABmp.FontHeight := Abs(11 * 96 div 72);
+    MD3DrawTextBGRA(ABmp,
       Caption,
       Rect(FContentPadding, FHeaderHeight + 12,
-           Width - FContentPadding, FHeaderHeight + 12 + Canvas.TextHeight('Áy')),
+           Width - FContentPadding, FHeaderHeight + 12 + ABmp.TextSize('Áy').cy),
       MD3Colors.OnSurface, taLeftJustify, False);
+  end;
+
+  ABmp.Draw(Canvas, 0, 0, False);
+  finally
+    ABmp.Free;
   end;
 end;
 

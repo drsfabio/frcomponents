@@ -17,7 +17,7 @@ unit FRMaterial3Carousel;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, ExtCtrls,
+  Classes, SysUtils, Controls, Graphics, ExtCtrls, FileUtil,
   {$IFDEF FPC} LResources, {$ENDIF}
   BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialTheme, FRMaterialIcons;
 
@@ -86,19 +86,23 @@ type
     FDragging: Boolean;
     FDragStartX: Integer;
     FDragOffset: Single;
+    FImageDirectory: string;
     procedure SetItems(AValue: TFRMaterialCarouselItems);
     procedure SetActiveIndex(AValue: Integer);
     procedure SetAutoPlay(AValue: Boolean);
     procedure SetAutoPlayInterval(AValue: Integer);
     procedure SetShowIndicators(AValue: Boolean);
     procedure SetBorderRadius(AValue: Integer);
+    procedure SetImageDirectory(const AValue: string);
+    procedure LoadImagesFromDirectory;
     procedure DoAnimTick(Sender: TObject);
     procedure DoAutoTick(Sender: TObject);
     procedure AnimateTo(AIndex: Integer);
     function IndicatorRect: TRect;
     function IndicatorDotRect(AIdx: Integer): TRect;
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
+    procedure Loaded; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -116,6 +120,7 @@ type
     property ShowIndicators: Boolean read FShowIndicators write SetShowIndicators default True;
     property BorderRadius: Integer read FBorderRadius write SetBorderRadius default 16;
     property OnChange: TFRCarouselChangeEvent read FOnChange write FOnChange;
+    property ImageDirectory: string read FImageDirectory write SetImageDirectory;
     property Align;
     property Anchors;
     property BorderSpacing;
@@ -147,7 +152,7 @@ procedure Register;
 
 implementation
 
-uses Math;
+uses Math, Forms, LazFileUtils;
 
 { ── TFRMaterialCarouselItem ── }
 
@@ -247,6 +252,7 @@ begin
   FAutoPlayInterval := 5000;
   FShowIndicators := True;
   FBorderRadius := 16;
+  FImageDirectory := '';
   FAnimOffset := 0;
   FTargetOffset := 0;
   FAnimDirection := 0;
@@ -281,9 +287,70 @@ begin
   Result.cy := 240;
 end;
 
+procedure TFRMaterialCarousel.Loaded;
+begin
+  inherited Loaded;
+  if FImageDirectory <> '' then
+    LoadImagesFromDirectory;
+end;
+
 procedure TFRMaterialCarousel.SetItems(AValue: TFRMaterialCarouselItems);
 begin
   FItems.Assign(AValue);
+end;
+
+procedure TFRMaterialCarousel.SetImageDirectory(const AValue: string);
+begin
+  if FImageDirectory = AValue then Exit;
+  FImageDirectory := AValue;
+  LoadImagesFromDirectory;
+end;
+
+procedure TFRMaterialCarousel.LoadImagesFromDirectory;
+var
+  Files: TStringList;
+  i: Integer;
+  Item: TFRMaterialCarouselItem;
+  FileName, Ext, BaseName, ResolvedDir: string;
+begin
+  if csLoading in ComponentState then Exit;
+  if FImageDirectory = '' then Exit;
+
+  { Resolve caminho relativo ao executável }
+  if FilenameIsAbsolute(FImageDirectory) then
+    ResolvedDir := FImageDirectory
+  else
+    ResolvedDir := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName)) + FImageDirectory;
+
+  if not DirectoryExists(ResolvedDir) then Exit;
+
+  FItems.Clear;
+  Files := TStringList.Create;
+  try
+    Files.Sorted := True;
+    FindAllFiles(Files, ResolvedDir, '*.png;*.jpg;*.jpeg;*.bmp;*.webp', False);
+    for i := 0 to Files.Count - 1 do
+    begin
+      FileName := Files[i];
+      Ext := LowerCase(ExtractFileExt(FileName));
+      if (Ext = '.png') or (Ext = '.jpg') or (Ext = '.jpeg') or (Ext = '.bmp') or (Ext = '.webp') then
+      begin
+        Item := FItems.Add;
+        try
+          Item.Image.LoadFromFile(FileName);
+        except
+          Item.Free;
+          Continue;
+        end;
+        BaseName := ChangeFileExt(ExtractFileName(FileName), '');
+        Item.Title := BaseName;
+      end;
+    end;
+  finally
+    Files.Free;
+  end;
+  FActiveIndex := 0;
+  Invalidate;
 end;
 
 procedure TFRMaterialCarousel.SetActiveIndex(AValue: Integer);
@@ -471,9 +538,8 @@ begin
   inherited;
 end;
 
-procedure TFRMaterialCarousel.Paint;
+function TFRMaterialCarousel.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   item: TFRMaterialCarouselItem;
   i, drawX, contentH: Integer;
   offset: Single;
@@ -482,87 +548,82 @@ var
   dotAlpha: Byte;
   titleRect: TRect;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
+  Result := True;
 
   contentH := Height;
   if FShowIndicators then
     contentH := Height - 32;
 
-  bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.SurfaceContainerHighest));
-  try
-    { Draw current item }
-    if FItems.Count > 0 then
+  ABmp.Fill(ColorToBGRA(MD3Colors.SurfaceContainerHighest));
+
+  { Draw current item }
+  if FItems.Count > 0 then
+  begin
+    offset := FAnimOffset;
+
+    { Draw the current and adjacent items for smooth transition }
+    for i := -1 to 1 do
     begin
-      offset := FAnimOffset;
+      drawX := Round((i + offset) * Width);
+      if (FActiveIndex + i < 0) or (FActiveIndex + i >= FItems.Count) then
+        Continue;
 
-      { Draw the current and adjacent items for smooth transition }
-      for i := -1 to 1 do
+      item := FItems[FActiveIndex + i];
+
+      if Assigned(item.FImage.Graphic) and (not item.FImage.Graphic.Empty) then
       begin
-        drawX := Round((i + offset) * Width);
-        if (FActiveIndex + i < 0) or (FActiveIndex + i >= FItems.Count) then
-          Continue;
-
-        item := FItems[FActiveIndex + i];
-
-        if Assigned(item.FImage.Graphic) and (not item.FImage.Graphic.Empty) then
-        begin
-          bmp.Canvas.StretchDraw(
-            Rect(drawX, 0, drawX + Width, contentH),
-            item.FImage.Graphic);
-        end
-        else
-        begin
-          { Placeholder — colored surface }
-          MD3FillRoundRect(bmp, drawX, 0, drawX + Width - 1, contentH - 1,
-            0, MD3Colors.SurfaceContainerHigh);
-        end;
-
-        { Title overlay gradient at bottom }
-        if (item.FTitle <> '') or (item.FSubtitle <> '') then
-        begin
-          { Semi-transparent gradient overlay }
-          bmp.FillRect(drawX, contentH - 64, drawX + Width, contentH,
-            ColorToBGRA(MD3Colors.OnSurface, 100), dmDrawWithTransparency);
-        end;
+        ABmp.Canvas.StretchDraw(
+          Rect(drawX, 0, drawX + Width, contentH),
+          item.FImage.Graphic);
+      end
+      else
+      begin
+        { Placeholder — colored surface }
+        MD3FillRoundRect(ABmp, drawX, 0, drawX + Width - 1, contentH - 1,
+          0, MD3Colors.SurfaceContainerHigh);
       end;
-    end
-    else
-    begin
-      { Empty state }
-      bmp.FontFullHeight := 14;
-      bmp.FontQuality := fqFineAntialiasing;
-      bmp.TextOut(Width div 2 - bmp.TextSize('No items').cx div 2,
-        contentH div 2 - 7,
-        'No items', ColorToBGRA(MD3Colors.OnSurfaceVariant));
-    end;
 
-    { Indicator dots }
-    if FShowIndicators and (FItems.Count > 1) then
-    begin
-      for i := 0 to FItems.Count - 1 do
+      { Title overlay gradient at bottom }
+      if (item.FTitle <> '') or (item.FSubtitle <> '') then
       begin
-        dotRect := IndicatorDotRect(i);
-        if i = FActiveIndex then
-        begin
-          dotColor := MD3Colors.Primary;
-          dotAlpha := 255;
-        end
-        else
-        begin
-          dotColor := MD3Colors.OnSurfaceVariant;
-          dotAlpha := 100;
-        end;
-        bmp.FillEllipseAntialias(
-          (dotRect.Left + dotRect.Right) / 2,
-          (dotRect.Top + dotRect.Bottom) / 2,
-          4, 4,
-          ColorToBGRA(dotColor, dotAlpha));
+        { Semi-transparent gradient overlay }
+        ABmp.FillRect(drawX, contentH - 64, drawX + Width, contentH,
+          ColorToBGRA(MD3Colors.OnSurface, 100), dmDrawWithTransparency);
       end;
     end;
+  end
+  else
+  begin
+    { Empty state }
+    ABmp.FontFullHeight := 14;
+    ABmp.FontQuality := fqFineAntialiasing;
+    ABmp.TextOut(Width div 2 - ABmp.TextSize('No items').cx div 2,
+      contentH div 2 - 7,
+      'No items', ColorToBGRA(MD3Colors.OnSurfaceVariant));
+  end;
 
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+  { Indicator dots }
+  if FShowIndicators and (FItems.Count > 1) then
+  begin
+    for i := 0 to FItems.Count - 1 do
+    begin
+      dotRect := IndicatorDotRect(i);
+      if i = FActiveIndex then
+      begin
+        dotColor := MD3Colors.Primary;
+        dotAlpha := 255;
+      end
+      else
+      begin
+        dotColor := MD3Colors.OnSurfaceVariant;
+        dotAlpha := 100;
+      end;
+      ABmp.FillEllipseAntialias(
+        (dotRect.Left + dotRect.Right) / 2,
+        (dotRect.Top + dotRect.Bottom) / 2,
+        4, 4,
+        ColorToBGRA(dotColor, dotAlpha));
+    end;
   end;
 
   { Title and subtitle text — drawn on Canvas for crisp fonts }
@@ -571,18 +632,18 @@ begin
     item := FItems[FActiveIndex];
     if item.FTitle <> '' then
     begin
-      Canvas.Font.Size := 12;
-      Canvas.Font.Style := [fsBold];
+      ABmp.FontHeight := Abs(12 * 96 div 72);
+      ABmp.FontStyle := [fsBold];
       titleRect := Rect(16, contentH - 56, Width - 16, contentH - 30);
-      MD3DrawText(Canvas, item.FTitle, titleRect, MD3Colors.Surface,
+      MD3DrawTextBGRA(ABmp, item.FTitle, titleRect, MD3Colors.Surface,
         taLeftJustify, True);
     end;
     if item.FSubtitle <> '' then
     begin
-      Canvas.Font.Size := 9;
-      Canvas.Font.Style := [];
+      ABmp.FontHeight := Abs(9 * 96 div 72);
+      ABmp.FontStyle := [];
       titleRect := Rect(16, contentH - 30, Width - 16, contentH - 8);
-      MD3DrawText(Canvas, item.FSubtitle, titleRect, MD3Colors.Surface,
+      MD3DrawTextBGRA(ABmp, item.FSubtitle, titleRect, MD3Colors.Surface,
         taLeftJustify, True);
     end;
   end;

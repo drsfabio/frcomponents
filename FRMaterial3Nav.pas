@@ -59,7 +59,7 @@ type
     procedure SetItems(AValue: TFRMaterialNavItems);
     procedure SetPageControl(AValue: TFRMaterialPageControl);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure DoOnResize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -97,7 +97,7 @@ type
     procedure SetItems(AValue: TFRMaterialNavItems);
     procedure SetPageControl(AValue: TFRMaterialPageControl);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
@@ -138,7 +138,7 @@ type
     procedure SetItems(AValue: TFRMaterialNavItems);
     procedure SetPageControl(AValue: TFRMaterialPageControl);
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
@@ -349,9 +349,8 @@ begin
     Height := 80 + MD3DensityDelta(Density);
 end;
 
-procedure TFRMaterialNavBar.Paint;
+function TFRMaterialNavBar.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   i, iw, xPos: Integer;
   item: TFRMaterialNavItem;
   iconBmp: TBGRABitmap;
@@ -360,6 +359,7 @@ var
   icoSz, icoY, pillY1, pillY2, pillR, pillHW: Integer;
   lblY1, lblY2: Integer;
 begin
+  Result := True;
   { Proportional metrics based on Height (reference = 80) }
   icoSz := Height * 24 div 80;
   if icoSz < 16 then icoSz := 16;
@@ -371,51 +371,44 @@ begin
   lblY1 := Height * 48 div 80;
   lblY2 := Height * 72 div 80;
 
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.SurfaceContainer));
-  try
-    if FItems.Count > 0 then
+  ABmp.Fill(ColorToBGRA(MD3Colors.SurfaceContainer));
+  if FItems.Count > 0 then
+  begin
+    iw := Width div FItems.Count;
+    for i := 0 to FItems.Count - 1 do
     begin
-      iw := Width div FItems.Count;
-      for i := 0 to FItems.Count - 1 do
+      item := FItems[i];
+      xPos := i * iw;
+
+      if i = FItemIndex then
       begin
-        item := FItems[i];
-        xPos := i * iw;
+        { active indicator pill }
+        MD3FillRoundRect(ABmp, xPos + iw div 2 - pillHW, pillY1,
+          xPos + iw div 2 + pillHW, pillY2, pillR, MD3Colors.PrimaryContainer);
+        clr := MD3Colors.OnPrimaryContainer;
+      end
+      else
+        clr := MD3Colors.OnSurfaceVariant;
 
-        if i = FItemIndex then
-        begin
-          { active indicator pill }
-          MD3FillRoundRect(bmp, xPos + iw div 2 - pillHW, pillY1,
-            xPos + iw div 2 + pillHW, pillY2, pillR, MD3Colors.PrimaryContainer);
-          clr := MD3Colors.OnPrimaryContainer;
-        end
-        else
-          clr := MD3Colors.OnSurfaceVariant;
-
-        { icon }
-        if item.FIconMode <> imClear then
-        begin
-          iconBmp := FRGetCachedIcon(item.FIconMode, FRColorToSVGHex(clr), 2.0, icoSz, icoSz);
-          bmp.PutImage(xPos + (iw - icoSz) div 2, icoY, iconBmp, dmDrawWithTransparency);
-        end;
-
-        { badge }
-        if item.FBadge <> '' then
-          DrawMD3Badge(bmp, Canvas, xPos + (iw - 24) div 2, icoY, item.FBadge);
+      { icon }
+      if item.FIconMode <> imClear then
+      begin
+        iconBmp := FRGetCachedIcon(item.FIconMode, FRColorToSVGHex(clr), 2.0, icoSz, icoSz);
+        ABmp.PutImage(xPos + (iw - icoSz) div 2, icoY, iconBmp, dmDrawWithTransparency);
       end;
+
+      { badge }
+      if item.FBadge <> '' then
+        DrawMD3Badge(ABmp, Canvas, xPos + (iw - 24) div 2, icoY, item.FBadge);
     end;
-    PaintRipple(bmp, MD3Colors.OnSurface);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
   end;
 
   { labels }
   if FItems.Count > 0 then
   begin
     iw := Width div FItems.Count;
-    Canvas.Font.Size := Height * 8 div 80;
-    if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
+    ABmp.FontHeight := Abs((Height * 8 div 80) * 96 div 72);
+    if ABmp.FontHeight < 7 then ABmp.FontHeight := 7;
     for i := 0 to FItems.Count - 1 do
     begin
       xPos := i * iw;
@@ -424,9 +417,9 @@ begin
       else
         clr := MD3Colors.OnSurfaceVariant;
       aRect := Rect(xPos, lblY1, xPos + iw, lblY2);
-      MD3DrawText(Canvas, FItems[i].FCaption, aRect, clr, taCenter, True);
+      MD3DrawTextBGRA(ABmp, FItems[i].FCaption, aRect, clr, taCenter, True);
     end;
-    Canvas.Font.Size := 10;
+    ABmp.FontHeight := Abs(10 * 96 div 72);
   end;
 end;
 
@@ -521,9 +514,8 @@ begin
   end;
 end;
 
-procedure TFRMaterialNavDrawer.Paint;
+function TFRMaterialNavDrawer.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   i, yPos: Integer;
   item: TFRMaterialNavItem;
   iconBmp: TBGRABitmap;
@@ -531,6 +523,7 @@ var
   clr: TColor;
   padX, icoSz, icoX, ih, pillR: Integer;
 begin
+  Result := True;
   { Proportional metrics based on Width (reference = 360) }
   padX := Width * 12 div 360;
   if padX < 4 then padX := 4;
@@ -541,58 +534,50 @@ begin
   ih := 56 + MD3DensityDelta(Density);
   pillR := Width * 28 div 360;
 
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.SurfaceContainerLow));
-  try
-    yPos := padX + 4;
+  ABmp.Fill(ColorToBGRA(MD3Colors.SurfaceContainerLow));
+  yPos := padX + 4;
 
-    { header }
-    if FHeaderTitle <> '' then
-      Inc(yPos, ih);
+  { header }
+  if FHeaderTitle <> '' then
+    Inc(yPos, ih);
 
-    { items + badges }
-    for i := 0 to FItems.Count - 1 do
+  { items + badges }
+  for i := 0 to FItems.Count - 1 do
+  begin
+    item := FItems[i];
+    if i = FItemIndex then
     begin
-      item := FItems[i];
-      if i = FItemIndex then
-      begin
-        MD3FillRoundRect(bmp, padX, yPos, Width - padX, yPos + ih, pillR,
-          MD3Colors.PrimaryContainer);
-        clr := MD3Colors.OnPrimaryContainer;
-      end
-      else
-        clr := MD3Colors.OnSurfaceVariant;
+      MD3FillRoundRect(ABmp, padX, yPos, Width - padX, yPos + ih, pillR,
+        MD3Colors.PrimaryContainer);
+      clr := MD3Colors.OnPrimaryContainer;
+    end
+    else
+      clr := MD3Colors.OnSurfaceVariant;
 
-      { icon }
-      if item.FIconMode <> imClear then
-      begin
-        iconBmp := FRGetCachedIcon(item.FIconMode, FRColorToSVGHex(clr), 2.0, icoSz, icoSz);
-        bmp.PutImage(icoX, yPos + (ih - icoSz) div 2, iconBmp, dmDrawWithTransparency);
-      end;
-
-      { badge }
-      if item.FBadge <> '' then
-        DrawMD3Badge(bmp, Canvas, Width - 44, yPos + (ih - 24) div 2, item.FBadge);
-
-      Inc(yPos, ih);
+    { icon }
+    if item.FIconMode <> imClear then
+    begin
+      iconBmp := FRGetCachedIcon(item.FIconMode, FRColorToSVGHex(clr), 2.0, icoSz, icoSz);
+      ABmp.PutImage(icoX, yPos + (ih - icoSz) div 2, iconBmp, dmDrawWithTransparency);
     end;
 
-    PaintRipple(bmp, MD3Colors.OnSurface);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+    { badge }
+    if item.FBadge <> '' then
+      DrawMD3Badge(ABmp, Canvas, Width - 44, yPos + (ih - 24) div 2, item.FBadge);
+
+    Inc(yPos, ih);
   end;
 
   { text labels }
   if FHeaderTitle <> '' then
   begin
-    Canvas.Font.Size := Width * 12 div 360;
-    if Canvas.Font.Size < 9 then Canvas.Font.Size := 9;
-    Canvas.Font.Style := [fsBold];
+    ABmp.FontHeight := Abs((Width * 12 div 360) * 96 div 72);
+    if ABmp.FontHeight < 9 then ABmp.FontHeight := 9;
+    ABmp.FontStyle := [fsBold];
     aRect := Rect(icoX, padX + 4, Width - padX, padX + 4 + ih);
-    MD3DrawText(Canvas, FHeaderTitle, aRect, MD3Colors.OnSurfaceVariant, taLeftJustify, True);
-    Canvas.Font.Style := [];
-    Canvas.Font.Size := 10;
+    MD3DrawTextBGRA(ABmp, FHeaderTitle, aRect, MD3Colors.OnSurfaceVariant, taLeftJustify, True);
+    ABmp.FontStyle := [];
+    ABmp.FontHeight := Abs(10 * 96 div 72);
   end;
 
   yPos := padX + 4;
@@ -604,9 +589,19 @@ begin
     else
       clr := MD3Colors.OnSurfaceVariant;
     aRect := Rect(icoX + icoSz + padX, yPos, Width - padX, yPos + ih);
-    MD3DrawText(Canvas, FItems[i].FCaption, aRect, clr, taLeftJustify, True);
+    MD3DrawTextBGRA(ABmp, FItems[i].FCaption, aRect, clr, taLeftJustify, True);
     Inc(yPos, ih);
   end;
+
+  { Elevation shadow — adapts to Align: right edge for alLeft, left edge for alRight }
+  if Align = alRight then
+    for i := 0 to 3 do
+      ABmp.DrawVertLine(3 - i, 0, Height - 1,
+        BGRA(0, 0, 0, Byte(20 - i * 5)))
+  else
+    for i := 0 to 3 do
+      ABmp.DrawVertLine(Width - 4 + i, 0, Height - 1,
+        BGRA(0, 0, 0, Byte(20 - i * 5)));
 end;
 
 procedure TFRMaterialNavDrawer.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -703,9 +698,8 @@ begin
   end;
 end;
 
-procedure TFRMaterialNavRail.Paint;
+function TFRMaterialNavRail.PaintCached(ABmp: TBGRABitmap): Boolean;
 var
-  bmp: TBGRABitmap;
   i, yPos: Integer;
   item: TFRMaterialNavItem;
   iconBmp: TBGRABitmap;
@@ -713,6 +707,7 @@ var
   clr: TColor;
   icoSz, icoX, padX, ih, fabH, pillR, pillX1, pillX2: Integer;
 begin
+  Result := True;
   { Proportional metrics based on Width (reference = 80) }
   icoSz := Width * 24 div 80;
   if icoSz < 16 then icoSz := 16;
@@ -725,59 +720,51 @@ begin
   pillX1 := Width * 12 div 80;
   pillX2 := Width * 68 div 80;
 
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(MD3Colors.Surface));
-  try
-    yPos := padX + 4;
+  ABmp.Fill(ColorToBGRA(MD3Colors.Surface));
+  yPos := padX + 4;
 
-    { optional menu icon }
-    if FMenuIcon <> imClear then
+  { optional menu icon }
+  if FMenuIcon <> imClear then
+  begin
+    iconBmp := FRGetCachedIcon(FMenuIcon, FRColorToSVGHex(MD3Colors.OnSurface), 2.0, icoSz, icoSz);
+    ABmp.PutImage(icoX, yPos + (ih - icoSz) div 2, iconBmp, dmDrawWithTransparency);
+    Inc(yPos, ih);
+  end;
+
+  { optional FAB }
+  if FFabIcon <> imClear then
+  begin
+    MD3FillRoundRect(ABmp, pillX1, yPos, pillX2, yPos + fabH, pillR, MD3Colors.PrimaryContainer);
+    iconBmp := FRGetCachedIcon(FFabIcon, FRColorToSVGHex(MD3Colors.OnPrimaryContainer), 2.0, icoSz, icoSz);
+    ABmp.PutImage(icoX, yPos + (fabH - icoSz) div 2, iconBmp, dmDrawWithTransparency);
+    Inc(yPos, fabH + padX + 4);
+  end;
+
+  { nav items }
+  for i := 0 to FItems.Count - 1 do
+  begin
+    item := FItems[i];
+    if i = FItemIndex then
     begin
-      iconBmp := FRGetCachedIcon(FMenuIcon, FRColorToSVGHex(MD3Colors.OnSurface), 2.0, icoSz, icoSz);
-      bmp.PutImage(icoX, yPos + (ih - icoSz) div 2, iconBmp, dmDrawWithTransparency);
-      Inc(yPos, ih);
+      MD3FillRoundRect(ABmp, pillX1, yPos + ih * 4 div 56, pillX2, yPos + ih * 36 div 56, pillR,
+        MD3Colors.PrimaryContainer);
+      clr := MD3Colors.OnPrimaryContainer;
+    end
+    else
+      clr := MD3Colors.OnSurfaceVariant;
+
+    { icon }
+    if item.FIconMode <> imClear then
+    begin
+      iconBmp := FRGetCachedIcon(item.FIconMode, FRColorToSVGHex(clr), 2.0, icoSz, icoSz);
+      ABmp.PutImage(icoX, yPos + ih * 8 div 56, iconBmp, dmDrawWithTransparency);
     end;
 
-    { optional FAB }
-    if FFabIcon <> imClear then
-    begin
-      MD3FillRoundRect(bmp, pillX1, yPos, pillX2, yPos + fabH, pillR, MD3Colors.PrimaryContainer);
-      iconBmp := FRGetCachedIcon(FFabIcon, FRColorToSVGHex(MD3Colors.OnPrimaryContainer), 2.0, icoSz, icoSz);
-      bmp.PutImage(icoX, yPos + (fabH - icoSz) div 2, iconBmp, dmDrawWithTransparency);
-      Inc(yPos, fabH + padX + 4);
-    end;
+    { badge }
+    if item.FBadge <> '' then
+      DrawMD3Badge(ABmp, Canvas, icoX, yPos + ih * 8 div 56, item.FBadge);
 
-    { nav items }
-    for i := 0 to FItems.Count - 1 do
-    begin
-      item := FItems[i];
-      if i = FItemIndex then
-      begin
-        MD3FillRoundRect(bmp, pillX1, yPos + ih * 4 div 56, pillX2, yPos + ih * 36 div 56, pillR,
-          MD3Colors.PrimaryContainer);
-        clr := MD3Colors.OnPrimaryContainer;
-      end
-      else
-        clr := MD3Colors.OnSurfaceVariant;
-
-      { icon }
-      if item.FIconMode <> imClear then
-      begin
-        iconBmp := FRGetCachedIcon(item.FIconMode, FRColorToSVGHex(clr), 2.0, icoSz, icoSz);
-        bmp.PutImage(icoX, yPos + ih * 8 div 56, iconBmp, dmDrawWithTransparency);
-      end;
-
-      { badge }
-      if item.FBadge <> '' then
-        DrawMD3Badge(bmp, Canvas, icoX, yPos + ih * 8 div 56, item.FBadge);
-
-      Inc(yPos, ih);
-    end;
-
-    PaintRipple(bmp, MD3Colors.OnSurface);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+    Inc(yPos, ih);
   end;
 
   { labels under nav items }
@@ -785,8 +772,8 @@ begin
   if FMenuIcon <> imClear then Inc(yPos, ih);
   if FFabIcon <> imClear then Inc(yPos, fabH + padX + 4);
 
-  Canvas.Font.Size := Width * 8 div 80;
-  if Canvas.Font.Size < 7 then Canvas.Font.Size := 7;
+  ABmp.FontHeight := Abs((Width * 8 div 80) * 96 div 72);
+  if ABmp.FontHeight < 7 then ABmp.FontHeight := 7;
   for i := 0 to FItems.Count - 1 do
   begin
     if i = FItemIndex then
@@ -794,10 +781,20 @@ begin
     else
       clr := MD3Colors.OnSurfaceVariant;
     aRect := Rect(0, yPos + ih * 36 div 56, Width, yPos + ih);
-    MD3DrawText(Canvas, FItems[i].FCaption, aRect, clr, taCenter, True);
+    MD3DrawTextBGRA(ABmp, FItems[i].FCaption, aRect, clr, taCenter, True);
     Inc(yPos, ih);
   end;
-  Canvas.Font.Size := 10;
+  ABmp.FontHeight := Abs(10 * 96 div 72);
+
+  { Elevation shadow — adapts to Align: right edge for alLeft, left edge for alRight }
+  if Align = alRight then
+    for i := 0 to 3 do
+      ABmp.DrawVertLine(3 - i, 0, Height - 1,
+        BGRA(0, 0, 0, Byte(20 - i * 5)))
+  else
+    for i := 0 to 3 do
+      ABmp.DrawVertLine(Width - 4 + i, 0, Height - 1,
+        BGRA(0, 0, 0, Byte(20 - i * 5)));
 end;
 
 procedure TFRMaterialNavRail.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

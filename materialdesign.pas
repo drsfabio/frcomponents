@@ -8,17 +8,19 @@ unit materialdesign;
 interface
 
 uses
-  FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, FRMaterialEdit, FRMaterialDateEdit, 
-  FRMaterialComboEdit, FRMaterialCheckComboEdit, FRMaterialMaskEdit, FRMaterialCurrencyEdit, 
-  FRMaterialMemoEdit, FRMaterialSpinEdit, FRMaterialSearchEdit, FRMaterial3Base, 
-  FRMaterial3Button, FRMaterial3FAB, FRMaterial3Toggle, FRMaterial3Chip, FRMaterial3Slider, 
-  FRMaterial3Progress, FRMaterial3Divider, FRMaterial3Dialog, FRMaterial3Snackbar, 
-  FRMaterial3Tooltip, FRMaterial3List, FRMaterial3Menu, FRMaterial3Tabs, FRMaterial3AppBar, 
-  FRMaterial3Nav, FRMaterial3TimePicker, FRMaterial3Sheet, FRMaterial3TreeView,
-  FRMaterialThemeManager, FRMaterial3DataGrid, FRMaterialFieldPainter,
-  FRMaterial3PageControl, FRMaterial3VirtualDataGrid,
-  FRMaterial3Card, FRMaterial3Badge, FRMaterial3Carousel, FRMaterial3DatePicker,
-  LazarusPackageIntf;
+  FRMaterialTheme, FRMaterialIcons, FRMaterialMasks, FRMaterialEdit, 
+  FRMaterialDateEdit, FRMaterialComboEdit, FRMaterialCheckComboEdit, 
+  FRMaterialMaskEdit, FRMaterialCurrencyEdit, FRMaterialMemoEdit, 
+  FRMaterialSpinEdit, FRMaterialSearchEdit, FRMaterial3Base, 
+  FRMaterial3Button, FRMaterial3FAB, FRMaterial3Toggle, FRMaterial3Chip, 
+  FRMaterial3Slider, FRMaterial3Progress, FRMaterial3Divider, 
+  FRMaterial3Dialog, FRMaterial3Snackbar, FRMaterial3Tooltip, FRMaterial3List, 
+  FRMaterial3Menu, FRMaterial3Tabs, FRMaterial3AppBar, FRMaterial3Nav, 
+  FRMaterial3TimePicker, FRMaterial3Sheet, FRMaterial3TreeView, 
+  FRMaterialThemeManager, FRMaterial3DataGrid, FRMaterialFieldPainter, 
+  FRMaterial3PageControl, FRMaterial3VirtualDataGrid, FRMaterial3Card, 
+  FRMaterial3Badge, FRMaterial3Carousel, FRMaterial3DatePicker, 
+  FRMaterial3GridPanel, LazarusPackageIntf;
 
 implementation
 
@@ -52,13 +54,15 @@ begin
   RegisterUnit('FRMaterial3Sheet', @FRMaterial3Sheet.Register);
   RegisterUnit('FRMaterial3TreeView', @FRMaterial3TreeView.Register);
   RegisterUnit('FRMaterialThemeManager', @FRMaterialThemeManager.Register);
-  RegisterUnit('FRMaterial3DataGrid',    @FRMaterial3DataGrid.Register);
+  RegisterUnit('FRMaterial3DataGrid', @FRMaterial3DataGrid.Register);
   RegisterUnit('FRMaterial3PageControl', @FRMaterial3PageControl.Register);
-  RegisterUnit('FRMaterial3VirtualDataGrid', @FRMaterial3VirtualDataGrid.Register);
-  RegisterUnit('FRMaterial3Card',      @FRMaterial3Card.Register);
-  RegisterUnit('FRMaterial3Badge',     @FRMaterial3Badge.Register);
-  RegisterUnit('FRMaterial3Carousel',  @FRMaterial3Carousel.Register);
-  RegisterUnit('FRMaterial3DatePicker',@FRMaterial3DatePicker.Register);
+  RegisterUnit('FRMaterial3VirtualDataGrid', 
+    @FRMaterial3VirtualDataGrid.Register);
+  RegisterUnit('FRMaterial3Card', @FRMaterial3Card.Register);
+  RegisterUnit('FRMaterial3Badge', @FRMaterial3Badge.Register);
+  RegisterUnit('FRMaterial3Carousel', @FRMaterial3Carousel.Register);
+  RegisterUnit('FRMaterial3DatePicker', @FRMaterial3DatePicker.Register);
+  RegisterUnit('FRMaterial3GridPanel', @FRMaterial3GridPanel.Register);
 end;
 
 initialization

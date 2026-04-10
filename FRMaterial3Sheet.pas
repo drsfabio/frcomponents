@@ -7,6 +7,12 @@ unit FRMaterial3Sheet;
   TFRMaterialBottomSheet — Panel that slides up from the bottom.
   TFRMaterialSideSheet   — Panel that slides in from the right.
 
+  Features:
+    • Dismiss on click outside (scrim overlay)
+    • Dismiss on Escape key
+    • Smooth slide animation
+    • Configurable scrim opacity
+
   License: LGPL v3
 }
 
@@ -14,21 +20,43 @@ interface
 
 uses
   Classes, SysUtils, Controls, Graphics, ExtCtrls, Forms,
-  {$IFDEF FPC} LResources, {$ENDIF}
+  {$IFDEF FPC} LCLType, LResources, {$ENDIF}
   BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialTheme;
 
 type
+
+  { ── Scrim panel — transparent overlay for click-outside dismiss ── }
+
+  TFRSheetScrim = class(TCustomControl)
+  private
+    FAlpha: Byte;
+  protected
+    procedure Paint; override;
+  end;
+
+  { ── TFRMaterialBottomSheet ── }
+
   TFRMaterialBottomSheet = class(TFRMaterial3Control)
   private
     FExpanded: Boolean;
     FSheetHeight: Integer;
     FDragHandle: Boolean;
+    FDismissOnClickOutside: Boolean;
+    FDismissOnEscape: Boolean;
+    FScrimOpacity: Byte;
+    FOnExpand: TNotifyEvent;
+    FOnCollapse: TNotifyEvent;
     FAnimTimer: TTimer;
     FTargetTop: Integer;
+    FScrim: TFRSheetScrim;
     procedure SetExpanded(AValue: Boolean);
     procedure OnAnimTimer(Sender: TObject);
+    procedure OnScrimClick(Sender: TObject);
+    procedure DoKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure CreateScrim;
+    procedure DestroyScrim;
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -38,6 +66,11 @@ type
     property Expanded: Boolean read FExpanded write SetExpanded default False;
     property SheetHeight: Integer read FSheetHeight write FSheetHeight default 300;
     property DragHandle: Boolean read FDragHandle write FDragHandle default True;
+    property DismissOnClickOutside: Boolean read FDismissOnClickOutside write FDismissOnClickOutside default True;
+    property DismissOnEscape: Boolean read FDismissOnEscape write FDismissOnEscape default True;
+    property ScrimOpacity: Byte read FScrimOpacity write FScrimOpacity default 80;
+    property OnExpand: TNotifyEvent read FOnExpand write FOnExpand;
+    property OnCollapse: TNotifyEvent read FOnCollapse write FOnCollapse;
     property Align;
     property Anchors;
     property BorderSpacing;
@@ -50,16 +83,28 @@ type
     property Visible;
   end;
 
+  { ── TFRMaterialSideSheet ── }
+
   TFRMaterialSideSheet = class(TFRMaterial3Control)
   private
     FExpanded: Boolean;
     FSheetWidth: Integer;
+    FDismissOnClickOutside: Boolean;
+    FDismissOnEscape: Boolean;
+    FScrimOpacity: Byte;
+    FOnExpand: TNotifyEvent;
+    FOnCollapse: TNotifyEvent;
     FAnimTimer: TTimer;
     FTargetLeft: Integer;
+    FScrim: TFRSheetScrim;
     procedure SetExpanded(AValue: Boolean);
     procedure OnAnimTimer(Sender: TObject);
+    procedure OnScrimClick(Sender: TObject);
+    procedure DoKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure CreateScrim;
+    procedure DestroyScrim;
   protected
-    procedure Paint; override;
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -67,6 +112,11 @@ type
   published
     property Expanded: Boolean read FExpanded write SetExpanded default False;
     property SheetWidth: Integer read FSheetWidth write FSheetWidth default 360;
+    property DismissOnClickOutside: Boolean read FDismissOnClickOutside write FDismissOnClickOutside default True;
+    property DismissOnEscape: Boolean read FDismissOnEscape write FDismissOnEscape default True;
+    property ScrimOpacity: Byte read FScrimOpacity write FScrimOpacity default 80;
+    property OnExpand: TNotifyEvent read FOnExpand write FOnExpand;
+    property OnCollapse: TNotifyEvent read FOnCollapse write FOnCollapse;
     property Align;
     property Anchors;
     property BorderSpacing;
@@ -85,6 +135,18 @@ implementation
 
 uses Math;
 
+{ ── TFRSheetScrim ── }
+
+procedure TFRSheetScrim.Paint;
+var
+  bmp: TBGRABitmap;
+begin
+  if (Width <= 0) or (Height <= 0) then Exit;
+  bmp := TBGRABitmap.Create(Width, Height, BGRA(0, 0, 0, FAlpha));
+  bmp.Draw(Canvas, 0, 0, False);
+  bmp.Free;
+end;
+
 { ══════════════════════════════════════════════════════════════
   TFRMaterialBottomSheet
   ══════════════════════════════════════════════════════════════ }
@@ -95,6 +157,10 @@ begin
   FExpanded := False;
   FSheetHeight := 300;
   FDragHandle := True;
+  FDismissOnClickOutside := True;
+  FDismissOnEscape := True;
+  FScrimOpacity := 80;
+  FScrim := nil;
   Width := 400;
   Height := 300;
   Anchors := [akLeft, akRight, akBottom];
@@ -107,11 +173,60 @@ end;
 
 destructor TFRMaterialBottomSheet.Destroy;
 begin
+  DestroyScrim;
   FAnimTimer.Free;
   inherited Destroy;
 end;
 
+procedure TFRMaterialBottomSheet.CreateScrim;
+begin
+  if Assigned(FScrim) then Exit;
+  if not Assigned(Parent) then Exit;
+
+  FScrim := TFRSheetScrim.Create(Parent);
+  FScrim.Parent := Parent;
+  { Do NOT use Align := alClient — it triggers LCL re-layout and can
+    displace sibling controls (e.g. child form content disappears).
+    Instead, cover the parent area manually with anchors. }
+  FScrim.Align := alNone;
+  FScrim.SetBounds(0, 0, Parent.ClientWidth, Parent.ClientHeight);
+  FScrim.Anchors := [akLeft, akTop, akRight, akBottom];
+  FScrim.FAlpha := FScrimOpacity;
+  FScrim.OnClick := @OnScrimClick;
+  FScrim.BringToFront;
+
+  { Ensure the sheet is above the scrim }
+  Self.BringToFront;
+end;
+
+procedure TFRMaterialBottomSheet.DestroyScrim;
+begin
+  if Assigned(FScrim) then
+  begin
+    FScrim.Free;
+    FScrim := nil;
+  end;
+end;
+
+procedure TFRMaterialBottomSheet.OnScrimClick(Sender: TObject);
+begin
+  if FDismissOnClickOutside and FExpanded then
+    SetExpanded(False);
+end;
+
+procedure TFRMaterialBottomSheet.DoKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if (Key = VK_ESCAPE) and FDismissOnEscape and FExpanded then
+  begin
+    SetExpanded(False);
+    Key := 0;
+  end;
+end;
+
 procedure TFRMaterialBottomSheet.SetExpanded(AValue: Boolean);
+var
+  frm: TCustomForm;
 begin
   if FExpanded = AValue then Exit;
   FExpanded := AValue;
@@ -125,9 +240,36 @@ begin
   if Assigned(Parent) then
   begin
     if FExpanded then
-      FTargetTop := Parent.ClientHeight - FSheetHeight
+    begin
+      { Show scrim + register ESC handler }
+      if FDismissOnClickOutside then
+        CreateScrim;
+      if FDismissOnEscape then
+      begin
+        frm := GetParentForm(Self);
+        if Assigned(frm) then
+        begin
+          frm.KeyPreview := True;
+          frm.OnKeyDown := @DoKeyDown;
+        end;
+      end;
+      FTargetTop := Parent.ClientHeight - FSheetHeight;
+      if Assigned(FOnExpand) then
+        FOnExpand(Self);
+    end
     else
+    begin
+      { Remove ESC handler }
+      if FDismissOnEscape then
+      begin
+        frm := GetParentForm(Self);
+        if Assigned(frm) then
+          frm.OnKeyDown := nil;
+      end;
       FTargetTop := Parent.ClientHeight;
+      if Assigned(FOnCollapse) then
+        FOnCollapse(Self);
+    end;
     FAnimTimer.Enabled := True;
   end;
 end;
@@ -142,7 +284,10 @@ begin
     Top := FTargetTop;
     FAnimTimer.Enabled := False;
     if not FExpanded then
+    begin
       Visible := False;
+      DestroyScrim;
+    end;
   end
   else
     Top := Top + diff div 4;
@@ -159,26 +304,17 @@ begin
   SetExpanded(not FExpanded);
 end;
 
-procedure TFRMaterialBottomSheet.Paint;
-var
-  bmp: TBGRABitmap;
+function TFRMaterialBottomSheet.PaintCached(ABmp: TBGRABitmap): Boolean;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    MD3DrawShadow(bmp, 0, 0, Width - 1, Height + 28, 28, elLevel1);
-    { top corners rounded }
-    MD3FillRoundRect(bmp, 0, 0, Width - 1, Height + 28, 28, MD3Colors.SurfaceContainerLow);
+  Result := True;
+  MD3DrawShadow(ABmp, 0, 0, Width - 1, Height + 28, 28, elLevel1);
+  { top corners rounded }
+  MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height + 28, 28, MD3Colors.SurfaceContainerLow);
 
-    { drag handle }
-    if FDragHandle then
-      MD3FillRoundRect(bmp, Width div 2 - 16, 8, Width div 2 + 16, 12, 2,
-        MD3Colors.OnSurfaceVariant);
-
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
-  end;
+  { drag handle }
+  if FDragHandle then
+    MD3FillRoundRect(ABmp, Width div 2 - 16, 8, Width div 2 + 16, 12, 2,
+      MD3Colors.OnSurfaceVariant);
 end;
 
 procedure TFRMaterialBottomSheet.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -198,6 +334,10 @@ begin
   inherited Create(AOwner);
   FExpanded := False;
   FSheetWidth := 360;
+  FDismissOnClickOutside := True;
+  FDismissOnEscape := True;
+  FScrimOpacity := 80;
+  FScrim := nil;
   Width := 360;
   Height := 600;
   Anchors := [akTop, akRight, akBottom];
@@ -210,11 +350,60 @@ end;
 
 destructor TFRMaterialSideSheet.Destroy;
 begin
+  DestroyScrim;
   FAnimTimer.Free;
   inherited Destroy;
 end;
 
+procedure TFRMaterialSideSheet.CreateScrim;
+begin
+  if Assigned(FScrim) then Exit;
+  if not Assigned(Parent) then Exit;
+
+  FScrim := TFRSheetScrim.Create(Parent);
+  FScrim.Parent := Parent;
+  { Do NOT use Align := alClient — it triggers LCL re-layout and can
+    displace sibling controls (e.g. child form content disappears).
+    Instead, cover the parent area manually with anchors. }
+  FScrim.Align := alNone;
+  FScrim.SetBounds(0, 0, Parent.ClientWidth, Parent.ClientHeight);
+  FScrim.Anchors := [akLeft, akTop, akRight, akBottom];
+  FScrim.FAlpha := FScrimOpacity;
+  FScrim.OnClick := @OnScrimClick;
+  FScrim.BringToFront;
+
+  { Ensure the sheet is above the scrim }
+  Self.BringToFront;
+end;
+
+procedure TFRMaterialSideSheet.DestroyScrim;
+begin
+  if Assigned(FScrim) then
+  begin
+    FScrim.Free;
+    FScrim := nil;
+  end;
+end;
+
+procedure TFRMaterialSideSheet.OnScrimClick(Sender: TObject);
+begin
+  if FDismissOnClickOutside and FExpanded then
+    SetExpanded(False);
+end;
+
+procedure TFRMaterialSideSheet.DoKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if (Key = VK_ESCAPE) and FDismissOnEscape and FExpanded then
+  begin
+    SetExpanded(False);
+    Key := 0;
+  end;
+end;
+
 procedure TFRMaterialSideSheet.SetExpanded(AValue: Boolean);
+var
+  frm: TCustomForm;
 begin
   if FExpanded = AValue then Exit;
   FExpanded := AValue;
@@ -228,9 +417,34 @@ begin
   if Assigned(Parent) then
   begin
     if FExpanded then
-      FTargetLeft := Parent.ClientWidth - FSheetWidth
+    begin
+      if FDismissOnClickOutside then
+        CreateScrim;
+      if FDismissOnEscape then
+      begin
+        frm := GetParentForm(Self);
+        if Assigned(frm) then
+        begin
+          frm.KeyPreview := True;
+          frm.OnKeyDown := @DoKeyDown;
+        end;
+      end;
+      FTargetLeft := Parent.ClientWidth - FSheetWidth;
+      if Assigned(FOnExpand) then
+        FOnExpand(Self);
+    end
     else
+    begin
+      if FDismissOnEscape then
+      begin
+        frm := GetParentForm(Self);
+        if Assigned(frm) then
+          frm.OnKeyDown := nil;
+      end;
       FTargetLeft := Parent.ClientWidth;
+      if Assigned(FOnCollapse) then
+        FOnCollapse(Self);
+    end;
     FAnimTimer.Enabled := True;
   end;
 end;
@@ -245,7 +459,10 @@ begin
     Left := FTargetLeft;
     FAnimTimer.Enabled := False;
     if not FExpanded then
+    begin
       Visible := False;
+      DestroyScrim;
+    end;
   end
   else
     Left := Left + diff div 4;
@@ -262,19 +479,11 @@ begin
   SetExpanded(not FExpanded);
 end;
 
-procedure TFRMaterialSideSheet.Paint;
-var
-  bmp: TBGRABitmap;
+function TFRMaterialSideSheet.PaintCached(ABmp: TBGRABitmap): Boolean;
 begin
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    MD3DrawShadow(bmp, 0, 0, Width - 1, Height - 1, 16, elLevel1);
-    MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, 16, MD3Colors.SurfaceContainerLow);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
-  end;
+  Result := True;
+  MD3DrawShadow(ABmp, 0, 0, Width - 1, Height - 1, 16, elLevel1);
+  MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, 16, MD3Colors.SurfaceContainerLow);
 end;
 
 procedure Register;

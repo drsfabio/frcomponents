@@ -22,12 +22,13 @@ interface
 
 uses
   Classes, SysUtils, Controls, Graphics, Forms, Types, Dialogs,
-  {$IFDEF FPC} LCLType, LResources, {$ENDIF}
+  {$IFDEF FPC} LCLType, LResources, LMessages, {$ENDIF}
   BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterial3Base, FRMaterialIcons,
   ComponentEditors, PropEdits;
 
 type
   TFRTabPosition = (tpTop, tpBottom);
+  TFRTabAlignment = (taFixed, taScrollable);
   TFRMaterialPageControl = class;
 
   { ── TFRMaterialTabPage ── }
@@ -91,6 +92,7 @@ type
     FHoverTabIndex: Integer;
     FHoverClose: Boolean;
     FTabPosition: TFRTabPosition;
+    FTabAlignment: TFRTabAlignment;
     function GetPageCount: Integer;
     function GetPage(Index: Integer): TFRMaterialTabPage;
     function GetActivePage: TFRMaterialTabPage;
@@ -98,8 +100,10 @@ type
     procedure SetActivePageIndex(AValue: Integer);
     procedure SetShowCloseButton(AValue: Boolean);
     procedure SetTabPosition(AValue: TFRTabPosition);
+    procedure SetTabAlignment(AValue: TFRTabAlignment);
     procedure BackgroundImageChanged(Sender: TObject);
     function CalcTabWidth: Integer;
+    function CalcSingleTabWidth(AIndex: Integer): Integer;
     function TabRect(AIndex: Integer): TRect;
     function CloseRect(AIndex: Integer): TRect;
   protected
@@ -110,6 +114,7 @@ type
     procedure ApplyTheme(const AThemeManager: TObject); virtual;
     procedure Resize; override;
     procedure GetChildren(Proc: TGetChildProc; Root: TComponent); override;
+    procedure CMDesignHitTest(var Message: TLMessage); message CM_DESIGNHITTEST;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -128,6 +133,7 @@ type
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnCloseTab: TFRMDCloseTabEvent read FOnCloseTab write FOnCloseTab;
     property TabPosition: TFRTabPosition read FTabPosition write SetTabPosition default tpTop;
+    property TabAlignment: TFRTabAlignment read FTabAlignment write SetTabAlignment default taFixed;
     property Align;
     property Anchors;
     property BorderSpacing;
@@ -278,6 +284,7 @@ begin
   FHoverTabIndex := -1;
   FHoverClose := False;
   FTabPosition := tpTop;
+  FTabAlignment := taFixed;
   FBackgroundImage := TPicture.Create;
   FBackgroundImage.OnChange := @BackgroundImageChanged;
   Width := 400;
@@ -345,6 +352,7 @@ begin
   FActivePageIndex := AValue;
   UpdatePageLayout;
   Invalidate;
+  Invalidate;
   if Assigned(FOnChange) then
     FOnChange(Self);
 end;
@@ -354,12 +362,22 @@ begin
   if FShowCloseButton = AValue then Exit;
   FShowCloseButton := AValue;
   Invalidate;
+  Invalidate;
 end;
 
 procedure TFRMaterialPageControl.SetTabPosition(AValue: TFRTabPosition);
 begin
   if FTabPosition = AValue then Exit;
   FTabPosition := AValue;
+  UpdatePageLayout;
+  Invalidate;
+  Invalidate;
+end;
+
+procedure TFRMaterialPageControl.SetTabAlignment(AValue: TFRTabAlignment);
+begin
+  if FTabAlignment = AValue then Exit;
+  FTabAlignment := AValue;
   UpdatePageLayout;
   Invalidate;
 end;
@@ -380,6 +398,7 @@ begin
   begin
     UpdatePageLayout;
     Invalidate;
+    Invalidate;
   end;
 end;
 
@@ -393,6 +412,7 @@ begin
   if FActivePageIndex >= FPages.Count then
     FActivePageIndex := FPages.Count - 1;
   UpdatePageLayout;
+  Invalidate;
   Invalidate;
 end;
 
@@ -434,16 +454,59 @@ begin
   end;
 end;
 
+function TFRMaterialPageControl.CalcSingleTabWidth(AIndex: Integer): Integer;
+var
+  page: TFRMaterialTabPage;
+  textW, iconW, closeW, pad: Integer;
+begin
+  if (AIndex < 0) or (AIndex >= FPages.Count) then
+  begin
+    Result := 60;
+    Exit;
+  end;
+  page := TFRMaterialTabPage(FPages[AIndex]);
+
+  Canvas.Font.Size := 10;
+  Canvas.Font.Style := [];
+  textW := Canvas.TextWidth(page.FTabCaption);
+
+  pad := 32; { 16px padding each side }
+  iconW := 0;
+  if page.FShowIcon and (page.FIconMode <> imClear) then
+    iconW := 20 + 8; { icon 20px + gap }
+  closeW := 0;
+  if FShowCloseButton then
+    closeW := 22; { close icon + gap }
+
+  Result := pad + iconW + textW + closeW;
+  if Result < 60 then Result := 60;
+  if Result > 240 then Result := 240;
+end;
+
 function TFRMaterialPageControl.TabRect(AIndex: Integer): TRect;
 var
-  tw, tabTop: Integer;
+  tw, tabTop, i, x: Integer;
 begin
-  tw := CalcTabWidth;
   if FTabPosition = tpTop then
     tabTop := 0
   else
     tabTop := Height - FTabHeight;
-  Result := Rect(AIndex * tw, tabTop, (AIndex + 1) * tw, tabTop + FTabHeight);
+
+  if FTabAlignment = taScrollable then
+  begin
+    { Variable-width tabs, left-aligned }
+    x := 0;
+    for i := 0 to AIndex - 1 do
+      x := x + CalcSingleTabWidth(i);
+    tw := CalcSingleTabWidth(AIndex);
+    Result := Rect(x, tabTop, x + tw, tabTop + FTabHeight);
+  end
+  else
+  begin
+    { Fixed-width tabs, evenly distributed }
+    tw := CalcTabWidth;
+    Result := Rect(AIndex * tw, tabTop, (AIndex + 1) * tw, tabTop + FTabHeight);
+  end;
 end;
 
 function TFRMaterialPageControl.CloseRect(AIndex: Integer): TRect;
@@ -463,7 +526,7 @@ var
   tr, aRect: TRect;
   textColor: TColor;
   iconBmp: TBGRABitmap;
-  bx: Integer; { bitmap-local X for current tab }
+  bx, bw: Integer; { bitmap-local X and width for current tab }
   closeX, closeY, closeCX, closeCY: Integer;
   clipText: string;
   availW: Integer;
@@ -493,23 +556,35 @@ begin
     for i := 0 to FPages.Count - 1 do
     begin
       page := TFRMaterialTabPage(FPages[i]);
-      bx := i * tw;
+
+      { Calculate tab position depending on alignment mode }
+      if FTabAlignment = taScrollable then
+      begin
+        tr := TabRect(i);
+        bx := tr.Left;
+        bw := tr.Right - tr.Left;
+      end
+      else
+      begin
+        bx := i * tw;
+        bw := tw;
+      end;
 
       { Hover highlight }
       if (i = FHoverTabIndex) and (not FHoverClose) then
-        bmp.FillRect(bx, 0, bx + tw, FTabHeight,
+        bmp.FillRect(bx, 0, bx + bw, FTabHeight,
           ColorToBGRA(MD3Colors.OnSurface, 12), dmDrawWithTransparency);
 
       { Active indicator }
       if i = FActivePageIndex then
       begin
         if FTabPosition = tpTop then
-          bmp.FillRect(bx + tw div 4, FTabHeight - 3,
-                       bx + tw - tw div 4, FTabHeight,
+          bmp.FillRect(bx + bw div 4, FTabHeight - 3,
+                       bx + bw - bw div 4, FTabHeight,
             ColorToBGRA(MD3Colors.Primary), dmDrawWithTransparency)
         else
-          bmp.FillRect(bx + tw div 4, 0,
-                       bx + tw - tw div 4, 3,
+          bmp.FillRect(bx + bw div 4, 0,
+                       bx + bw - bw div 4, 3,
             ColorToBGRA(MD3Colors.Primary), dmDrawWithTransparency);
       end;
 
@@ -521,13 +596,13 @@ begin
         else
           textColor := MD3Colors.OnSurfaceVariant;
         iconBmp := FRGetCachedIcon(page.FIconMode, FRColorToSVGHex(textColor), 2.0, 20, 20);
-        bmp.PutImage(bx + (tw - 20) div 2, 8, iconBmp, dmDrawWithTransparency);
+        bmp.PutImage(bx + (bw - 20) div 2, 8, iconBmp, dmDrawWithTransparency);
       end;
 
       { Close button }
       if FShowCloseButton then
       begin
-        closeX := bx + tw - 24;
+        closeX := bx + bw - 24;
         closeY := (FTabHeight - 14) div 2;
         closeCX := closeX + 7;  { center X of 14px icon }
         closeCY := closeY + 7;  { center Y of 14px icon }
@@ -553,7 +628,6 @@ begin
   { Text labels — second pass on Canvas for crisp font rendering }
   Canvas.Font.Size := 10;
   Canvas.Font.Style := [];
-  tw := CalcTabWidth;
   for i := 0 to FPages.Count - 1 do
   begin
     page := TFRMaterialTabPage(FPages[i]);
@@ -600,23 +674,36 @@ begin
   end;
 end;
 
+procedure TFRMaterialPageControl.CMDesignHitTest(var Message: TLMessage);
+var
+  Y: Integer;
+begin
+  { Allow clicks in the tab bar area to pass through to MouseDown at design-time }
+  Y := Message.LParamHi;
+  if ((FTabPosition = tpTop) and (Y < FTabHeight)) or
+     ((FTabPosition = tpBottom) and (Y >= Height - FTabHeight)) then
+    Message.Result := 1  { let the click through }
+  else
+    Message.Result := 0; { designer handles it normally }
+end;
+
 procedure TFRMaterialPageControl.MouseDown(Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 var
-  i, tw: Integer;
+  i: Integer;
   page: TFRMaterialTabPage;
   allowClose: Boolean;
+  tr: TRect;
 begin
   inherited;
   if (Button = mbLeft) and
      (((FTabPosition = tpTop) and (Y < FTabHeight)) or
       ((FTabPosition = tpBottom) and (Y >= Height - FTabHeight))) then
   begin
-    tw := CalcTabWidth;
-    if tw > 0 then
+    for i := 0 to FPages.Count - 1 do
     begin
-      i := X div tw;
-      if (i >= 0) and (i < FPages.Count) then
+      tr := TabRect(i);
+      if (X >= tr.Left) and (X < tr.Right) then
       begin
         { Close button click }
         if FShowCloseButton and PtInRect(CloseRect(i), Point(X, Y)) then
@@ -635,6 +722,7 @@ begin
         end;
         { Select tab }
         SetActivePageIndex(i);
+        Exit;
       end;
     end;
   end;
@@ -642,31 +730,29 @@ end;
 
 procedure TFRMaterialPageControl.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  tw, newHover: Integer;
+  i, newHover: Integer;
   newClose: Boolean;
+  tr: TRect;
 begin
   inherited;
+  newHover := -1;
+  newClose := False;
+
   if ((FTabPosition = tpTop) and (Y < FTabHeight)) or
      ((FTabPosition = tpBottom) and (Y >= Height - FTabHeight)) then
   begin
-    tw := CalcTabWidth;
-    if tw > 0 then
+    for i := 0 to FPages.Count - 1 do
     begin
-      newHover := X div tw;
-      if (newHover < 0) or (newHover >= FPages.Count) then
-        newHover := -1;
-    end
-    else
-      newHover := -1;
+      tr := TabRect(i);
+      if (X >= tr.Left) and (X < tr.Right) then
+      begin
+        newHover := i;
+        Break;
+      end;
+    end;
 
-    newClose := False;
     if FShowCloseButton and (newHover >= 0) then
       newClose := PtInRect(CloseRect(newHover), Point(X, Y));
-  end
-  else
-  begin
-    newHover := -1;
-    newClose := False;
   end;
 
   if (newHover <> FHoverTabIndex) or (newClose <> FHoverClose) then
@@ -684,6 +770,7 @@ begin
   begin
     FHoverTabIndex := -1;
     FHoverClose := False;
+    Invalidate;
     Invalidate;
   end;
 end;

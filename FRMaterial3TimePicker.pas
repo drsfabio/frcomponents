@@ -33,6 +33,7 @@ type
     procedure SetTimeFormat(AValue: TFRMDTimeFormat);
     function GetTimeStr: string;
   protected
+    function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
@@ -98,6 +99,7 @@ begin
   if FHour <> AValue then
   begin
     FHour := AValue;
+    InvalidatePaintCache;
     Invalidate;
     if Assigned(FOnChange) then FOnChange(Self);
   end;
@@ -109,6 +111,7 @@ begin
   if FMinute <> AValue then
   begin
     FMinute := AValue;
+    InvalidatePaintCache;
     Invalidate;
     if Assigned(FOnChange) then FOnChange(Self);
   end;
@@ -134,6 +137,7 @@ begin
         FIsAM := False;
       end;
     end;
+    InvalidatePaintCache;
     Invalidate;
   end;
 end;
@@ -151,12 +155,40 @@ begin
   end;
 end;
 
+function TFRMaterialTimePicker.PaintCached(ABmp: TBGRABitmap): Boolean;
+var
+  padY, fW, colW, r: Integer;
+  hBg, mBg: TColor;
+begin
+  Result := False; { Cannot fully cache - has complex Canvas text rendering }
+
+  { Proportional metrics based on Width (reference = 220) and Height (reference = 72) }
+  padY := Height * 8 div 72;
+  fW := Width * 80 div 220;       { hour/minute field width }
+  colW := Width * 16 div 220;     { colon width }
+  r := Height * 8 div 72;
+  if r < 4 then r := 4;
+
+  { hour field }
+  if FActiveField = 0 then
+    hBg := MD3Colors.PrimaryContainer
+  else
+    hBg := MD3Colors.SurfaceContainerHighest;
+
+  { minute field }
+  if FActiveField = 1 then
+    mBg := MD3Colors.PrimaryContainer
+  else
+    mBg := MD3Colors.SurfaceContainerHighest;
+
+  MD3FillRoundRect(ABmp, 0, padY, fW, Height - padY, r, hBg);
+  MD3FillRoundRect(ABmp, fW + colW, padY, fW + colW + fW, Height - padY, r, mBg);
+end;
+
 procedure TFRMaterialTimePicker.Paint;
 var
-  bmp: TBGRABitmap;
-  hBg, mBg: TColor;
+  padY, fW, colW, r, ampmX: Integer;
   aRect: TRect;
-  ampmX, padY, fW, colW, r: Integer;
 begin
   { Proportional metrics based on Width (reference = 220) and Height (reference = 72) }
   padY := Height * 8 div 72;
@@ -165,28 +197,8 @@ begin
   r := Height * 8 div 72;
   if r < 4 then r := 4;
 
-  if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    { hour field }
-    if FActiveField = 0 then
-      hBg := MD3Colors.PrimaryContainer
-    else
-      hBg := MD3Colors.SurfaceContainerHighest;
-
-    { minute field }
-    if FActiveField = 1 then
-      mBg := MD3Colors.PrimaryContainer
-    else
-      mBg := MD3Colors.SurfaceContainerHighest;
-
-    MD3FillRoundRect(bmp, 0, padY, fW, Height - padY, r, hBg);
-    MD3FillRoundRect(bmp, fW + colW, padY, fW + colW + fW, Height - padY, r, mBg);
-
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
-  end;
+  { Call PaintCached for bitmap rendering (though it returns False, we still draw it) }
+  inherited Paint;
 
   { colon text }
   Canvas.Font.Size := Height * 20 div 72;
@@ -272,6 +284,7 @@ begin
     else
       FIsAM := False;
   end;
+  InvalidatePaintCache;
   Invalidate;
 end;
 
@@ -286,6 +299,7 @@ begin
       else
         FActiveField := 0;
       Key := 0;
+      InvalidatePaintCache;
       Invalidate;
     end;
     VK_UP:

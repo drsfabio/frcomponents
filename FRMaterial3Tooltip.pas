@@ -57,23 +57,59 @@ type
   TTooltipPanel = class(TCustomControl)
   private
     FTooltipText: string;
+    FPaintCache: TBGRABitmap;
+    FPaintCacheW: Integer;
+    FPaintCacheH: Integer;
+    procedure InvalidatePaintCache;
   protected
+    function PaintCached(ABmp: TBGRABitmap): Boolean; virtual;
     procedure Paint; override;
+  public
+    destructor Destroy; override;
   end;
+
+destructor TTooltipPanel.Destroy;
+begin
+  if Assigned(FPaintCache) then
+    FPaintCache.Free;
+  inherited Destroy;
+end;
+
+procedure TTooltipPanel.InvalidatePaintCache;
+begin
+  if Assigned(FPaintCache) then
+  begin
+    FPaintCache.Free;
+    FPaintCache := nil;
+  end;
+  FPaintCacheW := 0;
+  FPaintCacheH := 0;
+end;
+
+function TTooltipPanel.PaintCached(ABmp: TBGRABitmap): Boolean;
+begin
+  Result := True;
+  MD3FillRoundRect(ABmp, 0, 0, Width - 1, Height - 1, 4, MD3Colors.InverseSurface);
+end;
 
 procedure TTooltipPanel.Paint;
 var
-  bmp: TBGRABitmap;
   aRect: TRect;
 begin
   if (Width <= 0) or (Height <= 0) then Exit;
-  bmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
-  try
-    MD3FillRoundRect(bmp, 0, 0, Width - 1, Height - 1, 4, MD3Colors.InverseSurface);
-    bmp.Draw(Canvas, 0, 0, False);
-  finally
-    bmp.Free;
+
+  { Use paint cache if available and valid }
+  if (FPaintCache = nil) or (FPaintCacheW <> Width) or (FPaintCacheH <> Height) then
+  begin
+    if Assigned(FPaintCache) then
+      FPaintCache.Free;
+    FPaintCache := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
+    FPaintCacheW := Width;
+    FPaintCacheH := Height;
+    PaintCached(FPaintCache);
   end;
+
+  FPaintCache.Draw(Canvas, 0, 0, False);
 
   aRect := Rect(8, 0, Width - 8, Height);
   Canvas.Font.Size := 8;
