@@ -561,7 +561,7 @@ begin
        toShowHorzGridLines, toShowVertGridLines];
 
   TreeOptions.SelectionOptions := TreeOptions.SelectionOptions + [toFullRowSelect];
-  TreeOptions.MiscOptions      := TreeOptions.MiscOptions - [toEditable];
+  TreeOptions.MiscOptions      := TreeOptions.MiscOptions + [toCheckSupport] - [toEditable];
 
   Margin     := 0;
   TextMargin := 8;
