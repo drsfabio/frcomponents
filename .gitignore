@@ -19,6 +19,10 @@ demo/lib/
 *.res
 icons/treeview_temp.png
 
+# Demo / Showcase binaries
+demo-showcase/showcase.exe
+demo-showcase/lib/
+
 # Smoke test runner build artifacts
 tests/smoke_runner.exe
 tests/smoke_runner.res
