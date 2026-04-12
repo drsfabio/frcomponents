@@ -21,7 +21,7 @@ uses
   Classes, SysUtils, Controls, Graphics, Forms, Menus,
   {$IFDEF FPC} LResources, LCLType, LMessages, {$ENDIF}
   BGRABitmap, BGRABitmapTypes,
-  FRMaterial3Base, FRMaterialIcons, FRMaterialTheme;
+  FRMaterial3Base, FRMaterialIcons;
 
 type
   TFRTitleBarButton = (tbbMinimize, tbbMaximize, tbbClose);
@@ -69,8 +69,6 @@ type
     FHoveredButton: Integer;   // -1=none, 0=min, 1=max, 2=close
     FPressedButton: Integer;
     FHoveredAction: Integer;   // -1=none, 0..N-1
-    FDragging: Boolean;
-    FDragStart: TPoint;
     FOnLeadingIconClick: TNotifyEvent;
     procedure SetTitle(const AValue: string);
     procedure SetButtons(AValue: TFRTitleBarButtons);
@@ -121,7 +119,6 @@ type
     FTitleBar: TFRMaterialTitleBar;
     FResizeBorderWidth: Integer;
     procedure SetupDWMShadow;
-    procedure TitleBarDblClick(Sender: TObject);
   protected
     procedure CreateWnd; override;
     procedure DestroyWnd; override;
@@ -144,8 +141,8 @@ procedure FRSetupDWMShadow(AForm: TCustomForm);
 
 implementation
 
-uses Math
-  {$IFDEF FPC}, LCLIntf{$ENDIF}
+uses
+  {$IFDEF FPC} LCLIntf {$ENDIF}
   {$IFDEF MSWINDOWS}, Windows{$ENDIF};
 
 function MkRect(ALeft, ATop, ARight, ABottom: Integer): TRect; inline;
@@ -171,30 +168,14 @@ type
     cyBottomHeight: Integer;
   end;
 
-const
-  DWMWA_NCRENDERING_POLICY = 2;
-
-  { Hit test constants — defined here, used below outside {$IFDEF} too }
 
 function DwmExtendFrameIntoClientArea(hWnd: HWND; const pMarInset: Pointer): HRESULT;
   stdcall; external 'dwmapi.dll';
-function DwmSetWindowAttribute(hWnd: HWND; dwAttribute: DWORD;
-  pvAttribute: Pointer; cbAttribute: DWORD): HRESULT;
-  stdcall; external 'dwmapi.dll';
-
 const
-  { Borderless-window constants }
-  FR_SM_CXPADDEDBORDER = 92;  { SM_CXPADDEDBORDERTHICKNESS }
   FR_SUBCLASS_ID = 1;
   FR_MONITOR_NEAREST = 2;     { MONITOR_DEFAULTTONEAREST }
 
 type
-  PFRNCCalcSizeParams = ^TFRNCCalcSizeParams;
-  TFRNCCalcSizeParams = record
-    rgrc: array[0..2] of TRect;
-    lppos: Pointer;
-  end;
-
   PFRMinMaxInfo = ^TFRMinMaxInfo;
   TFRMinMaxInfo = record
     ptReserved: TPoint;
@@ -228,18 +209,6 @@ function FRGetMonitorInfo(hMonitor: THandle; lpmi: Pointer): BOOL;
 {$ENDIF}
 
 const
-  { Hit test constants (used by BorderHitTest and subclass) }
-  HTCLIENT      = 1;
-  HTCAPTION     = 2;
-  HTLEFT        = 10;
-  HTRIGHT       = 11;
-  HTTOP         = 12;
-  HTTOPLEFT     = 13;
-  HTTOPRIGHT    = 14;
-  HTBOTTOM      = 15;
-  HTBOTTOMLEFT  = 16;
-  HTBOTTOMRIGHT = 17;
-
   TITLEBAR_HEIGHT = 40;
   BTN_WIDTH = 46;
   ICON_SIZE = 18;
@@ -249,7 +218,6 @@ const
   // Internal button indices for hover/press tracking
   BTN_NONE  = -1;
   BTN_MIN   = 0;
-  BTN_MAX   = 1;
   BTN_CLOSE = 2;
 
 { ?? TFRMaterialTitleBarAction ?? }
@@ -323,7 +291,6 @@ begin
   FHoveredButton := BTN_NONE;
   FPressedButton := BTN_NONE;
   FHoveredAction := -1;
-  FDragging := False;
   with GetControlClassDefaultSize do
     SetInitialBounds(0, 0, CX, CY);
   Align := alTop;
@@ -956,14 +923,6 @@ end;
 begin
 end;
 {$ENDIF}
-
-procedure TFRMaterialForm.TitleBarDblClick(Sender: TObject);
-begin
-  if WindowState = wsMaximized then
-    WindowState := wsNormal
-  else
-    WindowState := wsMaximized;
-end;
 
 { ?? Registration ?? }
 
