@@ -120,9 +120,6 @@ type
   private
     FTitleBar: TFRMaterialTitleBar;
     FResizeBorderWidth: Integer;
-    {$IFDEF MSWINDOWS}
-    procedure WMNCHitTest(var Msg: TLMNCHITTEST); message LM_NCHITTEST;
-    {$ENDIF}
     procedure SetupDWMShadow;
     procedure TitleBarDblClick(Sender: TObject);
   protected
@@ -177,15 +174,7 @@ type
 const
   DWMWA_NCRENDERING_POLICY = 2;
 
-  { Hit test constants not in LCLType }
-  HTLEFT        = 10;
-  HTRIGHT       = 11;
-  HTTOP         = 12;
-  HTTOPLEFT     = 13;
-  HTTOPRIGHT    = 14;
-  HTBOTTOM      = 15;
-  HTBOTTOMLEFT  = 16;
-  HTBOTTOMRIGHT = 17;
+  { Hit test constants — defined here, used below outside {$IFDEF} too }
 
 function DwmExtendFrameIntoClientArea(hWnd: HWND; const pMarInset: Pointer): HRESULT;
   stdcall; external 'dwmapi.dll';
@@ -239,6 +228,18 @@ function FRGetMonitorInfo(hMonitor: THandle; lpmi: Pointer): BOOL;
 {$ENDIF}
 
 const
+  { Hit test constants (used by BorderHitTest and subclass) }
+  HTCLIENT      = 1;
+  HTCAPTION     = 2;
+  HTLEFT        = 10;
+  HTRIGHT       = 11;
+  HTTOP         = 12;
+  HTTOPLEFT     = 13;
+  HTTOPRIGHT    = 14;
+  HTBOTTOM      = 15;
+  HTBOTTOMLEFT  = 16;
+  HTBOTTOMRIGHT = 17;
+
   TITLEBAR_HEIGHT = 40;
   BTN_WIDTH = 46;
   ICON_SIZE = 18;
@@ -785,40 +786,28 @@ begin
 end;
 
 {$IFDEF MSWINDOWS}
-{ Chromium-style borderless window.
-  - WM_NCCALCSIZE: zeros NC area (client = window rect)
-  - WM_GETMINMAXINFO: constrains maximize to monitor work area
-  - WM_NCHITTEST: resize borders + caption drag (must live here because
-    DefWindowProc with WS_THICKFRAME intercepts before LCL handler)
-  - WM_NCACTIVATE: suppresses default NC frame painting }
+{ ComCtl32 subclass: handles WM_NCCALCSIZE (zeros NC area) and
+  WM_GETMINMAXINFO (constrains maximize to work area).
+  NOTE: WM_NCHITTEST never reaches subclass or LCL handlers when
+  WS_THICKFRAME is present — resize is handled via BorderWidth +
+  MouseMove/MouseDown instead. }
 function FRMaterialFormSubclassProc(hWnd: HWND; uMsg: UINT; wp: WPARAM;
-  lp: LPARAM; {%H-}uIdSubclass: PtrUInt; dwRefData: PtrUInt): LRESULT; stdcall;
+  lp: LPARAM; {%H-}uIdSubclass: PtrUInt; {%H-}dwRefData: PtrUInt): LRESULT; stdcall;
 var
-  Form: TFRMaterialForm;
   MMI: PFRMinMaxInfo;
   Mon: THandle;
   MI: TFRMonitorInfo;
-  pt: TPoint;
-  rc: TRect;
-  bw, w, h: Integer;
 begin
   case uMsg of
-
     WM_NCCALCSIZE:
+      if wp <> 0 then
       begin
-        if wp <> 0 then
-        begin
-          { Return 0: client rect = window rect → no visible NC area.
-            WM_GETMINMAXINFO already constrains maximized bounds, so no
-            InflateRect needed here — that caused double-deflation. }
-          Result := 0;
-          Exit;
-        end;
+        Result := 0;
+        Exit;
       end;
 
     WM_GETMINMAXINFO:
       begin
-        { Constrain maximized size/position to the monitor's work area }
         MMI := PFRMinMaxInfo(lp);
         Mon := FRMonitorFromWindow(hWnd, FR_MONITOR_NEAREST);
         FillChar(MI, SizeOf(MI), 0);
@@ -836,80 +825,10 @@ begin
 
     WM_NCACTIVATE:
       begin
-        { Prevent Windows from painting a NC frame on activate/deactivate }
         Result := 1;
         Exit;
       end;
-
-    WM_NCHITTEST:
-      begin
-        Form := TFRMaterialForm(Pointer(dwRefData));
-        if Assigned(Form) then
-        begin
-          { Screen→client via GetWindowRect (avoids ScreenToClient ambiguity
-            between Windows and LCLIntf units). With zero NC area the
-            client origin equals the window origin. }
-          GetWindowRect(hWnd, rc);
-          pt.X := SmallInt(lp and $FFFF) - rc.Left;
-          pt.Y := SmallInt((lp shr 16) and $FFFF) - rc.Top;
-          w := rc.Right  - rc.Left;
-          h := rc.Bottom - rc.Top;
-
-          { Maximized → no resize borders, just caption or client }
-          if IsZoomed(hWnd) then
-          begin
-            if Assigned(Form.FTitleBar) and (pt.Y >= 0) and
-               (pt.Y < Form.FTitleBar.Height) then
-            begin
-              if (Form.FTitleBar.ButtonAtPos(pt.X, pt.Y) <> BTN_NONE) or
-                 (Form.FTitleBar.ActionAtPos(pt.X, pt.Y) >= 0) or
-                 ((Form.FTitleBar.LeadingIcon <> imClear) and
-                  (pt.X < PAD_H + ICON_SIZE + 12)) then
-                Result := HTCLIENT
-              else
-                Result := HTCAPTION;
-            end
-            else
-              Result := HTCLIENT;
-            Exit;
-          end;
-
-          { Normal state: resize borders (8 directions) }
-          bw := Form.FResizeBorderWidth;
-
-          if (pt.Y < bw) and (pt.X < bw) then
-            Result := HTTOPLEFT
-          else if (pt.Y < bw) and (pt.X >= w - bw) then
-            Result := HTTOPRIGHT
-          else if (pt.Y >= h - bw) and (pt.X < bw) then
-            Result := HTBOTTOMLEFT
-          else if (pt.Y >= h - bw) and (pt.X >= w - bw) then
-            Result := HTBOTTOMRIGHT
-          else if pt.Y < bw then
-            Result := HTTOP
-          else if pt.Y >= h - bw then
-            Result := HTBOTTOM
-          else if pt.X < bw then
-            Result := HTLEFT
-          else if pt.X >= w - bw then
-            Result := HTRIGHT
-          else if Assigned(Form.FTitleBar) and (pt.Y < Form.FTitleBar.Height) then
-          begin
-            if (Form.FTitleBar.ButtonAtPos(pt.X, pt.Y) <> BTN_NONE) or
-               (Form.FTitleBar.ActionAtPos(pt.X, pt.Y) >= 0) or
-               ((Form.FTitleBar.LeadingIcon <> imClear) and
-                (pt.X < PAD_H + ICON_SIZE + 12)) then
-              Result := HTCLIENT
-            else
-              Result := HTCAPTION;
-          end
-          else
-            Result := HTCLIENT;
-          Exit;
-        end;
-      end;
   end;
-
   Result := DefSubclassProc(hWnd, uMsg, wp, lp);
 end;
 {$ENDIF}
@@ -971,8 +890,17 @@ begin
     SetWindowLongPtr(Handle, GWL_STYLE, Style);
 
     { Install ComCtl32 subclass — handles WM_NCCALCSIZE + WM_GETMINMAXINFO }
-    SetWindowSubclass(Handle, @FRMaterialFormSubclassProc,
-      FR_SUBCLASS_ID, PtrUInt(Self));
+    if not SetWindowSubclass(Handle, @FRMaterialFormSubclassProc,
+      FR_SUBCLASS_ID, PtrUInt(Self)) then
+    begin
+      if Assigned(FTitleBar) then
+        FTitleBar.Title := 'SUBCLASS FAILED';
+    end
+    else
+    begin
+      if Assigned(FTitleBar) then
+        FTitleBar.Title := 'SUBCLASS OK';
+    end;
 
     SetWindowPos(Handle, 0, 0, 0, 0, 0,
       SWP_FRAMECHANGED or SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER);
@@ -1011,23 +939,21 @@ procedure TFRMaterialForm.SetupDWMShadow;
 {$IFDEF MSWINDOWS}
 var
   Margins: TDWMMargins;
-  Policy: DWORD;
 begin
   if not HandleAllocated then Exit;
   try
-    { 1px top margin — Chrome trick: activates DWM shadow without
-      rendering a visible titlebar or border. }
-    Margins.cxLeftWidth := 0;
-    Margins.cxRightWidth := 0;
+    { 1px on all sides activates DWM shadow + rounded corners.
+      Child controls paint over these pixels, so no glass shows. }
+    Margins.cxLeftWidth := 1;
+    Margins.cxRightWidth := 1;
     Margins.cyTopHeight := 1;
-    Margins.cyBottomHeight := 0;
+    Margins.cyBottomHeight := 1;
     DwmExtendFrameIntoClientArea(Handle, @Margins);
   except
   end;
 end;
 {$ELSE}
 begin
-  { No shadow on non-Windows platforms }
 end;
 {$ENDIF}
 
@@ -1038,61 +964,6 @@ begin
   else
     WindowState := wsMaximized;
 end;
-
-{$IFDEF MSWINDOWS}
-procedure TFRMaterialForm.WMNCHitTest(var Msg: TLMNCHITTEST);
-var
-  pt: TPoint;
-  bw: Integer;
-begin
-  pt := ScreenToClient(MkPoint(Msg.XPos, Msg.YPos));
-  bw := FResizeBorderWidth;
-
-  if WindowState = wsMaximized then
-  begin
-    if Assigned(FTitleBar) and (pt.Y >= 0) and (pt.Y < FTitleBar.Height) then
-    begin
-      if (FTitleBar.ButtonAtPos(pt.X, pt.Y) <> BTN_NONE) or
-         (FTitleBar.ActionAtPos(pt.X, pt.Y) >= 0) then
-        Msg.Result := HTCLIENT
-      else
-        Msg.Result := HTCAPTION;
-    end
-    else
-      Msg.Result := HTCLIENT;
-    Exit;
-  end;
-
-  { Resize borders (8 directions) }
-  if (pt.Y < bw) and (pt.X < bw) then
-    Msg.Result := HTTOPLEFT
-  else if (pt.Y < bw) and (pt.X >= Width - bw) then
-    Msg.Result := HTTOPRIGHT
-  else if (pt.Y >= Height - bw) and (pt.X < bw) then
-    Msg.Result := HTBOTTOMLEFT
-  else if (pt.Y >= Height - bw) and (pt.X >= Width - bw) then
-    Msg.Result := HTBOTTOMRIGHT
-  else if pt.Y < bw then
-    Msg.Result := HTTOP
-  else if pt.Y >= Height - bw then
-    Msg.Result := HTBOTTOM
-  else if pt.X < bw then
-    Msg.Result := HTLEFT
-  else if pt.X >= Width - bw then
-    Msg.Result := HTRIGHT
-  else if Assigned(FTitleBar) and (pt.Y < FTitleBar.Height) then
-  begin
-    if (FTitleBar.ButtonAtPos(pt.X, pt.Y) <> BTN_NONE) or
-       (FTitleBar.ActionAtPos(pt.X, pt.Y) >= 0) then
-      Msg.Result := HTCLIENT
-    else
-      Msg.Result := HTCAPTION;
-  end
-  else
-    Msg.Result := HTCLIENT;
-end;
-
-{$ENDIF}
 
 { ?? Registration ?? }
 
