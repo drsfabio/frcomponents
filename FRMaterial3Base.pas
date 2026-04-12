@@ -910,8 +910,9 @@ begin
   for i := layers downto 1 do
   begin
     alpha := EnsureRange(30 div i, 5, 30);
+    { Radius grows with each layer so shadow corners stay round }
     MD3FillRoundRect(ABmp, X1 + i, Y1 + i + off, X2 - i, Y2 + off,
-      ARadius, clBlack, alpha);
+      ARadius + i, clBlack, alpha);
   end;
 end;
 

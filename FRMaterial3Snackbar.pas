@@ -229,28 +229,20 @@ begin
   Result := True;
   GetTypeColors(bgColor, txtColor, actColor, icoColor);
 
-  { Pre-fill with parent bg for AA blending at corners }
+  { Fill with parent bg, then draw antialiased rounded body on top.
+    SetWindowRgn provides coarse clipping; BGRA gives smooth edges. }
   ABmp.Fill(ColorToBGRA(ColorToRGB(MD3Colors.Surface)));
-
-  { Shadow — drawn within SHADOW_PAD area around the body }
-  MD3DrawShadow(ABmp,
-    SHADOW_PAD, SHADOW_PAD,
-    Width - SHADOW_PAD, Height - SHADOW_PAD,
-    SNACKBAR_RADIUS, elLevel3);
-
-  { Body — anti-aliased rounded rect inside the shadow area }
-  MD3FillRoundRect(ABmp,
-    SHADOW_PAD - 0.5, SHADOW_PAD - 0.5,
-    Width - SHADOW_PAD + 0.5, Height - SHADOW_PAD + 0.5,
-    SNACKBAR_RADIUS, bgColor);
+  ABmp.FillRoundRectAntialias(0, 0, Width - 1, Height - 1,
+    SNACKBAR_RADIUS, SNACKBAR_RADIUS,
+    ColorToBGRA(ColorToRGB(bgColor)));
 
   { BGRA font setup — equivalent to Canvas.Font.Size := 10 }
   ABmp.FontHeight := -MulDiv(10, Screen.PixelsPerInch, 72);
   ABmp.FontQuality := fqFineClearTypeRGB;
   ABmp.FontStyle := [];
 
-  textLeft := SHADOW_PAD + SNACKBAR_PADDING_H;
-  textRight := Width - SHADOW_PAD - SNACKBAR_PADDING_H;
+  textLeft := SNACKBAR_PADDING_H;
+  textRight := Width - SNACKBAR_PADDING_H;
 
   { Leading icon — composited into the BGRA bitmap }
   if FSnackbar.FLeadingIcon <> imClear then
@@ -282,7 +274,7 @@ begin
   begin
     ABmp.FontStyle := [fsBold];
     actionW := ABmp.TextSize(FSnackbar.FActionText).cx + 24;
-    aRect := Rect(textRight - actionW, SHADOW_PAD, textRight, Height - SHADOW_PAD);
+    aRect := Rect(textRight - actionW, 0, textRight, Height);
     MD3DrawTextBGRA(ABmp, FSnackbar.FActionText, aRect, actColor,
       taRightJustify, True, True);
     ABmp.FontStyle := [];
@@ -292,9 +284,9 @@ begin
   { Message text }
   padV := SNACKBAR_PADDING_V + (FDensityDelta div 2);
   if padV < 6 then padV := 6;
-  aRect := Rect(textLeft, SHADOW_PAD + padV, textRight, Height - SHADOW_PAD - padV);
+  aRect := Rect(textLeft, padV, textRight, Height - padV);
 
-  if Height > (SNACKBAR_MIN_H + FDensityDelta + SHADOW_PAD * 2) then
+  if Height > (SNACKBAR_MIN_H + FDensityDelta) then
   begin
     { Multiline — word-wrapped BGRA text }
     FillChar(ts, SizeOf(ts), 0);
@@ -312,16 +304,8 @@ begin
 end;
 
 procedure TSnackbarPanel.EraseBackground(DC: HDC);
-var
-  ARect: TRect;
 begin
-  if DC = 0 then Exit;
-  ARect := Rect(0, 0, Width, Height);
-  { Always use MD3Colors.Surface — the snackbar is parented to the Form
-    whose Color may NOT be updated after dark-mode/palette toggles.
-    MD3Colors.Surface is always in sync with the current scheme. }
-  Brush.Color := MD3Colors.Surface;
-  LCLIntf.FillRect(DC, ARect, HBRUSH(Brush.Reference.Handle));
+  { Suppressed — Paint handles full content via cached BGRA bitmap }
 end;
 
 procedure TSnackbarPanel.Paint;
@@ -330,19 +314,15 @@ var
 begin
   if (Width <= 0) or (Height <= 0) then Exit;
 
-  { Create/validate cached bitmap — full content (bg + text + icons) }
   if (FPaintCache = nil) or (FPaintCacheW <> Width) or (FPaintCacheH <> Height) then
   begin
     FreeAndNil(FPaintCache);
-    FPaintCache := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
+    FPaintCache := TBGRABitmap.Create(Width, Height);
     FPaintCacheW := Width;
     FPaintCacheH := Height;
     PaintCached(FPaintCache);
   end;
 
-  { Single opaque blit — bitmap is pre-filled with Surface bg so
-    corners are already correctly blended.  During fade animation
-    (FAlpha < 255), duplicate + ApplyGlobalOpacity + alpha-blit. }
   if FAlpha < 255 then
   begin
     bmp := FPaintCache.Duplicate as TBGRABitmap;
@@ -354,7 +334,7 @@ begin
     end;
   end
   else
-    FPaintCache.Draw(Canvas, 0, 0, False);
+    FPaintCache.Draw(Canvas, 0, 0, True);
 end;
 
 procedure TSnackbarPanel.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -368,7 +348,7 @@ begin
   GetTypeColors(bgColor, txtColor, actColor, icoColor);
 
   { Check close button hit }
-  closeLeft := Width - SHADOW_PAD - SNACKBAR_PADDING_H - CLOSE_BTN_SIZE;
+  closeLeft := Width - SNACKBAR_PADDING_H - CLOSE_BTN_SIZE;
   if FSnackbar.FShowCloseButton and (X >= closeLeft) then
   begin
     FSnackbar.OnCloseClick(Self);
@@ -383,7 +363,7 @@ begin
     if FSnackbar.FShowCloseButton then
       actionLeft := closeLeft - ACTION_GAP - actionW
     else
-      actionLeft := Width - SHADOW_PAD - SNACKBAR_PADDING_H - actionW;
+      actionLeft := Width - SNACKBAR_PADDING_H - actionW;
     if X >= actionLeft then
       FSnackbar.OnActionClick(Self);
   end;
@@ -628,31 +608,24 @@ begin
   { Calculate height based on text }
   panelH := snkPanel.CalcContentHeight(maxTextW);
 
-  snkPanel.Width := panelW + SHADOW_PAD * 2;
-  snkPanel.Height := panelH + SHADOW_PAD * 2;
-  { Centraliza horizontalmente respeitando a margem lateral. Se o form
-    for menor que MIN_WIDTH + margens, o clamp acima ja cortou o
-    panelW — aqui so posicionamos. }
-  snkPanel.Left := (ownerForm.ClientWidth - panelW) div 2 - SHADOW_PAD;
+  snkPanel.Width := panelW;
+  snkPanel.Height := panelH;
+  snkPanel.Left := (ownerForm.ClientWidth - panelW) div 2;
 
-  { Start off-screen for animation — alem do rect visivel mais o
-    SNACKBAR_BOTTOM_MARGIN, para a slide-up animation terminar com
-    margem bonita do fundo. }
   if FPosition = spBottom then
-    snkPanel.Top := ownerForm.ClientHeight  { below screen }
+    snkPanel.Top := ownerForm.ClientHeight
   else
-    snkPanel.Top := -panelH;  { above screen }
+    snkPanel.Top := -panelH;
 
-  { Anchors sem akLeft/akRight: a gente nao quer o snackbar esticar
-    quando o form redimensiona. Fixa largura, re-centra no proximo
-    Show. }
   snkPanel.Anchors := [akBottom];
   snkPanel.BringToFront;
 
-  { Clip the panel to a rounded rectangle — the OS handles transparency
-    at corners, so the snackbar floats cleanly over any background. }
-  { No region clipping — shadow needs to extend beyond the rounded body.
-    The BGRA pre-fill with Surface color handles the AA blending. }
+  { SetWindowRgn for coarse clip + BGRA antialias for smooth edges }
+  {$IFDEF MSWINDOWS}
+  SetWindowRgn(snkPanel.Handle,
+    CreateRoundRectRgn(0, 0, panelW + 1, panelH + 1,
+      SNACKBAR_RADIUS * 2, SNACKBAR_RADIUS * 2), True);
+  {$ENDIF}
 
   FPanel := snkPanel;
   FPanel.FreeNotification(Self);
