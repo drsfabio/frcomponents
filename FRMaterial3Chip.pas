@@ -75,6 +75,7 @@ type
     function GetItemSelected(Index: Integer): Boolean;
     procedure SetItemSelected(Index: Integer; AValue: Boolean);
   protected
+    procedure DoOnResize; override;
     function PaintCached(ABmp: TBGRABitmap): Boolean; override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     class function GetControlClassDefaultSize: TSize; override;
@@ -286,6 +287,13 @@ class function TFRMaterialSegmentedButton.GetControlClassDefaultSize: TSize;
 begin
   Result.cx := 300;
   Result.cy := 40;
+end;
+
+procedure TFRMaterialSegmentedButton.DoOnResize;
+begin
+  inherited DoOnResize;
+  if not (csLoading in ComponentState) then
+    Height := 40 + MD3DensityDelta(Density);
 end;
 
 procedure TFRMaterialSegmentedButton.SetItems(AValue: TStrings);
