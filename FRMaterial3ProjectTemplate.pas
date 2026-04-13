@@ -105,7 +105,6 @@ constructor TFRMaterialFormProjectDescriptor.Create;
 begin
   inherited Create;
   Name := SProjectName;
-  Flags := Flags - [pfUseDefaultCompilerOptions];
 end;
 
 function TFRMaterialFormProjectDescriptor.GetLocalizedName: string;
@@ -161,10 +160,7 @@ end;
 
 procedure Register;
 begin
-  { TODO: RegisterProjectDescriptor causes 'Unknown category' on some
-    Lazarus versions. Disabled until proper category handling is implemented.
-    Use demo-template/app_template.lpi as standalone template instead. }
-  //RegisterProjectDescriptor(TFRMaterialFormProjectDescriptor.Create);
+  RegisterProjectDescriptor(TFRMaterialFormProjectDescriptor.Create);
 end;
 
 end.
