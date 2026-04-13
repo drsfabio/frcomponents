@@ -161,8 +161,7 @@ end;
 
 procedure Register;
 begin
-  RegisterProjectDescriptor(TFRMaterialFormProjectDescriptor.Create,
-    ProjectDescriptorApplication.Name);
+  RegisterProjectDescriptor(TFRMaterialFormProjectDescriptor.Create);
 end;
 
 end.
