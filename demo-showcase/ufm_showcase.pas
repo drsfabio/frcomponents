@@ -144,11 +144,20 @@ var
 
 implementation
 
+uses
+  {$IFDEF MSWINDOWS} LCLIntf {$ENDIF};
+
+{$IFDEF MSWINDOWS}
+function FRSetWindowTheme(hWnd: THandle; pszSubAppName: PWideChar;
+  pszSubIdList: PWideChar): HRESULT;
+  stdcall; external 'uxtheme.dll' name 'SetWindowTheme';
+{$ENDIF}
+
 const
-  FORM_W     = 1280;
-  FORM_H     = 800;
-  NAVRAIL_W  = 80;
-  APPBAR_H   = 64;
+  FORM_W      = 1280;
+  FORM_H      = 800;
+  NAVRAIL_W   = 80;
+  APPBAR_H    = 64;
   CONTENT_PAD = 24;
 
 { TFmShowcase }
@@ -159,22 +168,22 @@ var
 begin
   inherited CreateNew(AOwner);
 
-  Caption        := 'FRComponents — Material Design 3 Showcase';
-  Position       := poScreenCenter;
-  Width          := FORM_W;
-  Height         := FORM_H;
+  Caption               := 'FRComponents — Material Design 3 Showcase';
+  Position              := poScreenCenter;
+  Width                 := FORM_W;
+  Height                := FORM_H;
   Constraints.MinWidth  := 800;
   Constraints.MinHeight := 600;
-  DoubleBuffered := True;
-  OnResize       := @OnContentResize;
+  DoubleBuffered        := True;
+  OnResize              := @OnContentResize;
 
   { ThemeManager — default light theme with baseline palette.
     The dark mode toggle in the AppBar flips this at runtime. }
   FThemeManager := TFRMaterialThemeManager.Create(Self);
-  FThemeManager.Palette := mpBaseline;
+  FThemeManager.Palette  := mpBaseline;
   FThemeManager.DarkMode := False;
-  FThemeManager.Density := ddNormal;
-  FThemeManager.Variant := mvOutlined;
+  FThemeManager.Density  := ddNormal;
+  FThemeManager.Variant  := mvFilled;
   FDarkMode := False;
 
   { Snackbar — shared instance for all toasts }
@@ -888,6 +897,16 @@ begin
   FPnControls.Color := MD3Colors.Surface;
   FPnButtons.Color := MD3Colors.Surface;
   FPnTheme.Color   := MD3Colors.Surface;
+  {$IFDEF MSWINDOWS}
+  if FPnContent.HandleAllocated then
+  begin
+    if FDarkMode then
+      FRSetWindowTheme(FPnContent.Handle, PWideChar(WideString('DarkMode_Explorer')), nil)
+    else
+      FRSetWindowTheme(FPnContent.Handle, PWideChar(WideString('Explorer')), nil);
+    SendMessage(FPnContent.Handle, $031A, 0, 0);
+  end;
+  {$ENDIF}
   if FDarkMode then
     FSnackbar.Show('Dark mode on', stInfo)
   else
