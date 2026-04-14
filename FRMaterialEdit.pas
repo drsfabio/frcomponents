@@ -33,6 +33,7 @@ type
     FOnSearchButtonClick: TNotifyEvent;
     FSearchButtonPosition: TFRButtonPosition;
     FVariant: TFRMaterialVariant;
+    FApplyingTheme: Boolean;
     FBorderRadius: Integer;
     FIconStrokeWidth: Double;
     FValidColor: TColor;
@@ -1006,7 +1007,10 @@ procedure TFRMaterialEditBase.SetVariant(AValue: TFRMaterialVariant);
 begin
   if FVariant = AValue then Exit;
   FVariant := AValue;
-  if Assigned(FRMaterialDefaultThemeManager) then
+  { Guard contra reentrancia: ApplyTheme chama SetVariant (via toVariant in
+    SyncWithTheme), e se SetVariant chamar ApplyTheme de volta, o corpo
+    inteiro de ApplyTheme roda 2x por Edit × N edits = freeze visivel. }
+  if (not FApplyingTheme) and Assigned(FRMaterialDefaultThemeManager) then
     ApplyTheme(FRMaterialDefaultThemeManager);
   FRMDSafeInvalidate(Self);
 end;
@@ -1914,6 +1918,9 @@ end;
 
 procedure TFRMaterialEditBase.ApplyTheme(const AThemeManager: TObject);
 begin
+  if FApplyingTheme then Exit;
+  FApplyingTheme := True;
+  try
   inherited ApplyTheme(AThemeManager);
 
   if toVariant in SyncWithTheme then
@@ -1939,7 +1946,14 @@ begin
   Self.Font.Color := MD3Colors.OnSurface;
   FLabel.Font.Color := MD3Colors.OnSurfaceVariant;
   if Assigned(FEdit) then
+  begin
     FEdit.Font.Color := MD3Colors.OnSurface;
+    { Sync background do Edit interno (TMaskEdit) com o container.
+      Sem isto, o miolo do edit fica clWhite (default LCL) enquanto o
+      container ja tem cor MD3 — aparece um retangulo branco visivel
+      ate o primeiro DoOnResize sincronizar. }
+    FEdit.Color := Self.Color;
+  end;
   if Assigned(FSearchButton) then
   begin
     FSearchButton.NormalColor := MD3Colors.Primary;
@@ -1979,6 +1993,9 @@ begin
       Self.Color := MD3Colors.SurfaceContainerHigh;
   end;
   FRMDSafeInvalidate(Self);
+  finally
+    FApplyingTheme := False;
+  end;
 end;
 
 { TFRMaterialEdit }

@@ -223,19 +223,21 @@ type
     FDensity: TFRMDDensity;
     FFieldSize: TFRFieldSize;
     FSyncWithTheme: TFRMDSyncOptions;
-    { Ripple animation }
-    FRippleX: Integer;
-    FRippleY: Integer;
-    FRippleProgress: Single;
-    FRippleFading: Boolean;
-    FRippleFadeProgress: Single;
-    FRippleTimer: TTimer;
     { Paint cache — evita recriar TBGRABitmap a cada Paint }
     FPaintCache: TBGRABitmap;
     FPaintCacheW: Integer;
     FPaintCacheH: Integer;
     procedure DoRippleTick(Sender: TObject);
   protected
+    { Ripple animation — protected para permitir que descendentes com forma
+      nao-retangular (ex: SegmentedButton pill) sobrescrevam PaintRipple com
+      clipping adequado. }
+    FRippleX: Integer;
+    FRippleY: Integer;
+    FRippleProgress: Single;
+    FRippleFading: Boolean;
+    FRippleFadeProgress: Single;
+    FRippleTimer: TTimer;
     procedure EraseBackground({%H-}DC: HDC); override;
     procedure Paint; override;
     { Loaded() eh chamado pelo LCL APOS o streaming do LFM completar e
@@ -252,8 +254,10 @@ type
     procedure SetDensity(AValue: TFRMDDensity); virtual;
     procedure SetFieldSize(AValue: TFRFieldSize); virtual;
     function InteractionState: TFRMDInteractionState;
-    { Desenha o efeito ripple (círculo expandindo do ponto de clique) }
-    procedure PaintRipple(ABmp: TBGRABitmap; ARippleColor: TColor);
+    { Desenha o efeito ripple (círculo expandindo do ponto de clique).
+      Virtual para componentes com forma não-retangular (ex: SegmentedButton
+      pill) sobrescreverem com clipping adequado. }
+    procedure PaintRipple(ABmp: TBGRABitmap; ARippleColor: TColor); virtual;
     { Renderiza o conteúdo do componente no bitmap. Override nos descendentes.
       Retorna True se o bitmap foi pintado; False para pular o cache (ex: componentes
       com subcontroles que pintam diretamente no Canvas, como Edits). }

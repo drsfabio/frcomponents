@@ -13,7 +13,7 @@ unit FRMaterial3Chip;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics,
+  Classes, SysUtils, Math, Controls, Graphics,
   {$IFDEF FPC} LResources, {$ENDIF}
   BGRABitmap, BGRABitmapTypes, FRMaterial3Base, FRMaterialIcons, FRMaterialTheme;
 
@@ -77,6 +77,7 @@ type
   protected
     procedure DoOnResize; override;
     function PaintCached(ABmp: TBGRABitmap): Boolean; override;
+    procedure PaintRipple(ABmp: TBGRABitmap; ARippleColor: TColor); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     class function GetControlClassDefaultSize: TSize; override;
   public
@@ -345,6 +346,53 @@ begin
     FSelectedItems[Index] := AValue;
     FRMDSafeInvalidate(Self);
   end;
+end;
+
+procedure TFRMaterialSegmentedButton.PaintRipple(ABmp: TBGRABitmap; ARippleColor: TColor);
+var
+  idx, sw, x1, x2, r: Integer;
+  opts: TRoundRectangleOptions;
+  alpha: Byte;
+  fc: TBGRAPixel;
+begin
+  if (FRippleProgress <= 0) and (not FRippleFading) then Exit;
+  if FItems.Count = 0 then Exit;
+
+  sw := GetSegmentWidth;
+  if sw <= 0 then Exit;
+
+  { Identifica o segmento sob o ponto de clique }
+  idx := FRippleX div sw;
+  if idx < 0 then idx := 0;
+  if idx >= FItems.Count then idx := FItems.Count - 1;
+
+  x1 := idx * sw;
+  x2 := x1 + sw;
+  if idx = FItems.Count - 1 then x2 := Width;
+
+  r := Height div 2;
+
+  { Cantos quadrados apenas entre segmentos vizinhos; externos ficam pill }
+  opts := [];
+  if idx > 0 then
+    opts := opts + [rrTopLeftSquare, rrBottomLeftSquare];
+  if idx < FItems.Count - 1 then
+    opts := opts + [rrTopRightSquare, rrBottomRightSquare];
+
+  { State layer MD3: overlay translucido ocupando todo o segmento, com
+    alpha crescente conforme FRippleProgress. Respeita a forma pill via
+    RoundRectAntialias com opts apropriados — diferente do ripple circular
+    padrao que extrapola cantos arredondados externos. }
+  if FRippleFading then
+    alpha := EnsureRange(Round(38 * (1.0 - FRippleFadeProgress)), 0, 255)
+  else
+    alpha := EnsureRange(Round(38 * FRippleProgress), 0, 255);
+
+  if alpha <= 0 then Exit;
+
+  fc := ColorToBGRA(ColorToRGB(ARippleColor), alpha);
+  ABmp.RoundRectAntialias(x1 + 0.5, 0.5, x2 - 0.5, Height - 1.5,
+    r, r, fc, 1.0, fc, opts);
 end;
 
 procedure TFRMaterialSegmentedButton.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

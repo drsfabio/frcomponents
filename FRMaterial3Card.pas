@@ -44,6 +44,7 @@ type
     FHovered: Boolean;
     FPressed: Boolean;
     FOnCardClick: TNotifyEvent;
+    FSubTitle: string;
     { Ripple }
     FRippleX: Integer;
     FRippleY: Integer;
@@ -56,6 +57,7 @@ type
     procedure SetContentPadding(AValue: Integer);
     procedure SetHeaderHeight(AValue: Integer);
     procedure SetClickable(AValue: Boolean);
+    procedure SetSubTitle(const AValue: string);
     procedure HeaderImageChanged(Sender: TObject);
     procedure DoRippleTick(Sender: TObject);
     procedure GetStyleColors(out ABg, ABorder: TColor; out AElevation: TFRMDElevation);
@@ -78,6 +80,7 @@ type
     property HeaderImage: TPicture read FHeaderImage write FHeaderImage;
     property HeaderHeight: Integer read FHeaderHeight write SetHeaderHeight default 0;
     property Clickable: Boolean read FClickable write SetClickable default False;
+    property SubTitle: string read FSubTitle write SetSubTitle;
     property OnCardClick: TNotifyEvent read FOnCardClick write FOnCardClick;
     property Align;
     property Anchors;
@@ -120,24 +123,28 @@ begin
 
   FRMDRegisterComponent(Self);
 
-  ControlStyle := ControlStyle + [csAcceptsControls, csClickEvents, csCaptureMouse];
-  FCardStyle := cssFilled;
-  FBorderRadius := 12;
-  FContentPadding := 16;
-  FHeaderHeight := 0;
-  FClickable := False;
-  FHovered := False;
-  FPressed := False;
-  FRippleProgress := 0;
-  FRippleFading := False;
+  ControlStyle        := ControlStyle + [csAcceptsControls, csClickEvents, csCaptureMouse];
+  FCardStyle          := cssFilled;
+  FBorderRadius       := 12;
+  FContentPadding     := 16;
+  FHeaderHeight       := 0;
+  FClickable          := False;
+  FHovered            := False;
+  FPressed            := False;
+  FRippleProgress     := 0;
+  FRippleFading       := False;
   FRippleFadeProgress := 0;
-  FRippleTimer := nil;
+  FRippleTimer        := nil;
 
   FHeaderImage := TPicture.Create;
   FHeaderImage.OnChange := @HeaderImageChanged;
 
   { BorderWidth offsets ALL child controls (absolute + aligned) }
   BorderWidth := FContentPadding;
+
+  { Cores MD3 default para que filhos (TLabel etc.) herdem via ParentFont/ParentColor.
+    OnSurface garante contraste correto sobre qualquer CardStyle. }
+  Font.Color := MD3Colors.OnSurface;
 
   Width := 300;
   Height := 200;
@@ -154,6 +161,7 @@ end;
 procedure TFRMaterialCard.ApplyTheme(const AThemeManager: TObject);
 begin
   if not Assigned(AThemeManager) then Exit;
+  Font.Color := MD3Colors.OnSurface;
   FRMDSafeInvalidate(Self);
 end;
 
@@ -201,6 +209,13 @@ begin
   if FHeaderHeight = AValue then Exit;
   FHeaderHeight := AValue;
   ReAlign;
+  FRMDSafeInvalidate(Self);
+end;
+
+procedure TFRMaterialCard.SetSubTitle(const AValue: string);
+begin
+  if FSubTitle = AValue then Exit;
+  FSubTitle := AValue;
   FRMDSafeInvalidate(Self);
 end;
 
@@ -340,9 +355,21 @@ var
   interState: TFRMDInteractionState;
   maxRad: Single;
   ripAlpha: Byte;
+  parentBg: TColor;
+  captionY: Integer;
 begin
   if (Width <= 0) or (Height <= 0) then Exit;
-  ABmp := TBGRABitmap.Create(Width, Height, BGRAPixelTransparent);
+
+  { Pre-fill with parent background so corners blend naturally AND the
+    canvas DC stays fully opaque after BitBlt.  Without this, AlphaBlend
+    corrupts the DC alpha channel and child TGraphicControls (TLabel etc.)
+    become invisible because GDI text output does not set per-pixel alpha. }
+  if Parent <> nil then
+    parentBg := Parent.Brush.Color
+  else
+    parentBg := MD3Colors.Surface;
+
+  ABmp := TBGRABitmap.Create(Width, Height, ColorToBGRA(parentBg, 255));
   try
 
   GetStyleColors(bgColor, borderColor, elev);
@@ -398,19 +425,38 @@ begin
     MD3RoundRect(ABmp, 0.5, 0.5, Width - 1.5, Height - 1.5, r,
       borderColor, 1.0);
 
-  { Caption text — drawn on bitmap canvas }
-  if Caption <> '' then
+  { Caption + SubTitle — rendered on BGRA bitmap for alpha-correct DWM
+    compositing.  GDI TextOut (used by TLabel/TGraphicControl) does NOT set
+    per-pixel alpha, so text becomes invisible on borderless/composited
+    windows.  BGRA text rendering sets alpha=255 correctly. }
+  if (Caption <> '') or (FSubTitle <> '') then
   begin
-    ABmp.FontStyle := [fsBold];
-    ABmp.FontHeight := Abs(11 * 96 div 72);
-    MD3DrawTextBGRA(ABmp,
-      Caption,
-      Rect(FContentPadding, FHeaderHeight + 12,
-           Width - FContentPadding, FHeaderHeight + 12 + ABmp.TextSize('Áy').cy),
-      MD3Colors.OnSurface, taLeftJustify, False);
+    captionY := FHeaderHeight + 12;
+
+    if Caption <> '' then
+    begin
+      ABmp.FontName   := Font.Name;
+      ABmp.FontStyle  := [fsBold];
+      ABmp.FontHeight := Abs(Font.Size * 96 div 72);
+      ABmp.FontQuality := fqFineAntialiasing;
+      MD3DrawTextBGRA(ABmp, Caption,
+        Rect(16, captionY, Width - 16, captionY + ABmp.TextSize('Áy').cy),
+        MD3Colors.OnSurface, taLeftJustify, False, False);
+      captionY := captionY + ABmp.TextSize('Áy').cy + 4;
+    end;
+
+    if FSubTitle <> '' then
+    begin
+      ABmp.FontStyle  := [];
+      ABmp.FontHeight := Abs(9 * 96 div 72);
+      ABmp.FontQuality := fqFineAntialiasing;
+      MD3DrawTextBGRA(ABmp, FSubTitle,
+        Rect(16, captionY, Width - 16, captionY + ABmp.TextSize('Áy').cy),
+        MD3Colors.OnSurfaceVariant, taLeftJustify, False, False);
+    end;
   end;
 
-  ABmp.Draw(Canvas, 0, 0, False);
+  ABmp.Draw(Canvas, 0, 0, True);
   finally
     ABmp.Free;
   end;

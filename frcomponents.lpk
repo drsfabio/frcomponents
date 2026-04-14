@@ -11,7 +11,7 @@
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
     </CompilerOptions>
-    <Files Count="43">
+    <Files Count="45">
       <Item1>
         <Filename Value="FRMaterial3AppBar.pas"/>
         <HasRegisterProc Value="True"/>
@@ -221,6 +221,15 @@
         <HasRegisterProc Value="True"/>
         <UnitName Value="FRMaterialThemeManager"/>
       </Item43>
+      <Item44>
+        <Filename Value="FRMaterial3ProjectTemplate.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="FRMaterial3ProjectTemplate"/>
+      </Item44>
+      <Item45>
+        <Filename Value="FRMaterial3MainForm.pas"/>
+        <UnitName Value="FRMaterial3MainForm"/>
+      </Item45>
     </Files>
     <CompatibilityMode Value="True"/>
     <i18n>

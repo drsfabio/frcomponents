@@ -36,3 +36,8 @@ packagefiles.xml
 icons/packagefiles.xml
 lazbuild_help.txt
 virtuals.txt
+tests/debug_err.txt
+tests/debug_out.txt
+
+# Local tools
+.claude/

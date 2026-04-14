@@ -34,7 +34,7 @@ type
     { Novos ícones MD3 }
     imHome, imMenu, imArrowBack, imArrowForward, imMoreVert,
     imCheck, imEdit, imDelete, imShare, imStar,
-    imFavorite, imSettings, imPerson, imNotification, imMail,
+    imFavorite, imSettings, imPerson, imNotification, imMail, imPhone,
     imDownload, imUpload, imRefresh, imFilter, imAttach, imLink,
     imNightlight, imLightMode, imList, imDashboard,
     imExpandMore, imExpandLess, imFolder, imFolderOpen,
@@ -56,7 +56,9 @@ type
     { Controles de janela }
     imWindowMinimize, imWindowMaximize, imWindowRestore, imWindowClose,
     { Variantes preenchidas }
-    imStarFilled
+    imStarFilled,
+    { Paginação / Navegação }
+    imChevronLeft, imChevronRight, imFirstPage, imLastPage
   );
 
   { TFRMaterialIconButton
@@ -75,6 +77,7 @@ type
     FCacheMode: TFRIconMode;
     FCacheW: Integer;
     FCacheH: Integer;
+    FCacheGeneration: Cardinal;
     procedure RebuildCache;
     procedure SetIconMode(AValue: TFRIconMode);
   protected
@@ -119,6 +122,7 @@ function FRSettingsIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRPersonIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRNotificationIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRMailIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+function FRPhoneIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRDownloadIconSVG(const AHex: string; AStroke: Double = 2.5): string;
 function FRUploadIconSVG(const AHex: string; AStroke: Double = 2.5): string;
 function FRRefreshIconSVG(const AHex: string; AStroke: Double = 2.5): string;
@@ -186,6 +190,11 @@ function FRWindowMaximizeIconSVG(const AHex: string; AStroke: Double = 2.0): str
 function FRWindowRestoreIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRWindowCloseIconSVG(const AHex: string; AStroke: Double = 2.0): string;
 function FRStarFilledIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+{ Paginação / Navegação }
+function FRChevronLeftIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRChevronRightIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRFirstPageIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+function FRLastPageIconSVG(const AHex: string; AStroke: Double = 2.5): string;
 function FRRenderSVGIcon(const ASVG: string; AW, AH: Integer): TBGRABitmap;
 function FRGetIconSVG(AMode: TFRIconMode; const AHex: string; AStroke: Double): string;
 
@@ -512,6 +521,21 @@ begin
     '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
     '<rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '"/>' +
     '<polyline points="22,6 12,13 2,6" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRPhoneIconSVG(const AHex: string; AStroke: Double = 2.0): string;
+var
+  sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  { Handset padrao Material Symbols outline:
+    aparelho segurado inclinado, corpo arredondado, bocal superior e receptor inferior.
+    Path baseado no glyph "phone" do Material Symbols. }
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" ' +
+    'fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
     '</svg>';
 end;
 
@@ -1374,6 +1398,50 @@ begin
   if AStroke > 0 then Result := AStroke else Result := ADefault;
 end;
 
+{ Paginação / Navegação }
+
+function FRChevronLeftIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<polyline points="15,18 9,12 15,6" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRChevronRightIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<polyline points="9,6 15,12 9,18" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRFirstPageIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="6" y1="6" x2="6" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '<polyline points="18,18 12,12 18,6" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+end;
+
+function FRLastPageIconSVG(const AHex: string; AStroke: Double = 2.5): string;
+var sw: string;
+begin
+  sw := StrokeToStr(AStroke);
+  Result :=
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+    '<polyline points="6,6 12,12 6,18" fill="none" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<line x1="18" y1="6" x2="18" y2="18" stroke="' + AHex + '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+    '</svg>';
+end;
+
 function FRGetIconSVG(AMode: TFRIconMode; const AHex: string; AStroke: Double): string;
 begin
   case AMode of
@@ -1400,6 +1468,7 @@ begin
     imPerson:       Result := FRPersonIconSVG(AHex,        UseStroke(AStroke, 2.0));
     imNotification: Result := FRNotificationIconSVG(AHex,  UseStroke(AStroke, 2.0));
     imMail:         Result := FRMailIconSVG(AHex,          UseStroke(AStroke, 2.0));
+    imPhone:        Result := FRPhoneIconSVG(AHex,         UseStroke(AStroke, 2.0));
     imDownload:     Result := FRDownloadIconSVG(AHex,      UseStroke(AStroke, 2.5));
     imUpload:       Result := FRUploadIconSVG(AHex,        UseStroke(AStroke, 2.5));
     imRefresh:      Result := FRRefreshIconSVG(AHex,       UseStroke(AStroke, 2.5));
@@ -1467,6 +1536,11 @@ begin
     imWindowRestore:  Result := FRWindowRestoreIconSVG(AHex,  UseStroke(AStroke, 2.0));
     imWindowClose:    Result := FRWindowCloseIconSVG(AHex,    UseStroke(AStroke, 2.0));
     imStarFilled:     Result := FRStarFilledIconSVG(AHex,     UseStroke(AStroke, 2.0));
+    { Paginação / Navegação }
+    imChevronLeft:    Result := FRChevronLeftIconSVG(AHex,    UseStroke(AStroke, 2.5));
+    imChevronRight:   Result := FRChevronRightIconSVG(AHex,   UseStroke(AStroke, 2.5));
+    imFirstPage:      Result := FRFirstPageIconSVG(AHex,      UseStroke(AStroke, 2.5));
+    imLastPage:       Result := FRLastPageIconSVG(AHex,       UseStroke(AStroke, 2.5));
   else
     Result := '';
   end;
@@ -1520,6 +1594,11 @@ type
 
 var
   FRGlobalIconCache: TFRMDGlobalIconCache = nil;
+  { Generation counter incrementado a cada FRClearIconCache. IconButtons
+    comparam com FCacheGeneration local para detectar cache invalidado (ex:
+    apos troca de tema). Sem isso, FCacheNormal/FCacheHover podem apontar
+    para bitmaps liberados → AV em Paint. }
+  FRIconCacheGeneration: Cardinal = 0;
 
 constructor TFRMDGlobalIconCache.Create;
 begin
@@ -1568,6 +1647,7 @@ procedure FRClearIconCache;
 begin
   if Assigned(FRGlobalIconCache) then
     FreeAndNil(FRGlobalIconCache);
+  Inc(FRIconCacheGeneration);
 end;
 
 { ══════════════════════════════════════════════════════════════════════════ }
@@ -1577,16 +1657,17 @@ end;
 constructor TFRMaterialIconButton.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FHovered      := False;
-  FIconMode     := imClear;
-  FNormalColor  := clGray;
-  FHoverColor   := clHighlight;
-  FStrokeWidth  := 0;
-  FCacheNormal  := nil;
-  FCacheHover   := nil;
-  FCacheMode    := imClear;
-  FCacheW       := 0;
-  FCacheH       := 0;
+  FHovered         := False;
+  FIconMode        := imClear;
+  FNormalColor     := clGray;
+  FHoverColor      := clHighlight;
+  FStrokeWidth     := 0;
+  FCacheNormal     := nil;
+  FCacheHover      := nil;
+  FCacheMode       := imClear;
+  FCacheW          := 0;
+  FCacheH          := 0;
+  FCacheGeneration := 0;
   Flat := True;
 end;
 
@@ -1630,8 +1711,9 @@ begin
   FCacheHover  := FRGetCachedIcon(FIconMode, hexHover, sw, Width, Height);
 
   FCacheMode := FIconMode;
-  FCacheW := Width;
-  FCacheH := Height;
+  FCacheW    := Width;
+  FCacheH    := Height;
+  FCacheGeneration := FRIconCacheGeneration;
 end;
 
 procedure TFRMaterialIconButton.Paint;
@@ -1642,7 +1724,8 @@ begin
 
   { Não preenche fundo — o parent (TFRMaterialEditBase) já pintou a região }
 
-  if (FCacheW <> Width) or (FCacheH <> Height) or (FCacheMode <> FIconMode) then
+  if (FCacheW <> Width) or (FCacheH <> Height) or (FCacheMode <> FIconMode)
+    or (FCacheGeneration <> FRIconCacheGeneration) then
     RebuildCache;
 
   if FHovered then

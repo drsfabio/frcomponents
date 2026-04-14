@@ -8,17 +8,20 @@ unit FRComponents;
 interface
 
 uses
-  FRMaterial3AppBar, FRMaterial3Badge, FRMaterial3Base, FRMaterial3Button, FRMaterial3Card, 
-  FRMaterial3Carousel, FRMaterial3Chip, FRMaterial3Combo, FRMaterial3DataGrid, 
-  FRMaterial3DatePicker, FRMaterial3Dialog, FRMaterial3Divider, FRMaterial3FAB, 
-  FRMaterial3GridPanel, FRMaterial3Label, FRMaterial3List, FRMaterial3Menu, FRMaterial3Nav, 
-  FRMaterial3PageControl, FRMaterial3Progress, FRMaterial3Sheet, FRMaterial3Slider, 
-  FRMaterial3Snackbar, FRMaterial3Tabs, FRMaterial3TimePicker, FRMaterial3TitleBar, 
-  FRMaterial3Toggle, FRMaterial3Toolbox, FRMaterial3Tooltip, FRMaterial3TreeView, 
-  FRMaterialCheckComboEdit, FRMaterialDateEdit, FRMaterialEdit, 
-  FRMaterialFieldPainter, FRMaterialIcons, FRMaterialInternalEdits, FRMaterialMaskEdit, 
-  FRMaterialMasks, FRMaterialMemoEdit, FRMaterialSearchEdit, FRMaterialSpinEdit, FRMaterialTheme, 
-  FRMaterialThemeManager, LazarusPackageIntf;
+  FRMaterial3AppBar, FRMaterial3Badge, FRMaterial3Base, FRMaterial3Button, 
+  FRMaterial3Card, FRMaterial3Carousel, FRMaterial3Chip, FRMaterial3Combo, 
+  FRMaterial3DataGrid, FRMaterial3DatePicker, FRMaterial3Dialog, 
+  FRMaterial3Divider, FRMaterial3FAB, FRMaterial3GridPanel, FRMaterial3Label, 
+  FRMaterial3List, FRMaterial3Menu, FRMaterial3Nav, FRMaterial3PageControl, 
+  FRMaterial3Progress, FRMaterial3Sheet, FRMaterial3Slider, 
+  FRMaterial3Snackbar, FRMaterial3Tabs, FRMaterial3TimePicker, 
+  FRMaterial3TitleBar, FRMaterial3Toggle, FRMaterial3Toolbox, 
+  FRMaterial3Tooltip, FRMaterial3TreeView, FRMaterialCheckComboEdit, 
+  FRMaterialDateEdit, FRMaterialEdit, FRMaterialFieldPainter, FRMaterialIcons, 
+  FRMaterialInternalEdits, FRMaterialMaskEdit, FRMaterialMasks, 
+  FRMaterialMemoEdit, FRMaterialSearchEdit, FRMaterialSpinEdit, 
+  FRMaterialTheme, FRMaterialThemeManager, FRMaterial3ProjectTemplate, 
+  FRMaterial3MainForm, LazarusPackageIntf;
 
 implementation
 
@@ -61,6 +64,8 @@ begin
   RegisterUnit('FRMaterialSearchEdit', @FRMaterialSearchEdit.Register);
   RegisterUnit('FRMaterialSpinEdit', @FRMaterialSpinEdit.Register);
   RegisterUnit('FRMaterialThemeManager', @FRMaterialThemeManager.Register);
+  RegisterUnit('FRMaterial3ProjectTemplate', 
+    @FRMaterial3ProjectTemplate.Register);
 end;
 
 initialization

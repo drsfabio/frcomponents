@@ -516,6 +516,9 @@ procedure TFRMaterialSpinEdit.ApplyTheme(const AThemeManager: TObject);
 begin
   if not Assigned(AThemeManager) then Exit;
 
+  { Sync variant from ThemeManager }
+  FVariant := FRMDGetThemeVariant(AThemeManager);
+
   FAccentColor   := MD3Colors.Primary;
   FDisabledColor := MD3Colors.OnSurfaceVariant;
 

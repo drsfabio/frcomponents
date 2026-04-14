@@ -67,6 +67,11 @@ type
     FUpdating: Boolean;
     FAutoColSpan: Boolean;
     FAutoHeight: Boolean;
+    FFlexItemWidth: Integer;
+    FPaddingLeft: Integer;
+    FPaddingTop: Integer;
+    FPaddingRight: Integer;
+    FPaddingBottom: Integer;
 
     procedure SetColumnCount(AValue: Integer);
     procedure SetGapH(AValue: Integer);
@@ -74,9 +79,15 @@ type
     procedure SetItems(AValue: TFRGridItems);
     procedure SetAutoColSpan(AValue: Boolean);
     procedure SetAutoHeight(AValue: Boolean);
+    procedure SetFlexItemWidth(AValue: Integer);
+    procedure SetPaddingLeft(AValue: Integer);
+    procedure SetPaddingTop(AValue: Integer);
+    procedure SetPaddingRight(AValue: Integer);
+    procedure SetPaddingBottom(AValue: Integer);
     function  ResolveSpan(AControl: TControl): Integer;
 
   protected
+    procedure AdjustClientRect(var ARect: TRect); override;
     procedure AlignControls(AControl: TControl; var ARect: TRect); override;
     procedure Resize; override;
     procedure Paint; override;
@@ -101,7 +112,7 @@ type
     { GapH / GapV — defaults com respiro suficiente para variantes sem borda
       (Standard/Filled) sob densidades compactas. Reduza explicitamente no
       LFM se quiser um layout mais denso. }
-    property GapH: Integer read FGapH write SetGapH default 20;
+    property GapH: Integer read FGapH write SetGapH default 24;
     property GapV: Integer read FGapV write SetGapV default 16;
     { Quando True, o ColSpan de cada filho eh resolvido automaticamente a partir
       da property FieldSize do TFRMaterial3Control (fsTiny=2, fsSmall=3,
@@ -113,7 +124,21 @@ type
       o layout, de modo que todos os filhos fiquem visiveis sem corte.
       Compativel com densidades e temas dinamicos — o grid redimensiona
       conforme os filhos mudam de altura. }
-    property AutoHeight: Boolean read FAutoHeight write SetAutoHeight default False;
+    property AutoHeight: Boolean read FAutoHeight write SetAutoHeight default True;
+    { Flex-wrap mode: quando > 0, ignora ColumnCount/ColSpan e posiciona
+      cada filho com largura fixa de FlexItemWidth pixels. O numero de
+      colunas eh calculado automaticamente a partir da largura disponivel:
+        cols = (Width + GapH) div (FlexItemWidth + GapH)
+      Itens que nao cabem na linha atual sao empurrados para a proxima.
+      Ideal para grids de cards de tamanho uniforme.
+      Quando 0 (default), usa o layout por colunas+ColSpan normal. }
+    property FlexItemWidth: Integer read FFlexItemWidth write SetFlexItemWidth default 0;
+    { Padding interno — espaçamento entre as bordas do grid e os filhos.
+      Funciona como TPanel.BorderWidth mas com controle individual por lado. }
+    property PaddingLeft: Integer read FPaddingLeft write SetPaddingLeft default 8;
+    property PaddingTop: Integer read FPaddingTop write SetPaddingTop default 8;
+    property PaddingRight: Integer read FPaddingRight write SetPaddingRight default 8;
+    property PaddingBottom: Integer read FPaddingBottom write SetPaddingBottom default 8;
     property Items: TFRGridItems read FItems write SetItems;
 
     property Align;
@@ -257,11 +282,16 @@ begin
   ControlStyle := ControlStyle + [csAcceptsControls];
 
   FColumnCount := 12;
-  FGapH := 20;
+  FGapH := 24;
   FGapV := 16;
   FUpdating := False;
   FAutoColSpan := False;
-  FAutoHeight  := False;
+  FAutoHeight  := True;
+  FFlexItemWidth := 0;
+  FPaddingLeft   := 8;
+  FPaddingTop    := 8;
+  FPaddingRight  := 8;
+  FPaddingBottom := 8;
   FItems := TFRGridItems.Create(Self, TFRGridItem);
 
   Width  := 600;
@@ -321,6 +351,55 @@ begin
   DoLayout;
 end;
 
+procedure TFRMaterialGridPanel.SetFlexItemWidth(AValue: Integer);
+begin
+  if AValue < 0 then AValue := 0;
+  if FFlexItemWidth = AValue then Exit;
+  FFlexItemWidth := AValue;
+  DoLayout;
+end;
+
+procedure TFRMaterialGridPanel.SetPaddingLeft(AValue: Integer);
+begin
+  if AValue < 0 then AValue := 0;
+  if FPaddingLeft = AValue then Exit;
+  FPaddingLeft := AValue;
+  DoLayout;
+end;
+
+procedure TFRMaterialGridPanel.SetPaddingTop(AValue: Integer);
+begin
+  if AValue < 0 then AValue := 0;
+  if FPaddingTop = AValue then Exit;
+  FPaddingTop := AValue;
+  DoLayout;
+end;
+
+procedure TFRMaterialGridPanel.SetPaddingRight(AValue: Integer);
+begin
+  if AValue < 0 then AValue := 0;
+  if FPaddingRight = AValue then Exit;
+  FPaddingRight := AValue;
+  DoLayout;
+end;
+
+procedure TFRMaterialGridPanel.SetPaddingBottom(AValue: Integer);
+begin
+  if AValue < 0 then AValue := 0;
+  if FPaddingBottom = AValue then Exit;
+  FPaddingBottom := AValue;
+  DoLayout;
+end;
+
+procedure TFRMaterialGridPanel.AdjustClientRect(var ARect: TRect);
+begin
+  inherited AdjustClientRect(ARect);
+  Inc(ARect.Left, FPaddingLeft);
+  Inc(ARect.Top, FPaddingTop);
+  Dec(ARect.Right, FPaddingRight);
+  Dec(ARect.Bottom, FPaddingBottom);
+end;
+
 { Resolve o ColSpan efetivo de um controle.
   - AutoColSpan=False → usa o ColSpan manual do Items (default 12).
   - AutoColSpan=True:
@@ -368,6 +447,8 @@ end;
 procedure TFRMaterialGridPanel.SetColSpan(AControl: TControl; ASpan: Integer);
 var
   item: TFRGridItem;
+  colW: Double;
+  cw: Integer;
 begin
   if AControl = nil then Exit;
   item := FItems.FindByControl(AControl);
@@ -377,6 +458,17 @@ begin
     item.FControl := AControl;
   end;
   item.ColSpan := ASpan;
+
+  { Aplica a largura imediatamente para que filhos internos do controle
+    (labels, botoes, etc.) possam usar Width correto ao serem criados,
+    sem depender de DoLayout posterior. }
+  if (Width > 0) and (FColumnCount > 0) then
+  begin
+    colW := (Width - (FColumnCount - 1) * FGapH) / FColumnCount;
+    if colW < 1 then colW := 1;
+    cw := Round(ASpan * colW + (ASpan - 1) * FGapH);
+    AControl.Width := cw;
+  end;
 end;
 
 function TFRMaterialGridPanel.GetColSpan(AControl: TControl): Integer;
@@ -475,6 +567,7 @@ var
   cx, cy, cw: Integer;
   rowMaxH: Integer;
   totalH: Integer;
+  flexCols: Integer;
 begin
   if ControlCount = 0 then Exit;
   if FUpdating then Exit;
@@ -485,61 +578,98 @@ begin
   FUpdating := True;
   try
 
-  colW := (areaW - (FColumnCount - 1) * FGapH) / FColumnCount;
-  if colW < 1 then colW := 1;
-
-  col := 0;
-  cy := ARect.Top;
-  rowMaxH := 0;
-
-  GridLog('AlignControls areaW=' + IntToStr(areaW) + ' CC=' + IntToStr(ControlCount));
-
-  for i := 0 to ControlCount - 1 do
+  { ── Flex-wrap mode ──
+    Cada filho recebe largura fixa de FlexItemWidth pixels.
+    O numero de colunas eh calculado a partir da area disponivel:
+      cols = (areaW + GapH) / (FlexItemWidth + GapH)
+    Funciona como CSS flex-wrap: wrap com itens de tamanho uniforme. }
+  if FFlexItemWidth > 0 then
   begin
-    ctrl := Controls[i];
-    if not ctrl.Visible then Continue;
+    flexCols := (areaW + FGapH) div (FFlexItemWidth + FGapH);
+    if flexCols < 1 then flexCols := 1;
 
-    span := ResolveSpan(ctrl);
-    if span > FColumnCount then span := FColumnCount;
+    col := 0;
+    cy := ARect.Top;
+    rowMaxH := 0;
 
-    { Wrap to next row if this child won't fit }
-    if (col > 0) and (col + span > FColumnCount) then
+    for i := 0 to ControlCount - 1 do
     begin
-      cy := cy + rowMaxH + FGapV;
-      col := 0;
-      rowMaxH := 0;
+      ctrl := Controls[i];
+      if not ctrl.Visible then Continue;
+
+      { Wrap }
+      if (col > 0) and (col >= flexCols) then
+      begin
+        cy := cy + rowMaxH + FGapV;
+        col := 0;
+        rowMaxH := 0;
+      end;
+
+      cx := ARect.Left + col * (FFlexItemWidth + FGapH);
+      ctrl.SetBounds(cx, cy, FFlexItemWidth, ctrl.Height);
+
+      if ctrl.Height > rowMaxH then
+        rowMaxH := ctrl.Height;
+      Inc(col);
     end;
+  end
+  else
+  begin
+    { ── Column-based mode (padrao) ── }
+    colW := (areaW - (FColumnCount - 1) * FGapH) / FColumnCount;
+    if colW < 1 then colW := 1;
 
-    cx := ARect.Left + Round(col * (colW + FGapH));
-    cw := Round(span * colW + (span - 1) * FGapH);
+    col := 0;
+    cy := ARect.Top;
+    rowMaxH := 0;
 
-    ctrl.SetBounds(cx, cy, cw, ctrl.Height);
-
-    GridLog('  child[' + IntToStr(i) + '] ' + ctrl.Name +
-      ' span=' + IntToStr(span) +
-      ' SetBounds(' + IntToStr(cx) + ',' + IntToStr(cy) + ',' +
-      IntToStr(cw) + ',' + IntToStr(ctrl.Height) + ')' +
-      ' After: L=' + IntToStr(ctrl.Left) + ' W=' + IntToStr(ctrl.Width));
-
-    if ctrl.Height > rowMaxH then
-      rowMaxH := ctrl.Height;
-
-    col := col + span;
-
-    { Row full → advance }
-    if col >= FColumnCount then
+    for i := 0 to ControlCount - 1 do
     begin
-      cy := cy + rowMaxH + FGapV;
-      col := 0;
-      rowMaxH := 0;
+      ctrl := Controls[i];
+      if not ctrl.Visible then Continue;
+
+      span := ResolveSpan(ctrl);
+      if span > FColumnCount then span := FColumnCount;
+
+      { Wrap to next row if this child won't fit }
+      if (col > 0) and (col + span > FColumnCount) then
+      begin
+        cy := cy + rowMaxH + FGapV;
+        col := 0;
+        rowMaxH := 0;
+      end;
+
+      cx := ARect.Left + Round(col * (colW + FGapH));
+      cw := Round(span * colW + (span - 1) * FGapH);
+
+      ctrl.SetBounds(cx, cy, cw, ctrl.Height);
+
+      if ctrl.Height > rowMaxH then
+        rowMaxH := ctrl.Height;
+
+      col := col + span;
+
+      { Row full → advance }
+      if col >= FColumnCount then
+      begin
+        cy := cy + rowMaxH + FGapV;
+        col := 0;
+        rowMaxH := 0;
+      end;
     end;
   end;
 
   { AutoHeight: ajusta o Height do grid para acomodar todos os filhos.
-    - col > 0  → ultima linha ainda aberta, soma rowMaxH pendente.
-    - col = 0 e cy > ARect.Top → ultima linha foi fechada pelo loop,
-      cy ja avancou com GapV extra — subtrai.
-    - Nenhum filho visivel (cy = ARect.Top) → totalH = 0. }
+
+    DisableAutoSizing em Self E em Parent protege contra loop
+    InvalidatePreferredSize: setar Self.Height dispara Resize no parent →
+    parent recalcula layout → pode redimensionar este grid → DoLayout
+    dispara de novo → LOOP. Com varios GridPanels alTop empilhados, o
+    LCL detecta e aborta com ELayoutException.
+
+    A defesa precisa cobrir AMBOS os lados (Self e Parent) porque o loop
+    eh BIDIRECIONAL — protegendo so Self, o parent ainda pode reagir e
+    re-disparar. Com ambos protegidos, o ciclo eh quebrado no nivel do LCL. }
   if FAutoHeight then
   begin
     if (col > 0) and (rowMaxH > 0) then
@@ -549,7 +679,16 @@ begin
     else
       totalH := 0;
     if Self.Height <> totalH then
-      Self.Height := totalH;
+    begin
+      Self.DisableAutoSizing;
+      if Assigned(Parent) then Parent.DisableAutoSizing;
+      try
+        Self.Height := totalH;
+      finally
+        if Assigned(Parent) then Parent.EnableAutoSizing;
+        Self.EnableAutoSizing;
+      end;
+    end;
   end;
 
   finally

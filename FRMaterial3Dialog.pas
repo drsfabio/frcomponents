@@ -25,7 +25,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Graphics, Forms, StdCtrls, ExtCtrls,
-  LCLIntf, LCLType, LMessages, Math,
+  LCLIntf, LCLType, LMessages, Math, Dialogs,
   {$IFDEF FPC} LResources, {$ENDIF}
   BGRABitmap, BGRABitmapTypes, FRMaterialTheme, FRMaterial3Base, FRMaterial3Button,
   FRMaterialIcons;
@@ -84,24 +84,36 @@ type
 function MessageDialog(const ATitle, AContent: string;
   AIcon: TFRMDDialogIcon; AButtons: TFRMDDialogButtons): TFRMDDialogResult;
 
+{ Drop-in wrappers — mesma assinatura do Dialogs.MessageDlg / ShowMessage }
+function MD3MessageDlg(const ATitle, AContent: string; AType: TMsgDlgType;
+  AButtons: TMsgDlgButtons; AHelpCtx: Longint): TModalResult;
+procedure MD3ShowMessage(const AMsg: string);
+
 procedure Register;
 
 implementation
 
+{$IFDEF WINDOWS}
+function CreateRoundRectRgn(X1, Y1, X2, Y2, W, H: Integer): HRGN;
+  stdcall; external 'gdi32.dll';
+function SetWindowRgn(hWnd: HWND; hRgn: HRGN; bRedraw: LongBool): Integer;
+  stdcall; external 'user32.dll';
+{$ENDIF}
+
 const
-  PADDING       = 24;
-  BTN_H         = 40;
-  BTN_GAP       = 8;
-  TITLE_GAP     = 16;
-  CONTENT_GAP   = 24;
-  ICON_SIZE     = 24;
-  ICON_GAP      = 16;
-  DLG_MIN_W     = 280;
-  DLG_MAX_W     = 560;
-  DLG_PREF_W    = 420;
-  ANIM_DURATION = 200; { ms }
-  ANIM_INTERVAL = 16;  { ~60 fps }
-  CORNER_RADIUS = 28;  { MD3 extra-large shape }
+  PADDING             = 24;
+  BTN_H               = 40;
+  BTN_GAP             = 8;
+  TITLE_GAP           = 16;
+  CONTENT_GAP         = 24;
+  ICON_SIZE           = 24;
+  ICON_GAP            = 16;
+  DLG_MIN_W           = 280;
+  DLG_MAX_W           = 560;
+  DLG_PREF_W          = 420;
+  ANIM_DURATION       = 200; { ms }
+  ANIM_INTERVAL       = 16;  { ~60 fps }
+  CORNER_RADIUS       = 28;  { MD3 extra-large shape }
   MAX_CONTENT_DEFAULT = 320; { max content height before scroll }
 
 type
@@ -154,6 +166,7 @@ type
     procedure DoAnimTick(Sender: TObject);
     procedure StartAnimation;
     procedure CaptureBackdrop;
+    procedure ApplyCardRegion;
     function EaseOutCubic(T: Single): Single;
   protected
     procedure Paint; override;
@@ -285,6 +298,7 @@ begin
     FDialogPanel.Top := (ClientHeight - FDialogPanel.Height) div 2;
     FDialogPanel.InvalidateCache;
     FDialogPanel.Visible := True;
+    ApplyCardRegion;
   end;
 
   { Repaint scrim with animated alpha }
@@ -550,6 +564,9 @@ begin
     FDialogPanel.Top := FTargetPanelTop;
   end;
 
+  { Aplica regiao arredondada no painel do card }
+  ApplyCardRegion;
+
   { Start entrance animation }
   StartAnimation;
   { ActiveControl is set after animation completes in DoAnimTick }
@@ -586,6 +603,29 @@ begin
   finally
     bmp.Free;
   end;
+end;
+
+procedure TFRDialogForm.ApplyCardRegion;
+{$IFDEF WINDOWS}
+var
+  panelW, panelH, R: Integer;
+{$ENDIF}
+begin
+  {$IFDEF WINDOWS}
+  if not Assigned(FDialogPanel) then Exit;
+  if not FDialogPanel.HandleAllocated then Exit;
+
+  panelW := FDialogPanel.Width;
+  panelH := FDialogPanel.Height;
+  R := CORNER_RADIUS;
+
+  { Pixel-perfect expansion: GDI region 1px larger que o BGRA rounded rect,
+    preservando os pixels anti-aliased na borda. Mesmo padrao do Snackbar
+    e do Combo popup. }
+  SetWindowRgn(FDialogPanel.Handle,
+    CreateRoundRectRgn(-1, -1, panelW + 2, panelH + 2,
+      R * 2 + 2, R * 2 + 2), True);
+  {$ENDIF}
 end;
 
 procedure TFRDialogForm.Paint;
@@ -679,19 +719,19 @@ end;
 constructor TFRMaterialDialog.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FTitle := 'Título';
-  FContent := 'Conteúdo da mensagem.';
-  FButtons := [dbOK, dbCancel];
-  FDialogIcon := diNone;
-  FCustomIcon := imInfo;
-  FDismissOnScrim := True;
+  FTitle           := 'Título';
+  FContent         := 'Conteúdo da mensagem.';
+  FButtons         := [dbOK, dbCancel];
+  FDialogIcon      := diNone;
+  FCustomIcon      := imInfo;
+  FDismissOnScrim  := True;
   FDismissOnEscape := True;
-  FCaptionOK := 'OK';
-  FCaptionCancel := 'Cancelar';
-  FCaptionYes := 'Sim';
-  FCaptionNo := 'Não';
-  FCaptionClose := 'Fechar';
-  FScrimOpacity := 128;
+  FCaptionOK       := 'OK';
+  FCaptionCancel   := 'Cancelar';
+  FCaptionYes      := 'Sim';
+  FCaptionNo       := 'Não';
+  FCaptionClose    := 'Fechar';
+  FScrimOpacity    := 128;
   FMaxContentHeight := 0;
 
   FRMDRegisterComponent(Self);
@@ -780,6 +820,60 @@ begin
   finally
     Free;
   end;
+end;
+
+{ ── Drop-in wrappers ── }
+
+function MsgDlgTypeToIcon(AType: TMsgDlgType): TFRMDDialogIcon;
+begin
+  case AType of
+    mtWarning:      Result := diWarning;
+    mtError:        Result := diError;
+    mtInformation:  Result := diInfo;
+    mtConfirmation: Result := diInfo;
+    mtCustom:       Result := diNone;
+  else
+    Result := diNone;
+  end;
+end;
+
+function MsgDlgBtnsToMD3(ABtns: TMsgDlgButtons): TFRMDDialogButtons;
+begin
+  Result := [];
+  if mbOK in ABtns      then Include(Result, dbOK);
+  if mbCancel in ABtns   then Include(Result, dbCancel);
+  if mbYes in ABtns      then Include(Result, dbYes);
+  if mbNo in ABtns       then Include(Result, dbNo);
+  if mbClose in ABtns    then Include(Result, dbClose);
+end;
+
+function MD3ResultToModalResult(AResult: TFRMDDialogResult): TModalResult;
+begin
+  case AResult of
+    drOK:     Result := mrOK;
+    drCancel: Result := mrCancel;
+    drYes:    Result := mrYes;
+    drNo:     Result := mrNo;
+    drClose:  Result := mrClose;
+  else
+    Result := mrNone;
+  end;
+end;
+
+function MD3MessageDlg(const ATitle, AContent: string; AType: TMsgDlgType;
+  AButtons: TMsgDlgButtons; AHelpCtx: Longint): TModalResult;
+var
+  DR: TFRMDDialogResult;
+begin
+  DR := MessageDialog(ATitle, AContent,
+          MsgDlgTypeToIcon(AType),
+          MsgDlgBtnsToMD3(AButtons));
+  Result := MD3ResultToModalResult(DR);
+end;
+
+procedure MD3ShowMessage(const AMsg: string);
+begin
+  MessageDialog('', AMsg, diNone, [dbOK]);
 end;
 
 end.

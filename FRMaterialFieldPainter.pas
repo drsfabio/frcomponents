@@ -139,8 +139,18 @@ begin
       Desenhamos um RoundRect completo e preenchemos a parte inferior com retângulo
       para obter cantos arredondados apenas no topo, sem criar TBGRABitmap. }
     if (P.Rect.Right <= 0) or (P.Rect.Bottom <= 0) then Exit;
-    P.Canvas.Brush.Color := P.BgColor;
-    P.Canvas.Pen.Color := P.BgColor;
+    { MD3 spec: Filled fields always use SurfaceContainerHighest as background.
+      Locked/Disabled states have their own colors via P.BgColor. }
+    if P.IsEnabled and (not P.IsLocked) then
+    begin
+      P.Canvas.Brush.Color := MD3Colors.SurfaceContainerHighest;
+      P.Canvas.Pen.Color   := MD3Colors.SurfaceContainerHighest;
+    end
+    else
+    begin
+      P.Canvas.Brush.Color := P.BgColor;
+      P.Canvas.Pen.Color   := P.BgColor;
+    end;
     { Desenha retângulo arredondado completo }
     P.Canvas.RoundRect(P.Rect.Left, P.Rect.Top, P.Rect.Right, DecoBottom, CR, CR);
     { Preenche a metade inferior com cantos retos }
