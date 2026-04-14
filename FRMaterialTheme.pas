@@ -135,6 +135,12 @@ function MD3DensityDelta(ADensity: TFRMDDensity): Integer;
   Resultado clamped entre 8 e 16. }
 function MD3FontSizeForField(AHeight: Integer; ADensity: TFRMDDensity): Integer;
 
+{ Tamanho da fonte para labels flutuantes, helper text, prefixo/sufixo e
+  char counter dos inputs MD3. Proporcionalmente menor que o body do field
+  (2pt abaixo), seguindo MD3 spec (Label Small / Body Small = ~11sp).
+  Normal=10, Compact/Dense=9, UltraDense=8. Clamp 8-12. }
+function MD3LabelFontSize(ADensity: TFRMDDensity): Integer;
+
 { Retorna o offset de sombra em pixels para o nível de elevação MD3. }
 function MD3ElevationOffset(ALevel: TFRMDElevation): Integer;
 
@@ -221,6 +227,15 @@ begin
   { Clamp entre 8 e 16 }
   if Result < 8 then Result := 8;
   if Result > 16 then Result := 16;
+end;
+
+function MD3LabelFontSize(ADensity: TFRMDDensity): Integer;
+begin
+  { Deriva do body do field: body - 2 é o ratio MD3 Label/Body Small.
+    Garante que o label sempre fica menor que o body do edit. }
+  Result := MD3FontSizeForField(56, ADensity) - 2;
+  if Result < 8 then Result := 8;
+  if Result > 12 then Result := 12;
 end;
 
 function MD3ElevationOffset(ALevel: TFRMDElevation): Integer;

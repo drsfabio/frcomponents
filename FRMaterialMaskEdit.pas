@@ -679,6 +679,7 @@ begin
   if Assigned(Parent) then P.ParentBgColor := Parent.Color else P.ParentBgColor := clNone;
 
   P.Variant := FVariant;
+  P.Density := FRMDGetThemeDensity(FRMaterialDefaultThemeManager);
   P.BorderRadius := FBorderRadius;
   
   P.DecoColor := DecoColor;

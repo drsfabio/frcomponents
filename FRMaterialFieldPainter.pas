@@ -22,6 +22,7 @@ type
     ParentBgColor: TColor;  { Cor de fundo do Parent }
     
     Variant: TFRMaterialVariant;
+    Density: TFRMDDensity;  { Usado por MD3LabelFontSize para labels/helper/prefix/suffix }
     BorderRadius: Integer;
     
     DecoColor: TColor;      { Cor do sublinhado/borda (foco ou validação) }
@@ -115,7 +116,7 @@ begin
     if P.LabelText <> '' then
     begin
       P.Canvas.Font.Assign(P.LabelFont);
-      if P.Canvas.Font.Size > 7 then P.Canvas.Font.Size := P.Canvas.Font.Size - 1;
+      P.Canvas.Font.Size := MD3LabelFontSize(P.Density);
       LabelH := P.Canvas.TextHeight(P.LabelText);
       FieldTop := P.LabelTop + LabelH div 2;
     end
@@ -207,7 +208,7 @@ begin
       if (P.LabelText <> '') and (P.LabelProgress > 0.3) then
       begin
         P.Canvas.Font.Assign(P.LabelFont);
-        if P.Canvas.Font.Size > 7 then P.Canvas.Font.Size := P.Canvas.Font.Size - 1;
+        P.Canvas.Font.Size := MD3LabelFontSize(P.Density);
         NotchLeft  := P.EditLeft - 4;
         NotchRight := P.EditLeft + P.Canvas.TextWidth(P.LabelText);
         if P.IsRequired then
@@ -229,9 +230,9 @@ begin
   if P.LabelText <> '' then
   begin
     P.Canvas.Font.Assign(P.LabelFont);
-    
+
     if P.LabelProgress > 0.5 then
-      if P.Canvas.Font.Size > 7 then P.Canvas.Font.Size := P.Canvas.Font.Size - 1;
+      P.Canvas.Font.Size := MD3LabelFontSize(P.Density);
       
     if P.LabelProgress < 1.0 then 
     begin
@@ -296,7 +297,7 @@ begin
   if P.BottomMargin > 0 then
   begin
     P.Canvas.Font.Assign(P.EditFont); // Volta ao fonte padrão herdado
-    P.Canvas.Font.Size := 7;
+    P.Canvas.Font.Size := MD3LabelFontSize(P.Density);
     P.Canvas.Brush.Style := bsClear;
 
     if P.HelperText <> '' then

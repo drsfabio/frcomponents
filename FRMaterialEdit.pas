@@ -1056,7 +1056,7 @@ begin
     if HandleAllocated then
     begin
       SaveSize := Canvas.Font.Size;
-      Canvas.Font.Size := 7;
+      Canvas.Font.Size := MD3LabelFontSize(Density);
       Result := Canvas.TextHeight('Hg') + 4;
       Canvas.Font.Size := SaveSize;
     end
@@ -1693,6 +1693,7 @@ begin
   if Assigned(Parent) then P.ParentBgColor := Parent.Color else P.ParentBgColor := clNone;
 
   P.Variant := FVariant;
+  P.Density := Density;
   P.BorderRadius := FBorderRadius;
 
   P.DecoColor := DecoColor;

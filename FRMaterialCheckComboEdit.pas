@@ -717,6 +717,7 @@ begin
   if Assigned(Parent) then P.ParentBgColor := Parent.Color else P.ParentBgColor := clNone;
 
   P.Variant := Variant;
+  P.Density := Density;
   P.BorderRadius := BorderRadius;
 
   P.DecoColor := DecoColor;
